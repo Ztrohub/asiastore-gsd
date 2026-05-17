@@ -74,7 +74,7 @@ On server apply path, use Prisma transaction boundaries and sequential operation
 | Queue state machine (`pending/sent/acked/failed`) | Browser / Client | Database / Storage | Queue execution and retries run in client runtime while records persist in IndexedDB via Dexie. [VERIFIED: codebase grep] |
 | Sync transport endpoint | API / Backend | Frontend Server (SSR) | Route handlers receive batched deltas and return ack/error contract. [CITED: https://nextjs.org/docs/app/building-your-application/routing/route-handlers] |
 | Conflict ordering and final stock apply | API / Backend | Database / Storage | Final order and stock materialization must be authoritative and transactional server-side. [CITED: https://www.prisma.io/docs/orm/prisma-client/queries/transactions] |
-| Negative stock warning UX | Browser / Client | — | Warning + bypass is explicit cashier interaction requirement (soft warning). [VERIFIED: .planning/phases/02-inventory-and-sync-engine/02-CONTEXT.md] |
+| Negative stock warning UX | Browser / Client | - | Warning + bypass is explicit cashier interaction requirement (soft warning). [VERIFIED: .planning/phases/02-inventory-and-sync-engine/02-CONTEXT.md] |
 
 ## Project Constraints (from AGENTS.md)
 
@@ -177,11 +177,11 @@ npm view zod version
 ### Recommended Project Structure
 ```text
 src/
-├── features/inventory/          # stock in/out/adjustment UI + warning logic
-├── lib/offline/                 # dexie schema, queue repo, sync scheduler
-├── app/api/sync/                # delta ingest + pull endpoints
-├── lib/inventory/               # mutation DTO, ordering, reconciliation helpers
-└── lib/db/                      # prisma transaction layer and stock projection writes
+|-- features/inventory/          # stock in/out/adjustment UI + warning logic
+|-- lib/offline/                 # dexie schema, queue repo, sync scheduler
+|-- app/api/sync/                # delta ingest + pull endpoints
+|-- lib/inventory/               # mutation DTO, ordering, reconciliation helpers
+`-- lib/db/                      # prisma transaction layer and stock projection writes
 ```
 
 ### Pattern 1: Append-Only Mutation Ledger
@@ -304,11 +304,11 @@ export async function POST(request: Request) {
 
 | Dependency | Required By | Available | Version | Fallback |
 |------------|------------|-----------|---------|----------|
-| Node.js | Next API + tooling | ✓ | v22.20.0 | — |
-| npm | Package operations | ✓ | 11.10.0 | pnpm |
-| pnpm | Workspace package manager | ✓ | 11.1.1 | npm |
-| Python + pip | slopcheck legitimacy gate | ✓ | 3.14.4 / pip 26.0.1 | Mark packages `[ASSUMED]` if unavailable |
-| Docker | Optional local infra workflows | ✓ | 26.1.4 | Native local services |
+| Node.js | Next API + tooling | yes | v22.20.0 | - |
+| npm | Package operations | yes | 11.10.0 | pnpm |
+| pnpm | Workspace package manager | yes | 11.1.1 | npm |
+| Python + pip | slopcheck legitimacy gate | yes | 3.14.4 / pip 26.0.1 | Mark packages `[ASSUMED]` if unavailable |
+| Docker | Optional local infra workflows | yes | 26.1.4 | Native local services |
 
 **Missing dependencies with no fallback:**
 - none
@@ -322,21 +322,21 @@ export async function POST(request: Request) {
 | Property | Value |
 |----------|-------|
 | Framework | none detected (Playwright dependency exists, no suite configured) |
-| Config file | none — see Wave 0 |
+| Config file | none - see Wave 0 |
 | Quick run command | `npm run lint` |
 | Full suite command | `npm run lint` (current only) |
 
-### Phase Requirements → Test Map
+### Phase Requirements -> Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| INV-01 | Stock in mutation stored and queued offline | unit/integration | `npm run lint` now; add targeted test command in Wave 0 | ❌ Wave 0 |
-| INV-02 | Stock out mutation path | unit/integration | `npm run lint` now; add targeted test command in Wave 0 | ❌ Wave 0 |
-| INV-03 | Stock adjustment mutation path | unit/integration | `npm run lint` now; add targeted test command in Wave 0 | ❌ Wave 0 |
-| INV-04 | Offline-to-online auto-sync | integration/e2e | `npm run lint` now; add sync harness in Wave 0 | ❌ Wave 0 |
-| SYNC-03 | Reconnect auto push | integration | `npm run lint` now; add reconnect test in Wave 0 | ❌ Wave 0 |
-| SYNC-04 | Delta apply and allow negative stock | unit/integration | `npm run lint` now; add ledger apply tests in Wave 0 | ❌ Wave 0 |
-| SYNC-05 | Negative-stock warning before confirm | component/e2e | `npm run lint` now; add UI test in Wave 0 | ❌ Wave 0 |
-| SYNC-06 | 1-3 device concurrency reliability | integration | `npm run lint` now; add multi-client simulation in Wave 0 | ❌ Wave 0 |
+| INV-01 | Stock in mutation stored and queued offline | unit/integration | `npm run lint` now; add targeted test command in Wave 0 | NO (Wave 0) |
+| INV-02 | Stock out mutation path | unit/integration | `npm run lint` now; add targeted test command in Wave 0 | NO (Wave 0) |
+| INV-03 | Stock adjustment mutation path | unit/integration | `npm run lint` now; add targeted test command in Wave 0 | NO (Wave 0) |
+| INV-04 | Offline-to-online auto-sync | integration/e2e | `npm run lint` now; add sync harness in Wave 0 | NO (Wave 0) |
+| SYNC-03 | Reconnect auto push | integration | `npm run lint` now; add reconnect test in Wave 0 | NO (Wave 0) |
+| SYNC-04 | Delta apply and allow negative stock | unit/integration | `npm run lint` now; add ledger apply tests in Wave 0 | NO (Wave 0) |
+| SYNC-05 | Negative-stock warning before confirm | component/e2e | `npm run lint` now; add UI test in Wave 0 | NO (Wave 0) |
+| SYNC-06 | 1-3 device concurrency reliability | integration | `npm run lint` now; add multi-client simulation in Wave 0 | NO (Wave 0) |
 
 ### Sampling Rate
 - **Per task commit:** `npm run lint`
@@ -344,10 +344,10 @@ export async function POST(request: Request) {
 - **Phase gate:** Lint + sync/inventory test suite green before `$gsd-verify-work`
 
 ### Wave 0 Gaps
-- [ ] `tests/inventory/mutation-queue.spec.ts` — INV-01, INV-02, INV-03
-- [ ] `tests/sync/reconnect-backoff.spec.ts` — SYNC-03, SYNC-06
-- [ ] `tests/sync/negative-stock-warning.spec.tsx` — SYNC-05
-- [ ] `tests/sync/server-replay-order.spec.ts` — SYNC-04, SYNC-06
+- [ ] `tests/inventory/mutation-queue.spec.ts` - INV-01, INV-02, INV-03
+- [ ] `tests/sync/reconnect-backoff.spec.ts` - SYNC-03, SYNC-06
+- [ ] `tests/sync/negative-stock-warning.spec.tsx` - SYNC-05
+- [ ] `tests/sync/server-replay-order.spec.ts` - SYNC-04, SYNC-06
 - [ ] Add test runner config and scripts (Vitest or Playwright test package strategy) [ASSUMED]
 
 ## Security Domain
