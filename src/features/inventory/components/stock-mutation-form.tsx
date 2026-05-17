@@ -27,7 +27,7 @@ export function StockMutationForm({
   const quantity = Number(qty) || 0;
   const deltaQuantity = jenisMutasi === "STOCK_IN" ? Math.abs(quantity) : -Math.abs(quantity);
   const projectedStock = currentStock + deltaQuantity;
-  const shouldWarn = currentStock <= 0 || projectedStock <= 0;
+  const shouldWarn = projectedStock <= 0;
 
   async function commit() {
     await submitMutation({
