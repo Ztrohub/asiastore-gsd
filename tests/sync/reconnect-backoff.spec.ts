@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getPendingQueue = vi.fn();
-const markAttempt = vi.fn();
 const markAcked = vi.fn();
 const markFailed = vi.fn();
+const markSendFailed = vi.fn();
 const postInventoryDeltas = vi.fn();
 
 vi.mock("@/lib/offline/sync-queue", () => ({
   getRetryableInventoryQueue: getPendingQueue,
-  markAttempt,
   markAcked,
   markFailed,
+  markSendFailed,
 }));
 
 vi.mock("@/lib/offline/inventory-sync-transport", () => ({
@@ -54,7 +54,6 @@ describe("inventory reconnect sync and retry backoff", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(postInventoryDeltas).toHaveBeenCalledTimes(1);
-    expect(markAttempt).toHaveBeenCalledWith(12, false);
     expect(markAcked).toHaveBeenCalledWith(12);
 
     await vi.advanceTimersByTimeAsync(5_000);
@@ -92,8 +91,8 @@ describe("inventory reconnect sync and retry backoff", () => {
     await retryInventorySyncNow();
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(markAttempt).toHaveBeenCalledWith(13, true);
-    expect(markAttempt).toHaveBeenCalledTimes(1);
+    expect(markSendFailed).toHaveBeenCalledWith(13);
+    expect(markSendFailed).toHaveBeenCalledTimes(1);
 
     const { getInventorySyncStatus } = await import("@/lib/offline/inventory-sync");
     expect(getInventorySyncStatus()).toEqual(
@@ -101,7 +100,7 @@ describe("inventory reconnect sync and retry backoff", () => {
         unstable: true,
         retryExhausted: true,
         maxAttempts: 5,
-        states: expect.arrayContaining(["pending", "sent", "acked", "failed"]),
+        states: expect.arrayContaining(["pending", "acked", "failed"]),
         canManualRetry: true,
       }),
     );

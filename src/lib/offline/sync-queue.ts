@@ -38,14 +38,13 @@ export async function getRetryableInventoryQueue(now = Date.now()) {
     .sortBy("createdAt");
 }
 
-export async function markAttempt(id: number, failed: boolean) {
+export async function markSendFailed(id: number) {
   const current = await offlineDb.syncQueue.get(id);
   if (!current) return;
 
   const nextAttemptCount = current.attemptCount + 1;
-  const status = failed ? "pending" : "sent";
   await offlineDb.syncQueue.update(id, {
-    status,
+    status: "pending",
     attemptCount: nextAttemptCount,
     lastAttemptAt: Date.now(),
     nextRetryAt: calculateNextRetryAt(nextAttemptCount),
@@ -53,7 +52,10 @@ export async function markAttempt(id: number, failed: boolean) {
 }
 
 export async function markAcked(id: number) {
-  await offlineDb.syncQueue.update(id, { status: "acked" });
+  await offlineDb.syncQueue.update(id, {
+    status: "acked",
+    lastAttemptAt: Date.now(),
+  });
 }
 
 export async function markFailed(id: number) {

@@ -1,4 +1,4 @@
-import { getRetryableInventoryQueue, markAcked, markAttempt, markFailed } from "@/lib/offline/sync-queue";
+import { getRetryableInventoryQueue, markAcked, markFailed, markSendFailed } from "@/lib/offline/sync-queue";
 import { postInventoryDeltas } from "@/lib/offline/inventory-sync-transport";
 
 type InventorySyncEvent = {
@@ -16,7 +16,7 @@ type SyncStatus = {
   unstable: boolean;
   retryExhausted: boolean;
   maxAttempts: number;
-  states: Array<"pending" | "sent" | "acked" | "failed">;
+  states: Array<"pending" | "acked" | "failed">;
   canManualRetry: boolean;
 };
 
@@ -27,16 +27,19 @@ let syncStatus: SyncStatus = {
   unstable: false,
   retryExhausted: false,
   maxAttempts: MAX_ATTEMPTS,
-  states: ["pending", "sent", "acked", "failed"],
+  states: ["pending", "acked", "failed"],
   canManualRetry: false,
 };
 
 async function runOnePass() {
   const rows = await getRetryableInventoryQueue();
+  let exhaustedThisPass = false;
+
   for (const row of rows) {
     if (!row.id) continue;
     if (row.attemptCount >= MAX_ATTEMPTS) {
       await markFailed(row.id);
+      exhaustedThisPass = true;
       syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
       continue;
     }
@@ -47,7 +50,6 @@ async function runOnePass() {
       const ack = result.results.find((item) => item.id_queue === event.id_queue);
 
       if (ack?.status === "acked") {
-        await markAttempt(row.id, false);
         await markAcked(row.id);
         continue;
       }
@@ -57,18 +59,24 @@ async function runOnePass() {
         continue;
       }
 
-      await markAttempt(row.id, true);
+      await markSendFailed(row.id);
       if (row.attemptCount + 1 >= MAX_ATTEMPTS) {
+        exhaustedThisPass = true;
         syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
       }
     } catch {
-      await markAttempt(row.id, true);
+      await markSendFailed(row.id);
       const nextAttempts = row.attemptCount + 1;
       if (nextAttempts >= MAX_ATTEMPTS) {
         await markFailed(row.id);
+        exhaustedThisPass = true;
         syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
       }
     }
+  }
+
+  if (!exhaustedThisPass) {
+    syncStatus = { ...syncStatus, unstable: false, retryExhausted: false, canManualRetry: false };
   }
 }
 
