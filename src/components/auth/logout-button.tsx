@@ -21,7 +21,7 @@ export function LogoutButton() {
         value: String(Date.now()),
       });
       if (!online) {
-        router.replace("/");
+        window.location.assign("/");
         return;
       }
       const result = await fetch("/api/auth/logout", {

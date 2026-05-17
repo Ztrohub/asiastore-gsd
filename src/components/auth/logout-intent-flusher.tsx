@@ -18,6 +18,12 @@ export function LogoutIntentFlusher() {
       if (!pending || cancelled) {
         return;
       }
+      const logoutIntentAt = Number(pending.value || "0");
+      const activeSession = await offlineDb.localSessions.get("active");
+      if (activeSession && activeSession.lastActivityAt > logoutIntentAt) {
+        await offlineDb.appMeta.delete("logout_intent");
+        return;
+      }
 
       const response = await fetch("/api/auth/logout", {
         method: "POST",

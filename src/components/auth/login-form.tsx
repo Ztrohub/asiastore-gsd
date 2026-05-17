@@ -106,6 +106,7 @@ export function LoginForm() {
           role: cached.role,
           passwordVersion: cached.passwordVersion,
         });
+        await offlineDb.appMeta.delete("logout_intent");
         window.location.assign("/app");
         return;
       };
