@@ -7,6 +7,7 @@ import { applyInventoryDeltaBatch, type InventoryDeltaEvent } from "@/lib/db/inv
 type SyncDeltaBody = {
   events?: InventoryDeltaEvent[];
 };
+const ALLOWED_MUTATION_TYPES = new Set(["SALES_OUT", "STOCK_IN", "STOCK_ADJUSTMENT"]);
 
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
       !event.id_queue ||
       !event.id_produk ||
       !event.id_transaksi ||
+      !ALLOWED_MUTATION_TYPES.has(event.jenis_mutasi) ||
       !Number.isFinite(event.delta_qty) ||
       !Number.isFinite(event.client_timestamp) ||
       !Number.isFinite(event.received_seq),
