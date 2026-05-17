@@ -27,7 +27,7 @@
 **Goal:** Deliver inventory stock operations with robust delta-based offline/online synchronization and stock warning behavior.
 **Mode:** mvp
 **Requirements:** INV-01, INV-02, INV-03, INV-04, SYNC-03, SYNC-04, SYNC-05, SYNC-06
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 **Wave 1**
 
@@ -35,7 +35,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-02-PLAN.md — POS stock-out plus background sync/replay slice for deterministic multi-device delta processing
+- [x] 02-02-PLAN.md — POS stock-out plus background sync/replay slice for deterministic multi-device delta processing
 
 **Success Criteria**:
 

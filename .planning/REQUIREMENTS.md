@@ -28,17 +28,17 @@
 
 - [ ] **SYNC-01**: All core modules (login session continuity, POS, inventory, user access enforcement, start/end day, transaction history) are usable when internet is unavailable
 - [ ] **SYNC-02**: Local database persists offline transactions and updates for at least 7 days of disconnection
-- [ ] **SYNC-03**: System automatically syncs local changes to server when internet reconnects without manual export/import
-- [ ] **SYNC-04**: Sync applies delta-based stock updates and allows resulting negative stock values
+- [x] **SYNC-03**: System automatically syncs local changes to server when internet reconnects without manual export/import
+- [x] **SYNC-04**: Sync applies delta-based stock updates and allows resulting negative stock values
 - [x] **SYNC-05**: POS warns cashier before confirming a transaction that would cause or deepen negative stock
-- [ ] **SYNC-06**: Sync behavior remains reliable with 1-3 concurrent store devices
+- [x] **SYNC-06**: Sync behavior remains reliable with 1-3 concurrent store devices
 
 ### Inventory Stock
 
 - [x] **INV-01**: Authorized user can record stock in transaction
-- [ ] **INV-02**: Authorized user can record stock out transaction
+- [x] **INV-02**: Authorized user can record stock out transaction
 - [x] **INV-03**: Authorized user can record stock adjustment transaction
-- [ ] **INV-04**: Inventory stock changes operate offline and sync automatically when online
+- [x] **INV-04**: Inventory stock changes operate offline and sync automatically when online
 
 ### Start/End Day & History
 
@@ -101,14 +101,14 @@
 | POS-10 | Phase 3 | Pending |
 | SYNC-01 | Phase 1 | Pending |
 | SYNC-02 | Phase 1 | Pending |
-| SYNC-03 | Phase 2 | Pending |
-| SYNC-04 | Phase 2 | Pending |
+| SYNC-03 | Phase 2 | Complete |
+| SYNC-04 | Phase 2 | Complete |
 | SYNC-05 | Phase 2 | Complete |
-| SYNC-06 | Phase 2 | Pending |
+| SYNC-06 | Phase 2 | Complete |
 | INV-01 | Phase 2 | Complete |
-| INV-02 | Phase 2 | Pending |
+| INV-02 | Phase 2 | Complete |
 | INV-03 | Phase 2 | Complete |
-| INV-04 | Phase 2 | Pending |
+| INV-04 | Phase 2 | Complete |
 | DAY-01 | Phase 4 | Pending |
 | DAY-02 | Phase 4 | Pending |
 | DAY-03 | Phase 4 | Pending |
