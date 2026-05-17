@@ -30,6 +30,14 @@ export async function enqueueDelta(params: {
   return offlineDb.syncQueue.add(record);
 }
 
+export async function getRetryableInventoryQueue(now = Date.now()) {
+  return offlineDb.syncQueue
+    .where("status")
+    .equals("pending")
+    .and((row) => row.entityType === "inventory_mutation" && row.nextRetryAt <= now)
+    .sortBy("createdAt");
+}
+
 export async function markAttempt(id: number, failed: boolean) {
   const current = await offlineDb.syncQueue.get(id);
   if (!current) return;
@@ -46,4 +54,8 @@ export async function markAttempt(id: number, failed: boolean) {
 
 export async function markAcked(id: number) {
   await offlineDb.syncQueue.update(id, { status: "acked" });
+}
+
+export async function markFailed(id: number) {
+  await offlineDb.syncQueue.update(id, { status: "failed" });
 }

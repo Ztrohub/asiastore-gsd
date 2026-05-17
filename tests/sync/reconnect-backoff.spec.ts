@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getPendingQueue = vi.fn();
 const markAttempt = vi.fn();
 const markAcked = vi.fn();
+const markFailed = vi.fn();
 const postInventoryDeltas = vi.fn();
 
 vi.mock("@/lib/offline/sync-queue", () => ({
   getRetryableInventoryQueue: getPendingQueue,
   markAttempt,
   markAcked,
+  markFailed,
 }));
 
 vi.mock("@/lib/offline/inventory-sync-transport", () => ({
@@ -49,7 +51,7 @@ describe("inventory reconnect sync and retry backoff", () => {
     const stop = startInventorySyncLoop({ intervalMs: 5_000 });
 
     window.dispatchEvent(new Event("online"));
-    await vi.runAllTimersAsync();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(postInventoryDeltas).toHaveBeenCalledTimes(1);
     expect(markAttempt).toHaveBeenCalledWith(12, false);
@@ -88,7 +90,7 @@ describe("inventory reconnect sync and retry backoff", () => {
     const stop = startInventorySyncLoop({ intervalMs: 5_000 });
 
     await retryInventorySyncNow();
-    await vi.runAllTimersAsync();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(markAttempt).toHaveBeenCalledWith(13, true);
     expect(markAttempt).toHaveBeenCalledTimes(1);

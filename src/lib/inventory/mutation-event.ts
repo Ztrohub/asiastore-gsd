@@ -49,3 +49,7 @@ export function buildStockInMutationEvent(input: MutationBuilderInput) {
 export function buildStockAdjustmentMutationEvent(input: MutationBuilderInput) {
   return createMutationEvent("STOCK_ADJUSTMENT", input);
 }
+
+export function buildSalesOutMutationEvent(input: MutationBuilderInput) {
+  return createMutationEvent("SALES_OUT", input);
+}
