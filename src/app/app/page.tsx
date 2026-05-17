@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { LogoutButton } from "@/components/auth/logout-button";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { formatCurrencyIdr } from "@/features/format/currency";
 import { formatJakartaDateTime } from "@/features/format/datetime";
 import { decodeSession, SESSION_COOKIE_NAME } from "@/lib/auth/server-session";
@@ -29,9 +28,7 @@ export default async function AppShellPage() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary">Online</Badge>
-          <Link className={buttonVariants({ variant: "outline" })} href="/api/auth/logout">
-            Keluar
-          </Link>
+          <LogoutButton />
         </div>
       </section>
 

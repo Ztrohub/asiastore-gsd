@@ -1,5 +1,5 @@
 const SHELL_CACHE = "asiatek-shell-v1";
-const SHELL_ASSETS = ["/", "/app", "/offline", "/manifest.webmanifest"];
+const SHELL_ASSETS = ["/", "/offline", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -25,7 +25,16 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(async () => {
+      caches.match(request).then((cachedPage) => {
+        if (cachedPage) {
+          return cachedPage;
+        }
+        return fetch(request);
+      }).catch(async () => {
+        const cachedRoot = await caches.match("/");
+        if (cachedRoot) {
+          return cachedRoot;
+        }
         const cachedOffline = await caches.match("/offline");
         return cachedOffline ?? Response.error();
       }),

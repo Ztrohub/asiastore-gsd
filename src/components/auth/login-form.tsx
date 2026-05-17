@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MoonStar, SunMedium } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -17,6 +17,25 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreSessionForRoot() {
+      const local = await restoreLocalSession();
+      if (!local || cancelled) {
+        return;
+      }
+      router.replace("/app");
+      router.refresh();
+    }
+
+    restoreSessionForRoot().catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
