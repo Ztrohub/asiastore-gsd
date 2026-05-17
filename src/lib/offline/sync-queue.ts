@@ -61,3 +61,24 @@ export async function markAcked(id: number) {
 export async function markFailed(id: number) {
   await offlineDb.syncQueue.update(id, { status: "failed" });
 }
+
+export async function reviveFailedInventoryQueue(now = Date.now()) {
+  const failedRows = await offlineDb.syncQueue
+    .where("status")
+    .equals("failed")
+    .and((row) => row.entityType === "inventory_mutation")
+    .toArray();
+
+  await Promise.all(
+    failedRows.map((row) =>
+      offlineDb.syncQueue.update(row.id!, {
+        status: "pending",
+        attemptCount: 0,
+        lastAttemptAt: undefined,
+        nextRetryAt: now,
+      }),
+    ),
+  );
+
+  return failedRows.length;
+}

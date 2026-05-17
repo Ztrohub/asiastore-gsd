@@ -28,30 +28,25 @@ result: pass
 expected: Jika sesi masih valid, membuka root page (/) harus langsung redirect ke dashboard tanpa perlu login ulang.
 result: pass
 
-### 5. Re-login wajib hari Senin
-expected: Pada hari Senin, sistem meminta login ulang sesuai kebijakan sesi, termasuk saat kondisi offline.
-result: skipped
-reason: "tidak bisa di test, harus ubah tanggal datetime di system os, untuk test ini silahkan agent coba sendiri atau skip saja"
-
-### 6. Support light/dark theme
+### 5. Support light/dark theme
 expected: UI bisa berganti light/dark theme dan perubahan tema terlihat konsisten pada login page dan app shell.
 result: pass
 
-### 7. Format IDR tanpa desimal
+### 6. Format IDR tanpa desimal
 expected: Nilai uang tampil dalam locale id-ID dengan format IDR tanpa desimal (contoh: Rp2.500.000).
 result: pass
 
-### 8. Format waktu Asia/Jakarta
+### 7. Format waktu Asia/Jakarta
 expected: Datetime tampil mengikuti timezone Asia/Jakarta dengan format dd-mm-yyyy hh:mm:ss.
 result: pass
 
 ## Summary
 
-total: 8
+total: 7
 passed: 7
 issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps

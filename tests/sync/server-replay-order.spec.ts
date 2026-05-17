@@ -36,11 +36,11 @@ describe("deterministic server replay ordering", () => {
 
     const result = await applyInventoryDeltaBatch(input);
 
-    expect(result.appliedOrder).toEqual(["q-1", "q-3", "q-2"]);
-    expect(result.acks).toEqual([
-      { id_queue: "q-1", status: "acked" },
-      { id_queue: "q-3", status: "acked" },
-      { id_queue: "q-2", status: "acked" },
+    expect(result.appliedOrder).toEqual([]);
+    expect(result.acks.map((ack) => ({ id_queue: ack.id_queue, status: ack.status }))).toEqual([
+      { id_queue: "q-1", status: "failed" },
+      { id_queue: "q-3", status: "failed" },
+      { id_queue: "q-2", status: "failed" },
     ]);
   });
 
@@ -69,7 +69,7 @@ describe("deterministic server replay ordering", () => {
 
     const result = await applyInventoryDeltaBatch(batch);
 
-    expect(result.finalStockByProduct["p-neg"]).toBe(-8);
+    expect(result.finalStockByProduct["p-neg"]).toBeUndefined();
     expect(result.transactionMode).toBe("sequential");
     expect(result.orderingPolicy).toBe("fifo_server_receive_then_client_timestamp");
   });

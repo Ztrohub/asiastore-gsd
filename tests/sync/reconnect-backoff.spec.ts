@@ -4,16 +4,30 @@ const getPendingQueue = vi.fn();
 const markAcked = vi.fn();
 const markFailed = vi.fn();
 const markSendFailed = vi.fn();
+const reviveFailedInventoryQueue = vi.fn();
 const postInventoryDeltas = vi.fn();
+
+class MockInventorySyncTransportError extends Error {
+  retryable: boolean;
+  status?: number;
+
+  constructor(message: string, opts?: { retryable?: boolean; status?: number }) {
+    super(message);
+    this.retryable = opts?.retryable ?? true;
+    this.status = opts?.status;
+  }
+}
 
 vi.mock("@/lib/offline/sync-queue", () => ({
   getRetryableInventoryQueue: getPendingQueue,
   markAcked,
   markFailed,
   markSendFailed,
+  reviveFailedInventoryQueue,
 }));
 
 vi.mock("@/lib/offline/inventory-sync-transport", () => ({
+  InventorySyncTransportError: MockInventorySyncTransportError,
   postInventoryDeltas,
 }));
 

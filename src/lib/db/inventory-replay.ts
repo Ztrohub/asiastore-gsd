@@ -35,9 +35,7 @@ export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): P
 
   if (!process.env.DATABASE_URL) {
     for (const event of ordered) {
-      finalStockByProduct[event.id_produk] = (finalStockByProduct[event.id_produk] ?? 0) + event.delta_qty;
-      appliedOrder.push(event.id_queue);
-      acks.push({ id_queue: event.id_queue, status: "acked" });
+      acks.push({ id_queue: event.id_queue, status: "failed", reason: "SERVER_DB_UNAVAILABLE" });
     }
     return {
       appliedOrder,
