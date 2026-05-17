@@ -36,9 +36,8 @@ const NON_RETRYABLE_REASONS = new Set([
   "INVALID_PAYLOAD",
   "SCHEMA_ERROR",
   "MISSING_USER_ID",
-  "SERVER_DB_UNAVAILABLE",
 ]);
-const NON_RETRYABLE_TRANSPORT_STATUS = new Set([400, 401, 403, 404, 422]);
+const NON_RETRYABLE_TRANSPORT_STATUS = new Set([400, 404, 413, 422]);
 
 let syncStatus: SyncStatus = {
   unstable: false,
@@ -58,57 +57,57 @@ async function runOnePass() {
     const rows = await getRetryableInventoryQueue();
     let exhaustedThisPass = false;
     for (const row of rows) {
-    if (!row.id) continue;
-    if (row.attemptCount >= MAX_ATTEMPTS) {
-      await markFailed(row.id);
-      exhaustedThisPass = true;
-      syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
-      continue;
-    }
-
-    try {
-      const event = JSON.parse(row.deltaPayload) as InventorySyncEvent;
-      const eventWithSeq: InventorySyncEvent = {
-        ...event,
-        received_seq: row.id,
-      };
-      const result = await postInventoryDeltas([eventWithSeq as InventorySyncEvent & { received_seq: number }]);
-      const ack = result.results.find((item) => item.id_queue === eventWithSeq.id_queue);
-
-      if (ack?.status === "acked") {
-        await markAcked(row.id);
-        continue;
-      }
-
-      if (ack?.status === "failed" && NON_RETRYABLE_REASONS.has(ack.reason ?? "")) {
-        await markFailed(row.id);
-        continue;
-      }
-
-      await markSendFailed(row.id);
-      if (row.attemptCount + 1 >= MAX_ATTEMPTS) {
-        exhaustedThisPass = true;
-        syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
-      }
-    } catch (error) {
-      if (
-        error instanceof InventorySyncTransportError &&
-        (!error.retryable || NON_RETRYABLE_TRANSPORT_STATUS.has(error.status ?? 0))
-      ) {
+      if (!row.id) continue;
+      if (row.attemptCount >= MAX_ATTEMPTS) {
         await markFailed(row.id);
         exhaustedThisPass = true;
         syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
         continue;
       }
 
-      await markSendFailed(row.id);
-      const nextAttempts = row.attemptCount + 1;
-      if (nextAttempts >= MAX_ATTEMPTS) {
-        await markFailed(row.id);
-        exhaustedThisPass = true;
-        syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
+      try {
+        const event = JSON.parse(row.deltaPayload) as InventorySyncEvent;
+        const eventWithSeq: InventorySyncEvent = {
+          ...event,
+          received_seq: row.id,
+        };
+        const result = await postInventoryDeltas([eventWithSeq as InventorySyncEvent & { received_seq: number }]);
+        const ack = result.results.find((item) => item.id_queue === eventWithSeq.id_queue);
+
+        if (ack?.status === "acked") {
+          await markAcked(row.id);
+          continue;
+        }
+
+        if (ack?.status === "failed" && NON_RETRYABLE_REASONS.has(ack.reason ?? "")) {
+          await markFailed(row.id);
+          continue;
+        }
+
+        await markSendFailed(row.id);
+        if (row.attemptCount + 1 >= MAX_ATTEMPTS) {
+          exhaustedThisPass = true;
+          syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
+        }
+      } catch (error) {
+        if (
+          error instanceof InventorySyncTransportError &&
+          (!error.retryable || NON_RETRYABLE_TRANSPORT_STATUS.has(error.status ?? 0))
+        ) {
+          await markFailed(row.id);
+          exhaustedThisPass = true;
+          syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
+          continue;
+        }
+
+        await markSendFailed(row.id);
+        const nextAttempts = row.attemptCount + 1;
+        if (nextAttempts >= MAX_ATTEMPTS) {
+          await markFailed(row.id);
+          exhaustedThisPass = true;
+          syncStatus = { ...syncStatus, unstable: true, retryExhausted: true, canManualRetry: true };
+        }
       }
-    }
     }
 
     if (!exhaustedThisPass) {

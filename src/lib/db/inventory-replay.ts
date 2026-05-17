@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 
 export type InventoryDeltaEvent = {
   id_queue: string;
@@ -19,6 +20,27 @@ type ReplayResult = {
   transactionMode: "sequential";
   orderingPolicy: "fifo_server_receive_then_client_timestamp";
 };
+
+const KNOWN_REPLAY_FAILURE_REASONS = new Set(["MISSING_USER_ID"]);
+
+function mapReplayFailureReason(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "REPLAY_WRITE_FAILED";
+  }
+  if (KNOWN_REPLAY_FAILURE_REASONS.has(error.message)) {
+    return error.message;
+  }
+  return "REPLAY_WRITE_FAILED";
+}
+
+function isDuplicateQueueError(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002" &&
+    Array.isArray(error.meta?.target) &&
+    error.meta.target.includes("id_queue")
+  );
+}
 
 function orderEvents(events: InventoryDeltaEvent[]) {
   return [...events].sort((a, b) => {
@@ -74,8 +96,11 @@ export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): P
         }
         acks.push({ id_queue: event.id_queue, status: "acked" });
       } catch (error) {
-        const reason = error instanceof Error ? error.message : "REPLAY_WRITE_FAILED";
-        acks.push({ id_queue: event.id_queue, status: "failed", reason });
+        if (isDuplicateQueueError(error)) {
+          acks.push({ id_queue: event.id_queue, status: "acked" });
+          continue;
+        }
+        acks.push({ id_queue: event.id_queue, status: "failed", reason: mapReplayFailureReason(error) });
       }
     }
   });
