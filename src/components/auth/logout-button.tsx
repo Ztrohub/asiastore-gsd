@@ -24,6 +24,14 @@ export function LogoutButton() {
         router.replace("/");
         return;
       }
+      const result = await fetch("/api/auth/logout", {
+        method: "POST",
+        cache: "no-store",
+      });
+      if (!result.ok) {
+        throw new Error("Logout request failed");
+      }
+      await offlineDb.appMeta.delete("logout_intent");
       router.replace("/");
       router.refresh();
     } catch {
