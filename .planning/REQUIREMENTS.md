@@ -86,46 +86,46 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase TBD | Pending |
-| AUTH-02 | Phase TBD | Pending |
-| AUTH-03 | Phase TBD | Pending |
-| POS-01 | Phase TBD | Pending |
-| POS-02 | Phase TBD | Pending |
-| POS-03 | Phase TBD | Pending |
-| POS-04 | Phase TBD | Pending |
-| POS-05 | Phase TBD | Pending |
-| POS-06 | Phase TBD | Pending |
-| POS-07 | Phase TBD | Pending |
-| POS-08 | Phase TBD | Pending |
-| POS-09 | Phase TBD | Pending |
-| POS-10 | Phase TBD | Pending |
-| SYNC-01 | Phase TBD | Pending |
-| SYNC-02 | Phase TBD | Pending |
-| SYNC-03 | Phase TBD | Pending |
-| SYNC-04 | Phase TBD | Pending |
-| SYNC-05 | Phase TBD | Pending |
-| SYNC-06 | Phase TBD | Pending |
-| INV-01 | Phase TBD | Pending |
-| INV-02 | Phase TBD | Pending |
-| INV-03 | Phase TBD | Pending |
-| INV-04 | Phase TBD | Pending |
-| DAY-01 | Phase TBD | Pending |
-| DAY-02 | Phase TBD | Pending |
-| DAY-03 | Phase TBD | Pending |
-| HIST-01 | Phase TBD | Pending |
-| RBAC-01 | Phase TBD | Pending |
-| RBAC-02 | Phase TBD | Pending |
-| RBAC-03 | Phase TBD | Pending |
-| RBAC-04 | Phase TBD | Pending |
-| UI-01 | Phase TBD | Pending |
-| UI-02 | Phase TBD | Pending |
-| UI-03 | Phase TBD | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| POS-01 | Phase 3 | Pending |
+| POS-02 | Phase 3 | Pending |
+| POS-03 | Phase 3 | Pending |
+| POS-04 | Phase 3 | Pending |
+| POS-05 | Phase 3 | Pending |
+| POS-06 | Phase 3 | Pending |
+| POS-07 | Phase 3 | Pending |
+| POS-08 | Phase 3 | Pending |
+| POS-09 | Phase 3 | Pending |
+| POS-10 | Phase 3 | Pending |
+| SYNC-01 | Phase 1 | Pending |
+| SYNC-02 | Phase 1 | Pending |
+| SYNC-03 | Phase 2 | Pending |
+| SYNC-04 | Phase 2 | Pending |
+| SYNC-05 | Phase 2 | Pending |
+| SYNC-06 | Phase 2 | Pending |
+| INV-01 | Phase 2 | Pending |
+| INV-02 | Phase 2 | Pending |
+| INV-03 | Phase 2 | Pending |
+| INV-04 | Phase 2 | Pending |
+| DAY-01 | Phase 4 | Pending |
+| DAY-02 | Phase 4 | Pending |
+| DAY-03 | Phase 4 | Pending |
+| HIST-01 | Phase 4 | Pending |
+| RBAC-01 | Phase 5 | Pending |
+| RBAC-02 | Phase 5 | Pending |
+| RBAC-03 | Phase 5 | Pending |
+| RBAC-04 | Phase 5 | Pending |
+| UI-01 | Phase 1 | Pending |
+| UI-02 | Phase 1 | Pending |
+| UI-03 | Phase 1 | Pending |
 
 **Coverage:**
 - v1 requirements: 34 total
-- Mapped to phases: 0
-- Unmapped: 34 ??
+- Mapped to phases: 34
+- Unmapped: 0 ?
 
 ---
 *Requirements defined: 2026-05-17*
-*Last updated: 2026-05-17 after initial definition*
+*Last updated: 2026-05-17 after roadmap mapping*
