@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  CASHIER
+}
+
+model User {
+  id                    String      @id @default(cuid())
+  username              String      @unique
+  role                  UserRole
+  passwordHash          String
+  passwordVersion       Int         @default(1)
+  isActive              Boolean     @default(true)
+  lastCredentialChangeAt DateTime   @default(now())
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  loginAudits           LoginAudit[]
+}
+
+model LoginAudit {
+  id         String   @id @default(cuid())
+  userId     String
+  loginAt    DateTime @default(now())
+  isOffline  Boolean  @default(false)
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, loginAt])
+}
