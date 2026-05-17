@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ServiceWorkerRegister } from "@/features/pwa/service-worker-register";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import { encryptVerifier, decryptVerifier } from "@/lib/crypto/device-crypto";
 import { offlineDb } from "@/lib/offline/db";
 import { persistLocalSession, restoreLocalSession } from "@/lib/session/offline-session";
@@ -17,6 +18,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { online } = useConnectivity();
 
   useEffect(() => {
     let cancelled = false;
@@ -46,7 +48,7 @@ export function LoginForm() {
     setError(null);
 
     try {
-      if (!navigator.onLine) {
+      if (!online) {
         const cached = await offlineDb.credentialCache.get(username);
         if (!cached) {
           throw new Error("Akun ini belum pernah login online di perangkat ini.");

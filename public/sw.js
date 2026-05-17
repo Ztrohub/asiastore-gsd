@@ -26,11 +26,6 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
-        const cachedPage = await caches.match(request);
-        if (cachedPage) {
-          return cachedPage;
-        }
-
         try {
           const response = await fetch(request);
           if (response.ok && response.type === "basic") {
@@ -39,6 +34,10 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         } catch {
+          const cachedPage = await caches.match(request);
+          if (cachedPage) {
+            return cachedPage;
+          }
           const cachedRoot = await caches.match("/");
           if (cachedRoot) {
             return cachedRoot;
@@ -62,7 +61,8 @@ self.addEventListener("fetch", (event) => {
   if (
     url.pathname.startsWith("/api/auth/login") ||
     url.pathname.startsWith("/api/auth/session") ||
-    url.pathname.startsWith("/api/auth/logout")
+    url.pathname.startsWith("/api/auth/logout") ||
+    url.pathname.startsWith("/api/health")
   ) {
     return;
   }
