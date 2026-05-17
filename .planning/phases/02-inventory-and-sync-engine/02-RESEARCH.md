@@ -288,17 +288,19 @@ export async function POST(request: Request) {
 | A2 | Idempotency unique key should be `id_queue` at server storage layer | Common Pitfalls | Wrong key choice could still permit duplicate applies |
 | A3 | Download popularity and repo links in package audit are high/mature | Package Legitimacy Audit | Low operational risk; mostly governance metadata |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Server authoritative order persistence**
-   - What we know: FIFO receive order + `client_timestamp` tie-break is locked.
-   - What's unclear: Exact DB columns (`received_at`, `server_seq`) and index strategy.
-   - Recommendation: Lock explicit schema/index in Phase 2 plan wave 1.
+1. **Server authoritative order persistence (RESOLVED)**
+   - Decision: Persist authoritative order with `server_seq BIGINT` (monotonic sequence generated at ingest) and `received_at TIMESTAMPTZ DEFAULT now()` on server-side mutation ledger rows.
+   - Decision: Apply ordering as `ORDER BY server_seq ASC, client_timestamp ASC` during replay; `server_seq` is primary FIFO key for D-05, `client_timestamp` remains deterministic tie-break for D-06 when same ingest batch assigns adjacent sequence values.
+   - Decision: Add indexes `UNIQUE(id_queue)` for idempotency and `INDEX(server_seq)` for pull/replay scan efficiency.
+   - Planning impact: Wave 1 schema and replay tasks must include these columns/indexes and use them directly in replay query path.
 
-2. **Pull strategy for projection refresh**
-   - What we know: Push/pull background sync is locked.
-   - What's unclear: Pull by watermark (`last_server_seq`) vs time window.
-   - Recommendation: Prefer monotonically increasing server sequence watermark. [ASSUMED]
+2. **Pull strategy for projection refresh (RESOLVED)**
+   - Decision: Use watermark pull with `last_server_seq` stored locally in Dexie app metadata (`appMeta`), not time-window polling.
+   - Decision: Pull endpoint contract accepts `since_server_seq` and returns `{ events, max_server_seq }`; client stores `max_server_seq` only after successful apply.
+   - Decision: On missing watermark, start with `since_server_seq=0` for bootstrap; on server gap or reset detection, return explicit recovery flag and force full projection refresh.
+   - Planning impact: Background sync task must implement persisted watermark read/write and recovery branch; route handler must return monotonic watermark in every successful response.
 
 ## Environment Availability
 
