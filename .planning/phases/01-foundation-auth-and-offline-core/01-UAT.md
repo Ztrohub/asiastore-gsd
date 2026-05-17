@@ -3,7 +3,7 @@ status: partial
 phase: 01-foundation-auth-and-offline-core
 source: [implementation-derived: src/app/page.tsx, src/app/(app)/page.tsx, src/app/offline/page.tsx, src/features/format/currency.ts, src/features/format/datetime.ts]
 started: 2026-05-17T13:32:55.7534187Z
-updated: 2026-05-17T03:45:48.7748922Z
+updated: 2026-05-17T04:04:02.5178018Z
 ---
 
 ## Current Test
@@ -14,9 +14,7 @@ updated: 2026-05-17T03:45:48.7748922Z
 
 ### 1. Login Online dengan kredensial valid
 expected: Saat perangkat online, memasukkan username dan password valid lalu klik "Masuk" harus membuka dashboard /app dan menampilkan nama user pada halaman.
-result: issue
-reported: "halaman login terbuka, setelah klik masuk dengan user valid muncul the site can't be reached dengan console The FetchEvent for \"http://localhost:3000/app\" resulted in a network error response: a redirected response was used for a request whose redirect mode is not \"follow\"."
-severity: blocker
+result: pass
 
 ### 2. Login ditolak untuk password salah
 expected: Saat online, jika password salah maka login ditolak dan pesan error ditampilkan (tidak masuk ke dashboard).
@@ -24,15 +22,15 @@ result: pass
 
 ### 3. Login offline untuk user yang pernah login
 expected: Setelah user pernah berhasil login online di device ini, saat offline user bisa login kembali memakai kredensial lokal terenkripsi.
-result: blocked
-blocked_by: prior-phase
-reason: "tidak bisa di test karena tidak bisa logout untuk coba re-login saat offline (dashboard 404)"
+result: issue
+reported: "dalam kondisi login, masuk mode offline menampilkan tampilan Mode Offline Aktif seharusnya fungsionalitas website tetap bisa digunakan. Dalam posisi logout (di halaman login) juga sama, konsisi offline menampilkan Mode Offline Aktif bukan halaman login page"
+severity: major
 
 ### 4. Session valid langsung masuk
 expected: Jika sesi masih valid, membuka root page (/) harus langsung redirect ke dashboard tanpa perlu login ulang.
-result: blocked
-blocked_by: prior-phase
-reason: "tidak bisa di test, app shell tidak bisa terbuka"
+result: issue
+reported: "membuka root page saat kondisi login masih mengarahkan ke halaman login"
+severity: major
 
 ### 5. Re-login wajib hari Senin
 expected: Pada hari Senin, sistem meminta login ulang sesuai kebijakan sesi, termasuk saat kondisi offline.
@@ -54,26 +52,42 @@ result: pass
 ## Summary
 
 total: 8
-passed: 4
-issues: 1
+passed: 5
+issues: 2
 pending: 0
 skipped: 1
-blocked: 2
+blocked: 0
 
 ## Gaps
 
-- truth: "Saat perangkat online, memasukkan username dan password valid lalu klik Masuk membuka dashboard /app dan menampilkan nama user"
+- truth: "Setelah user pernah berhasil login online di device ini, saat offline user bisa login kembali memakai kredensial lokal terenkripsi"
   status: failed
-  reason: "User reported: halaman login terbuka, setelah klik masuk dengan user valid muncul the site can't be reached dengan console The FetchEvent for http://localhost:3000/app resulted in a network error response: a redirected response was used for a request whose redirect mode is not follow."
-  severity: blocker
-  test: 1
-  root_cause: "Service worker fetch handler mengembalikan redirected response untuk request yang redirect mode-nya bukan 'follow', sehingga browser menolak response dan navigasi ke /app gagal."
+  reason: "User reported: dalam kondisi login/offline selalu tampil halaman Mode Offline Aktif, bukan flow aplikasi/login yang bisa dipakai"
+  severity: major
+  test: 3
+  root_cause: "Service worker masih mem-fallback semua navigasi saat offline ke /offline, sehingga halaman login maupun app shell tidak dirender saat koneksi putus."
   artifacts:
     - path: "public/sw.js"
-      issue: "strategi fetch belum aman untuk response redirect pada navigation request"
-    - path: "src/features/pwa/service-worker-register.tsx"
-      issue: "SW aktif di jalur login sehingga mempengaruhi flow auth redirect"
+      issue: "navigasi offline tidak dibedakan per route/login state"
+    - path: "src/app/offline/page.tsx"
+      issue: "offline page menjadi fallback tunggal untuk semua route"
   missing:
-    - "Perbaiki fetch strategy di service worker agar tidak mengembalikan redirected response yang invalid"
-    - "Tambahkan guard untuk navigation requests (fallback ke network/default browser handling)"
+    - "Ubah strategi offline navigation: route inti (/, /app) tetap render shell/login dari cache, bukan dipaksa ke /offline"
+    - "Jadikan /offline hanya fallback terakhir saat route inti benar-benar tidak tersedia"
+  debug_session: ""
+
+- truth: "Jika sesi masih valid, membuka root page (/) langsung redirect ke dashboard tanpa login ulang"
+  status: failed
+  reason: "User reported: membuka root page saat kondisi login masih mengarahkan ke halaman login"
+  severity: major
+  test: 4
+  root_cause: "Validasi session root saat ini hanya bergantung cookie server-side; saat kondisi tertentu (offline/refresh) state sesi lokal tidak dipakai untuk mempertahankan auto-redirect."
+  artifacts:
+    - path: "src/app/page.tsx"
+      issue: "guard redirect hanya cek cookie server session"
+    - path: "src/lib/session/offline-session.ts"
+      issue: "session lokal belum diintegrasikan sebagai fallback redirect root"
+  missing:
+    - "Tambahkan bridging session check client-side pada root untuk fallback saat cookie/session server tidak tersedia"
+    - "Sinkronkan logout flow agar session cookie dan local session konsisten"
   debug_session: ""
