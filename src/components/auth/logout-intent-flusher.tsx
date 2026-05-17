@@ -9,6 +9,7 @@ export function LogoutIntentFlusher() {
 
   useEffect(() => {
     let cancelled = false;
+    const INTENT_EXPIRY_MS = 15 * 60 * 1000;
 
     async function flushIfNeeded() {
       if (!navigator.onLine || cancelled) {
@@ -30,6 +31,9 @@ export function LogoutIntentFlusher() {
         cache: "no-store",
       });
       if (!response.ok) {
+        if (Date.now() - logoutIntentAt > INTENT_EXPIRY_MS) {
+          await offlineDb.appMeta.delete("logout_intent");
+        }
         return;
       }
 

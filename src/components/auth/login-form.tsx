@@ -21,22 +21,31 @@ export function LoginForm() {
 
   useEffect(() => {
     let active = true;
+    const INTENT_EXPIRY_MS = 15 * 60 * 1000;
 
     async function flushPendingLogout() {
-      if (!navigator.onLine) {
+      if (!online) {
         return;
       }
       const pending = await offlineDb.appMeta.get("logout_intent");
       if (!pending || !active) {
         return;
       }
+      const intentAt = Number(pending.value || "0");
       try {
-        await fetch("/api/auth/logout", {
+        const response = await fetch("/api/auth/logout", {
           method: "POST",
           cache: "no-store",
         });
+        if (response.ok) {
+          await offlineDb.appMeta.delete("logout_intent");
+          return;
+        }
+        if (Date.now() - intentAt > INTENT_EXPIRY_MS) {
+          await offlineDb.appMeta.delete("logout_intent");
+        }
       } finally {
-        await offlineDb.appMeta.delete("logout_intent");
+        // no-op
       }
     }
 
@@ -45,7 +54,7 @@ export function LoginForm() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [online]);
 
   useEffect(() => {
     let active = true;
@@ -77,7 +86,15 @@ export function LoginForm() {
 
     try {
       const runOfflineLogin = async () => {
-        const effectiveUsername = (offlineUsername ?? "").trim();
+        let effectiveUsername = (offlineUsername ?? "").trim();
+        if (!effectiveUsername) {
+          const latestCached = await offlineDb.credentialCache.orderBy("updatedAt").last();
+          effectiveUsername = latestCached?.username?.trim() ?? "";
+          if (effectiveUsername) {
+            setOfflineUsername(effectiveUsername);
+            setUsername(effectiveUsername);
+          }
+        }
         if (!effectiveUsername) {
           throw new Error("Belum ada user online terakhir di perangkat ini.");
         }
