@@ -1,20 +1,16 @@
 ---
-status: testing
+status: partial
 phase: 02-inventory-and-sync-engine
 source:
   - 02-01-SUMMARY.md
   - 02-02-SUMMARY.md
 started: 2026-05-17T12:38:01Z
-updated: 2026-05-17T12:49:00Z
+updated: 2026-05-17T12:52:00Z
 ---
 
 ## Current Test
 
-number: 6
-name: Deterministic Replay Ordering
-expected: |
-  Di server, delta diterapkan urut FIFO penerimaan server, tie-break client timestamp terkecil, dan hasil stok tetap konsisten untuk skenario 1-3 device termasuk stok minus.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -48,14 +44,16 @@ reason: "sama tidak bisa di test ada di fase 3"
 
 ### 6. Deterministic Replay Ordering
 expected: Di server, delta diterapkan urut FIFO penerimaan server, tie-break client timestamp terkecil, dan hasil stok tetap konsisten untuk skenario 1-3 device termasuk stok minus.
-result: pending
+result: blocked
+blocked_by: other
+reason: "test 6 benar-benar tidak bisa di test, saya hanya akan testing melalui interface dan tidak akan testing lewat API"
 
 ## Summary
 
 total: 6
 passed: 1
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 
 ## Gaps
