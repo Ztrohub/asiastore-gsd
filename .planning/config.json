@@ -1,0 +1,16 @@
+{
+  "granularity": "coarse",
+  "mode": "yolo",
+  "parallelization": true,
+  "model_profile": "inherit",
+  "workflow": {
+    "plan_check": true,
+    "research": false,
+    "verifier": true,
+    "nyquist_validation": true,
+    "auto_advance": true
+  },
+  "ship": {
+    "pr_body_sections": []
+  }
+}
