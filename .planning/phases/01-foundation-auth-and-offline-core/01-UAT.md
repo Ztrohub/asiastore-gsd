@@ -3,7 +3,7 @@ status: partial
 phase: 01-foundation-auth-and-offline-core
 source: [implementation-derived: src/app/page.tsx, src/app/(app)/page.tsx, src/app/offline/page.tsx, src/features/format/currency.ts, src/features/format/datetime.ts]
 started: 2026-05-17T13:32:55.7534187Z
-updated: 2026-05-17T03:33:13.3148245Z
+updated: 2026-05-17T03:45:48.7748922Z
 ---
 
 ## Current Test
@@ -15,7 +15,7 @@ updated: 2026-05-17T03:33:13.3148245Z
 ### 1. Login Online dengan kredensial valid
 expected: Saat perangkat online, memasukkan username dan password valid lalu klik "Masuk" harus membuka dashboard /app dan menampilkan nama user pada halaman.
 result: issue
-reported: "login dengan user valid masuk ke halaman /app tetapi 404 this page could not be found"
+reported: "halaman login terbuka, setelah klik masuk dengan user valid muncul the site can't be reached dengan console The FetchEvent for \"http://localhost:3000/app\" resulted in a network error response: a redirected response was used for a request whose redirect mode is not \"follow\"."
 severity: blocker
 
 ### 2. Login ditolak untuk password salah
@@ -30,9 +30,9 @@ reason: "tidak bisa di test karena tidak bisa logout untuk coba re-login saat of
 
 ### 4. Session valid langsung masuk
 expected: Jika sesi masih valid, membuka root page (/) harus langsung redirect ke dashboard tanpa perlu login ulang.
-result: issue
-reported: "membuka root page setelah login mengarahkan saya kembali ke halaman login"
-severity: major
+result: blocked
+blocked_by: prior-phase
+reason: "tidak bisa di test, app shell tidak bisa terbuka"
 
 ### 5. Re-login wajib hari Senin
 expected: Pada hari Senin, sistem meminta login ulang sesuai kebijakan sesi, termasuk saat kondisi offline.
@@ -41,73 +41,39 @@ reason: "tidak bisa di test, harus ubah tanggal datetime di system os, untuk tes
 
 ### 6. Support light/dark theme
 expected: UI bisa berganti light/dark theme dan perubahan tema terlihat konsisten pada login page dan app shell.
-result: issue
-reported: "kondisi saat ini di dark-theme, tidak ada kontrol theme di halaman login untuk ubah tema ke light theme (halaman app shell 404)"
-severity: major
+result: pass
 
 ### 7. Format IDR tanpa desimal
 expected: Nilai uang tampil dalam locale id-ID dengan format IDR tanpa desimal (contoh: Rp2.500.000).
-result: blocked
-blocked_by: prior-phase
-reason: "tidak bisa di test (app shell / dashboard 404)"
+result: pass
 
 ### 8. Format waktu Asia/Jakarta
 expected: Datetime tampil mengikuti timezone Asia/Jakarta dengan format dd-mm-yyyy hh:mm:ss.
-result: blocked
-blocked_by: prior-phase
-reason: "tidak bisa di test (app shell / dashboard 404)"
+result: pass
 
 ## Summary
 
 total: 8
-passed: 1
-issues: 3
+passed: 4
+issues: 1
 pending: 0
 skipped: 1
-blocked: 3
+blocked: 2
 
 ## Gaps
 
 - truth: "Saat perangkat online, memasukkan username dan password valid lalu klik Masuk membuka dashboard /app dan menampilkan nama user"
   status: failed
-  reason: "User reported: login dengan user valid masuk ke halaman /app tetapi 404 this page could not be found"
+  reason: "User reported: halaman login terbuka, setelah klik masuk dengan user valid muncul the site can't be reached dengan console The FetchEvent for http://localhost:3000/app resulted in a network error response: a redirected response was used for a request whose redirect mode is not follow."
   severity: blocker
   test: 1
-  root_cause: "Aplikasi mengarahkan ke path /app, tetapi halaman dashboard saat ini ditempatkan di route group src/app/(app)/page.tsx yang resolve ke '/' (bukan '/app')."
+  root_cause: "Service worker fetch handler mengembalikan redirected response untuk request yang redirect mode-nya bukan 'follow', sehingga browser menolak response dan navigasi ke /app gagal."
   artifacts:
-    - path: "src/app/page.tsx"
-      issue: "router.push('/app') diarahkan ke path yang tidak ada"
-    - path: "src/app/(app)/page.tsx"
-      issue: "route group tidak menambahkan segmen URL '/app'"
+    - path: "public/sw.js"
+      issue: "strategi fetch belum aman untuk response redirect pada navigation request"
+    - path: "src/features/pwa/service-worker-register.tsx"
+      issue: "SW aktif di jalur login sehingga mempengaruhi flow auth redirect"
   missing:
-    - "Pindahkan dashboard ke src/app/app/page.tsx atau ubah semua redirect/push dari '/app' ke route aktual"
-  debug_session: ""
-
-- truth: "Jika sesi masih valid, membuka root page (/) langsung redirect ke dashboard tanpa login ulang"
-  status: failed
-  reason: "User reported: membuka root page setelah login mengarahkan saya kembali ke halaman login"
-  severity: major
-  test: 4
-  root_cause: "Halaman login di src/app/page.tsx adalah client component tanpa validasi session cookie server-side, sehingga root selalu render form login."
-  artifacts:
-    - path: "src/app/page.tsx"
-      issue: "tidak ada pemeriksaan cookie SESSION_COOKIE_NAME + redirect saat sesi valid"
-  missing:
-    - "Tambahkan guard server-side pada root (mis. server page yang redirect ke /app saat session valid)"
-  debug_session: ""
-
-- truth: "UI bisa berganti light/dark theme dan perubahan konsisten pada login page dan app shell"
-  status: failed
-  reason: "User reported: kondisi saat ini di dark-theme, tidak ada kontrol theme di halaman login untuk ubah tema ke light theme (halaman app shell 404)"
-  severity: major
-  test: 6
-  root_cause: "Kontrol ThemeToggle hanya ada di app shell layout; login page belum menyediakan kontrol pergantian tema."
-  artifacts:
-    - path: "src/app/(app)/layout.tsx"
-      issue: "ThemeToggle ada hanya di shell"
-    - path: "src/app/page.tsx"
-      issue: "login page tidak memuat ThemeToggle"
-  missing:
-    - "Tambahkan ThemeToggle pada login page"
-    - "Pastikan route shell bisa diakses (fix gap test 1) agar verifikasi konsistensi tema end-to-end bisa dilakukan"
+    - "Perbaiki fetch strategy di service worker agar tidak mengembalikan redirected response yang invalid"
+    - "Tambahkan guard untuk navigation requests (fallback ke network/default browser handling)"
   debug_session: ""
