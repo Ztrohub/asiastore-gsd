@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { MoonStar, SunMedium } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -9,36 +8,41 @@ import { Input } from "@/components/ui/input";
 import { ServiceWorkerRegister } from "@/features/pwa/service-worker-register";
 import { encryptVerifier, decryptVerifier } from "@/lib/crypto/device-crypto";
 import { offlineDb } from "@/lib/offline/db";
-import { persistLocalSession, restoreLocalSession } from "@/lib/session/offline-session";
+import { persistLocalSession } from "@/lib/session/offline-session";
 
 export function LoginForm() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    let active = true;
 
-    async function restoreSessionForRoot() {
-      if (navigator.onLine) {
+    async function flushPendingLogout() {
+      if (!navigator.onLine) {
         return;
       }
-      const local = await restoreLocalSession();
-      if (!local || cancelled) {
+      const pending = await offlineDb.appMeta.get("logout_intent");
+      if (!pending || !active) {
         return;
       }
-      router.replace("/app");
-      router.refresh();
+      try {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          cache: "no-store",
+        });
+      } finally {
+        await offlineDb.appMeta.delete("logout_intent");
+      }
     }
 
-    restoreSessionForRoot().catch(() => undefined);
+    flushPendingLogout().catch(() => undefined);
 
     return () => {
-      cancelled = true;
+      active = false;
     };
-  }, [router]);
+  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,8 +71,7 @@ export function LoginForm() {
           role: cached.role,
           passwordVersion: cached.passwordVersion,
         });
-        router.push("/app");
-        router.refresh();
+        window.location.assign("/app");
         return;
       };
 
@@ -104,6 +107,7 @@ export function LoginForm() {
       }
 
       await offlineDb.localSessions.delete("active");
+      await offlineDb.appMeta.delete("logout_intent");
       const encrypted = await encryptVerifier(password, password);
       await offlineDb.credentialCache.put({
         userId: payload.user.id,
@@ -123,8 +127,7 @@ export function LoginForm() {
         passwordVersion: payload.user.passwordVersion,
       });
 
-      router.push("/app");
-      router.refresh();
+      window.location.assign("/app");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login gagal.";
       setError(message);

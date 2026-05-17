@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { offlineDb } from "@/lib/offline/db";
 import { clearLocalSession } from "@/lib/session/offline-session";
 
 export function LogoutButton() {
@@ -14,11 +15,18 @@ export function LogoutButton() {
     try {
       await clearLocalSession();
       if (!navigator.onLine) {
-        router.push("/");
-        router.refresh();
+        await offlineDb.appMeta.put({
+          key: "logout_intent",
+          value: String(Date.now()),
+        });
+        window.location.assign("/");
         return;
       }
-      window.location.assign("/api/auth/logout");
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        cache: "no-store",
+      });
+      window.location.assign("/");
     } catch {
       router.push("/");
       router.refresh();
