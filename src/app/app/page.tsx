@@ -9,8 +9,7 @@ import { decodeSession, SESSION_COOKIE_NAME } from "@/lib/auth/server-session";
 import { getReservedPosShortcutActions } from "@/lib/shortcuts/pos-contract";
 
 export default async function AppShellPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
   const session = token ? decodeSession(token) : null;
 
   if (!session) {
@@ -30,7 +29,7 @@ export default async function AppShellPage() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="secondary">Online</Badge>
-          <Link className={buttonVariants({ variant: "outline" })} href="/">
+          <Link className={buttonVariants({ variant: "outline" })} href="/api/auth/logout">
             Keluar
           </Link>
         </div>
