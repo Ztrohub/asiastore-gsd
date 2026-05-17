@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ServiceWorkerRegister } from "@/features/pwa/service-worker-register";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import { encryptVerifier, decryptVerifier } from "@/lib/crypto/device-crypto";
 import { offlineDb } from "@/lib/offline/db";
 import { persistLocalSession } from "@/lib/session/offline-session";
@@ -15,6 +16,8 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [offlineUsername, setOfflineUsername] = useState<string | null>(null);
+  const { online } = useConnectivity();
 
   useEffect(() => {
     let active = true;
@@ -44,6 +47,29 @@ export function LoginForm() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    async function hydrateOfflineUsername() {
+      if (online) {
+        setOfflineUsername(null);
+        return;
+      }
+      const latest = await offlineDb.appMeta.get("last_online_username");
+      if (!active) return;
+      const locked = latest?.value?.trim() ?? "";
+      if (locked) {
+        setOfflineUsername(locked);
+        setUsername(locked);
+      } else {
+        setOfflineUsername(null);
+      }
+    }
+    hydrateOfflineUsername().catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [online]);
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -51,7 +77,11 @@ export function LoginForm() {
 
     try {
       const runOfflineLogin = async () => {
-        const cached = await offlineDb.credentialCache.get(username);
+        const effectiveUsername = (offlineUsername ?? "").trim();
+        if (!effectiveUsername) {
+          throw new Error("Belum ada user online terakhir di perangkat ini.");
+        }
+        const cached = await offlineDb.credentialCache.get(effectiveUsername);
         if (!cached) {
           throw new Error("Akun ini belum pernah login online di perangkat ini.");
         }
@@ -75,7 +105,7 @@ export function LoginForm() {
         return;
       };
 
-      if (!navigator.onLine) {
+      if (!online) {
         await runOfflineLogin();
         return;
       }
@@ -108,6 +138,10 @@ export function LoginForm() {
 
       await offlineDb.localSessions.delete("active");
       await offlineDb.appMeta.delete("logout_intent");
+      await offlineDb.appMeta.put({
+        key: "last_online_username",
+        value: payload.user.username,
+      });
       const encrypted = await encryptVerifier(password, password);
       await offlineDb.credentialCache.put({
         userId: payload.user.id,
@@ -171,6 +205,11 @@ export function LoginForm() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Login online pertama wajib agar akun bisa dipakai ulang saat offline.
               </p>
+              {!online && offlineUsername ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Mode offline: login hanya untuk user terakhir online (<b>{offlineUsername}</b>).
+                </p>
+              ) : null}
               <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
                 <div className="space-y-2">
                   <label className="text-sm font-medium" htmlFor="username">
@@ -182,6 +221,7 @@ export function LoginForm() {
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
                     placeholder="contoh: owner"
+                    disabled={!online && !!offlineUsername}
                     required
                   />
                 </div>
