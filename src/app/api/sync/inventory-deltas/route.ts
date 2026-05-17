@@ -50,8 +50,10 @@ export async function POST(request: NextRequest) {
       !event.id_queue ||
       !event.id_produk ||
       !event.id_transaksi ||
+      !event.id_user ||
       !ALLOWED_MUTATION_TYPES.has(event.jenis_mutasi) ||
       !Number.isFinite(event.delta_qty) ||
+      !Number.isFinite(event.logical_clock) ||
       !Number.isFinite(event.client_timestamp) ||
       !Number.isFinite(event.received_seq),
   );
