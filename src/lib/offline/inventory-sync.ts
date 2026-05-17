@@ -1,5 +1,6 @@
 import { getRetryableInventoryQueue, markAcked, markFailed, markSendFailed } from "@/lib/offline/sync-queue";
 import { postInventoryDeltas } from "@/lib/offline/inventory-sync-transport";
+import { offlineDb } from "@/lib/offline/db";
 
 type InventorySyncEvent = {
   id_queue: string;
@@ -75,7 +76,21 @@ async function runOnePass() {
   }
 
   if (!exhaustedThisPass) {
-    syncStatus = { ...syncStatus, unstable: false, retryExhausted: false, canManualRetry: false };
+    const inventoryRows = await offlineDb.syncQueue
+      .where("entityType")
+      .equals("inventory_mutation")
+      .toArray();
+    const hasFailed = inventoryRows.some((row) => row.status === "failed");
+    const hasExhaustedPending = inventoryRows.some(
+      (row) => row.status === "pending" && row.attemptCount >= MAX_ATTEMPTS,
+    );
+    const hasUnresolved = hasFailed || hasExhaustedPending;
+    syncStatus = {
+      ...syncStatus,
+      unstable: hasUnresolved,
+      retryExhausted: hasUnresolved,
+      canManualRetry: hasUnresolved,
+    };
   }
 }
 
