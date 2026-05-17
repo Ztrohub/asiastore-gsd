@@ -31,7 +31,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, results: [] }, { status: 401 });
   }
 
-  const body = (await request.json()) as SyncDeltaBody;
+  let body: SyncDeltaBody;
+  try {
+    body = (await request.json()) as SyncDeltaBody;
+  } catch {
+    return NextResponse.json(
+      { ok: false, results: [], message: "JSON tidak valid." },
+      { status: 400 },
+    );
+  }
   if (!body.events || !Array.isArray(body.events) || body.events.length === 0) {
     return NextResponse.json({ ok: false, results: [], message: "Event wajib diisi." }, { status: 400 });
   }
