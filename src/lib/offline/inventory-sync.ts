@@ -1,3 +1,5 @@
+"use client";
+
 import { getRetryableInventoryQueue, markAcked, markFailed, markSendFailed } from "@/lib/offline/sync-queue";
 import { postInventoryDeltas } from "@/lib/offline/inventory-sync-transport";
 import { offlineDb } from "@/lib/offline/db";
