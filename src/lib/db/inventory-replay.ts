@@ -70,9 +70,9 @@ export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): P
               client_timestamp: new Date(event.client_timestamp),
             },
           });
+          finalStockByProduct[event.id_produk] = (finalStockByProduct[event.id_produk] ?? 0) + event.delta_qty;
+          appliedOrder.push(event.id_queue);
         }
-        finalStockByProduct[event.id_produk] = (finalStockByProduct[event.id_produk] ?? 0) + event.delta_qty;
-        appliedOrder.push(event.id_queue);
         acks.push({ id_queue: event.id_queue, status: "acked" });
       } catch (error) {
         const reason = error instanceof Error ? error.message : "REPLAY_WRITE_FAILED";
