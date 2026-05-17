@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { LogoutIntentFlusher } from "@/components/auth/logout-intent-flusher";
 import { NetworkStatusBadge } from "@/components/app/network-status-badge";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { formatCurrencyIdr } from "@/features/format/currency";
@@ -38,6 +39,7 @@ export default async function AppShellPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <LogoutIntentFlusher />
       <section className="grid gap-4 rounded-xl border border-border bg-card p-6 shadow-sm md:grid-cols-[1fr_auto] md:items-center">
         <div>
           <p className="text-sm text-muted-foreground">Status sesi</p>

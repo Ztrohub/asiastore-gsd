@@ -22,10 +22,13 @@ export function LogoutButton() {
         window.location.assign("/");
         return;
       }
-      await fetch("/api/auth/logout", {
+      const result = await fetch("/api/auth/logout", {
         method: "POST",
         cache: "no-store",
       });
+      if (!result.ok) {
+        throw new Error("Logout request failed");
+      }
       window.location.assign("/");
     } catch {
       router.push("/");
