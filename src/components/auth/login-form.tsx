@@ -7,7 +7,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ServiceWorkerRegister } from "@/features/pwa/service-worker-register";
-import { useConnectivity } from "@/hooks/use-connectivity";
 import { encryptVerifier, decryptVerifier } from "@/lib/crypto/device-crypto";
 import { offlineDb } from "@/lib/offline/db";
 import { persistLocalSession, restoreLocalSession } from "@/lib/session/offline-session";
@@ -18,7 +17,6 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { online } = useConnectivity();
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +46,7 @@ export function LoginForm() {
     setError(null);
 
     try {
-      if (!online) {
+      const runOfflineLogin = async () => {
         const cached = await offlineDb.credentialCache.get(username);
         if (!cached) {
           throw new Error("Akun ini belum pernah login online di perangkat ini.");
@@ -63,20 +61,33 @@ export function LoginForm() {
         if (decrypted !== password) {
           throw new Error("Password offline tidak valid.");
         }
-        const local = await restoreLocalSession();
-        if (!local || local.username !== username) {
-          throw new Error("Sesi lokal tidak valid. Silakan login online.");
-        }
+        await persistLocalSession({
+          userId: cached.userId ?? cached.username,
+          username: cached.username,
+          role: cached.role,
+          passwordVersion: cached.passwordVersion,
+        });
         router.push("/app");
         router.refresh();
         return;
+      };
+
+      if (!navigator.onLine) {
+        await runOfflineLogin();
+        return;
       }
 
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      let response: Response;
+      try {
+        response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+      } catch {
+        await runOfflineLogin();
+        return;
+      }
 
       const payload = (await response.json()) as {
         ok?: boolean;
@@ -95,6 +106,7 @@ export function LoginForm() {
       await offlineDb.localSessions.delete("active");
       const encrypted = await encryptVerifier(password, password);
       await offlineDb.credentialCache.put({
+        userId: payload.user.id,
         username: payload.user.username,
         encryptedVerifier: encrypted.encryptedVerifier,
         salt: encrypted.salt,

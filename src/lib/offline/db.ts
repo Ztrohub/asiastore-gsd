@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 
 export type CredentialCacheRecord = {
+  userId: string;
   username: string;
   encryptedVerifier: string;
   salt: string;
@@ -49,6 +50,13 @@ class LocalPosDatabase extends Dexie {
     super("asiatek-pos-local-db");
     this.version(1).stores({
       credentialCache: "username, updatedAt, passwordVersion, role",
+      localSessions: "key, username, lastActivityAt, mustReloginAt",
+      syncQueue:
+        "++id, status, attemptCount, nextRetryAt, entityType, entityId, createdAt",
+      appMeta: "key",
+    });
+    this.version(2).stores({
+      credentialCache: "username, userId, updatedAt, passwordVersion, role",
       localSessions: "key, username, lastActivityAt, mustReloginAt",
       syncQueue:
         "++id, status, attemptCount, nextRetryAt, entityType, entityId, createdAt",
