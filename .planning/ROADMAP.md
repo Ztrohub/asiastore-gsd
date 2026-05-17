@@ -24,7 +24,7 @@
 
 ### Phase 2: Inventory and Sync Engine
 
-**Goal:** Deliver inventory stock operations with robust delta-based offline/online synchronization and stock warning behavior.
+**Goal:** As a owner toko, I want to mencatat stock in, stock out, dan stock adjustment secara offline dengan sinkronisasi otomatis saat online, so that stok tetap akurat lintas 1-3 device dan operasional toko tetap jalan saat internet putus.
 **Mode:** mvp
 **Requirements:** INV-01, INV-02, INV-03, INV-04, SYNC-03, SYNC-04, SYNC-05, SYNC-06
 **Plans:** 2/2 plans complete
@@ -43,6 +43,16 @@ Plans:
 2. Local inventory changes automatically sync to server after reconnection.
 3. Delta sync tolerates 1-3 concurrent devices and allows negative stock state.
 4. Cashier sees clear warning before confirming transactions that cause/deepen negative stock.
+
+### Phase 02.1: Menu Inventory untuk user di UI: tambah produk, atur harga, stock in, stock adjustment (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 2
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 02.1 to break down)
 
 ### Phase 3: POS Checkout and Receipt Printing
 
