@@ -38,3 +38,24 @@ model LoginAudit {
 
   @@index([userId, loginAt])
 }
+
+enum InventoryMutationType {
+  SALES_OUT
+  STOCK_IN
+  STOCK_ADJUSTMENT
+}
+
+model InventoryMutationEvent {
+  id_queue         String                @id
+  id_transaksi     String
+  id_produk        String
+  id_user          String
+  jenis_mutasi     InventoryMutationType
+  delta_qty        Int
+  logical_clock    Int
+  client_timestamp DateTime
+  createdAt        DateTime              @default(now())
+
+  @@index([id_produk, client_timestamp])
+  @@index([id_user, client_timestamp])
+}

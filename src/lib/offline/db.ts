@@ -40,11 +40,26 @@ export type AppMetaRecord = {
   value: string;
 };
 
+export type InventoryMutationType = "SALES_OUT" | "STOCK_IN" | "STOCK_ADJUSTMENT";
+
+export type InventoryMutationEventRecord = {
+  id_queue: string;
+  id_transaksi: string;
+  id_produk: string;
+  id_user: string;
+  jenis_mutasi: InventoryMutationType;
+  delta_qty: number;
+  logical_clock: number;
+  client_timestamp: number;
+  createdAt: number;
+};
+
 class LocalPosDatabase extends Dexie {
   credentialCache!: EntityTable<CredentialCacheRecord, "username">;
   localSessions!: EntityTable<LocalSessionRecord, "key">;
   syncQueue!: EntityTable<SyncQueueRecord, "id">;
   appMeta!: EntityTable<AppMetaRecord, "key">;
+  inventoryMutationEvents!: EntityTable<InventoryMutationEventRecord, "id_queue">;
 
   constructor() {
     super("asiatek-pos-local-db");
@@ -61,6 +76,15 @@ class LocalPosDatabase extends Dexie {
       syncQueue:
         "++id, status, attemptCount, nextRetryAt, entityType, entityId, createdAt",
       appMeta: "key",
+    });
+    this.version(3).stores({
+      credentialCache: "username, userId, updatedAt, passwordVersion, role",
+      localSessions: "key, username, lastActivityAt, mustReloginAt",
+      syncQueue:
+        "++id, status, attemptCount, nextRetryAt, entityType, entityId, createdAt",
+      appMeta: "key",
+      inventoryMutationEvents:
+        "id_queue, id_transaksi, id_produk, id_user, jenis_mutasi, client_timestamp, logical_clock",
     });
   }
 }
