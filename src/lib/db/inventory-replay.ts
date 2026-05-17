@@ -7,6 +7,7 @@ export type InventoryDeltaEvent = {
   id_user?: string;
   jenis_mutasi: "SALES_OUT" | "STOCK_IN" | "STOCK_ADJUSTMENT";
   delta_qty: number;
+  logical_clock: number;
   received_seq: number;
   client_timestamp: number;
 };
@@ -66,7 +67,7 @@ export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): P
               id_user: event.id_user,
               jenis_mutasi: event.jenis_mutasi,
               delta_qty: event.delta_qty,
-              logical_clock: event.received_seq,
+              logical_clock: event.logical_clock,
               client_timestamp: new Date(event.client_timestamp),
             },
           });
