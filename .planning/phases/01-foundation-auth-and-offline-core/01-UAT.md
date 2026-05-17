@@ -3,7 +3,7 @@ status: partial
 phase: 01-foundation-auth-and-offline-core
 source: [implementation-derived: src/app/page.tsx, src/app/(app)/page.tsx, src/app/offline/page.tsx, src/features/format/currency.ts, src/features/format/datetime.ts]
 started: 2026-05-17T13:32:55.7534187Z
-updated: 2026-05-17T04:04:02.5178018Z
+updated: 2026-05-17T04:24:17.1806716Z
 ---
 
 ## Current Test
@@ -14,7 +14,9 @@ updated: 2026-05-17T04:04:02.5178018Z
 
 ### 1. Login Online dengan kredensial valid
 expected: Saat perangkat online, memasukkan username dan password valid lalu klik "Masuk" harus membuka dashboard /app dan menampilkan nama user pada halaman.
-result: pass
+result: issue
+reported: "tambahan issue, login sebagai cashier tampil sebagai owner"
+severity: major
 
 ### 2. Login ditolak untuk password salah
 expected: Saat online, jika password salah maka login ditolak dan pesan error ditampilkan (tidak masuk ke dashboard).
@@ -23,14 +25,12 @@ result: pass
 ### 3. Login offline untuk user yang pernah login
 expected: Setelah user pernah berhasil login online di device ini, saat offline user bisa login kembali memakai kredensial lokal terenkripsi.
 result: issue
-reported: "dalam kondisi login, masuk mode offline menampilkan tampilan Mode Offline Aktif seharusnya fungsionalitas website tetap bisa digunakan. Dalam posisi logout (di halaman login) juga sama, konsisi offline menampilkan Mode Offline Aktif bukan halaman login page"
+reported: "kondisi logged in online, mematikan mode offline dan merefresh page -> tampil page /offline (mode offline aktif) saya harus mengarahkan url ke /app atau / untuk dapat kembali ke halaman app shell. Mengarahkan manual dapat menampilkan page dalam kondisi offline. Expected: jika tiba-tiba beralih ke mode offline seharusnya maka tetap di menu yang sama tanpa perlu ubah url manual. Dalam kondisi offline this app shell, status user masih online. Seharusnya ada indikasi sedang di mode offline. Keluar dalam mode offline dan mencoba login ulang muncul error failed to fetch. Dalam kasus tertentu (beralih dari online ke offline) ada case di mana web berkedip berkali-kali tanpa henti."
 severity: major
 
 ### 4. Session valid langsung masuk
 expected: Jika sesi masih valid, membuka root page (/) harus langsung redirect ke dashboard tanpa perlu login ulang.
-result: issue
-reported: "membuka root page saat kondisi login masih mengarahkan ke halaman login"
-severity: major
+result: pass
 
 ### 5. Re-login wajib hari Senin
 expected: Pada hari Senin, sistem meminta login ulang sesuai kebijakan sesi, termasuk saat kondisi offline.
@@ -62,32 +62,38 @@ blocked: 0
 
 - truth: "Setelah user pernah berhasil login online di device ini, saat offline user bisa login kembali memakai kredensial lokal terenkripsi"
   status: failed
-  reason: "User reported: dalam kondisi login/offline selalu tampil halaman Mode Offline Aktif, bukan flow aplikasi/login yang bisa dipakai"
+  reason: "User reported: transisi online->offline mengarah ke /offline, perlu ubah URL manual, status online tidak berubah, logout/login offline failed to fetch, dan kadang flicker terus-menerus"
   severity: major
   test: 3
-  root_cause: "Service worker masih mem-fallback semua navigasi saat offline ke /offline, sehingga halaman login maupun app shell tidak dirender saat koneksi putus."
+  root_cause: "Strategi SW + state sinkronisasi online/offline di UI belum stabil untuk transisi real-time (refresh/navigation/logout)."
   artifacts:
     - path: "public/sw.js"
-      issue: "navigasi offline tidak dibedakan per route/login state"
-    - path: "src/app/offline/page.tsx"
-      issue: "offline page menjadi fallback tunggal untuk semua route"
+      issue: "routing fallback offline belum menjaga route aktif saat koneksi drop"
+    - path: "src/app/app/page.tsx"
+      issue: "status sesi masih hardcoded Online"
+    - path: "src/components/auth/login-form.tsx"
+      issue: "path login offline tidak graceful saat request/fetch gagal"
   missing:
-    - "Ubah strategi offline navigation: route inti (/, /app) tetap render shell/login dari cache, bukan dipaksa ke /offline"
-    - "Jadikan /offline hanya fallback terakhir saat route inti benar-benar tidak tersedia"
+    - "Pertahankan route aktif saat transisi ke offline (tanpa redirect paksa ke /offline)"
+    - "Tambahkan indikator status offline/online yang aktual di app shell"
+    - "Tangani logout/login saat offline tanpa memicu failed-to-fetch yang memutus flow"
+    - "Hilangkan loop flicker saat network berubah"
   debug_session: ""
 
-- truth: "Jika sesi masih valid, membuka root page (/) langsung redirect ke dashboard tanpa login ulang"
+- truth: "Role yang ditampilkan di dashboard sesuai akun login"
   status: failed
-  reason: "User reported: membuka root page saat kondisi login masih mengarahkan ke halaman login"
+  reason: "User reported: login sebagai cashier tampil sebagai owner"
   severity: major
-  test: 4
-  root_cause: "Validasi session root saat ini hanya bergantung cookie server-side; saat kondisi tertentu (offline/refresh) state sesi lokal tidak dipakai untuk mempertahankan auto-redirect."
+  test: 1
+  root_cause: "Kemungkinan mismatch data role pada session/cookie/local-session yang dipakai render dashboard."
   artifacts:
-    - path: "src/app/page.tsx"
-      issue: "guard redirect hanya cek cookie server session"
+    - path: "src/app/api/auth/login/route.ts"
+      issue: "payload role dari DB perlu diverifikasi terhadap session yang diset"
     - path: "src/lib/session/offline-session.ts"
-      issue: "session lokal belum diintegrasikan sebagai fallback redirect root"
+      issue: "role cached di local session dapat stale/tertimpa"
+    - path: "src/app/app/page.tsx"
+      issue: "dashboard render role dari session tanpa cross-check"
   missing:
-    - "Tambahkan bridging session check client-side pada root untuk fallback saat cookie/session server tidak tersedia"
-    - "Sinkronkan logout flow agar session cookie dan local session konsisten"
+    - "Validasi konsistensi role dari DB -> token -> local session -> UI"
+    - "Pastikan pergantian akun mengganti local session atomically"
   debug_session: ""
