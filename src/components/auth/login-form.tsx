@@ -17,50 +17,15 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [offlineUsername, setOfflineUsername] = useState<string | null>(null);
+  const [offlineFallbackNotice, setOfflineFallbackNotice] = useState<string | null>(null);
   const { online } = useConnectivity();
-
-  useEffect(() => {
-    let active = true;
-    const INTENT_EXPIRY_MS = 15 * 60 * 1000;
-
-    async function flushPendingLogout() {
-      if (!online) {
-        return;
-      }
-      const pending = await offlineDb.appMeta.get("logout_intent");
-      if (!pending || !active) {
-        return;
-      }
-      const intentAt = Number(pending.value || "0");
-      try {
-        const response = await fetch("/api/auth/logout", {
-          method: "POST",
-          cache: "no-store",
-        });
-        if (response.ok) {
-          await offlineDb.appMeta.delete("logout_intent");
-          return;
-        }
-        if (Date.now() - intentAt > INTENT_EXPIRY_MS) {
-          await offlineDb.appMeta.delete("logout_intent");
-        }
-      } finally {
-        // no-op
-      }
-    }
-
-    flushPendingLogout().catch(() => undefined);
-
-    return () => {
-      active = false;
-    };
-  }, [online]);
 
   useEffect(() => {
     let active = true;
     async function hydrateOfflineUsername() {
       if (online) {
         setOfflineUsername(null);
+        setOfflineFallbackNotice(null);
         return;
       }
       const latest = await offlineDb.appMeta.get("last_online_username");
@@ -69,6 +34,7 @@ export function LoginForm() {
       if (locked) {
         setOfflineUsername(locked);
         setUsername(locked);
+        setOfflineFallbackNotice(null);
       } else {
         setOfflineUsername(null);
       }
@@ -93,6 +59,9 @@ export function LoginForm() {
           if (effectiveUsername) {
             setOfflineUsername(effectiveUsername);
             setUsername(effectiveUsername);
+            setOfflineFallbackNotice(
+              "Username offline dipilih otomatis dari cache terakhir. Silakan login online ulang bila tidak sesuai.",
+            );
           }
         }
         if (!effectiveUsername) {
@@ -231,6 +200,11 @@ export function LoginForm() {
               {!online && offlineUsername ? (
                 <p className="mt-2 text-xs text-muted-foreground">
                   Mode offline: login hanya untuk user terakhir online (<b>{offlineUsername}</b>).
+                </p>
+              ) : null}
+              {offlineFallbackNotice ? (
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                  {offlineFallbackNotice}
                 </p>
               ) : null}
               <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
