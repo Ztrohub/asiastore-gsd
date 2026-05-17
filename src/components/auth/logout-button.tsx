@@ -3,33 +3,29 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import { offlineDb } from "@/lib/offline/db";
 import { clearLocalSession } from "@/lib/session/offline-session";
 
 export function LogoutButton() {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const { online } = useConnectivity();
 
   async function handleLogout() {
     setPending(true);
     try {
       await clearLocalSession();
-      if (!navigator.onLine) {
-        await offlineDb.appMeta.put({
-          key: "logout_intent",
-          value: String(Date.now()),
-        });
-        window.location.assign("/");
+      await offlineDb.appMeta.put({
+        key: "logout_intent",
+        value: String(Date.now()),
+      });
+      if (!online) {
+        router.replace("/");
         return;
       }
-      const result = await fetch("/api/auth/logout", {
-        method: "POST",
-        cache: "no-store",
-      });
-      if (!result.ok) {
-        throw new Error("Logout request failed");
-      }
-      window.location.assign("/");
+      router.replace("/");
+      router.refresh();
     } catch {
       router.push("/");
       router.refresh();

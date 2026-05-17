@@ -85,13 +85,18 @@ export function LoginForm() {
         if (!cached) {
           throw new Error("Akun ini belum pernah login online di perangkat ini.");
         }
-        const decrypted = await decryptVerifier({
-          encryptedVerifier: cached.encryptedVerifier,
-          password,
-          salt: cached.salt,
-          iv: cached.iv,
-          iterations: cached.iterations,
-        });
+        let decrypted: string;
+        try {
+          decrypted = await decryptVerifier({
+            encryptedVerifier: cached.encryptedVerifier,
+            password,
+            salt: cached.salt,
+            iv: cached.iv,
+            iterations: cached.iterations,
+          });
+        } catch {
+          throw new Error("Password offline tidak valid.");
+        }
         if (decrypted !== password) {
           throw new Error("Password offline tidak valid.");
         }
