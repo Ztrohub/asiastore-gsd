@@ -13,6 +13,11 @@ export function LogoutButton() {
     setPending(true);
     try {
       await clearLocalSession();
+      if (!navigator.onLine) {
+        router.push("/");
+        router.refresh();
+        return;
+      }
       window.location.assign("/api/auth/logout");
     } catch {
       router.push("/");

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { NetworkStatusBadge } from "@/components/app/network-status-badge";
 import { LogoutButton } from "@/components/auth/logout-button";
-import { Badge } from "@/components/ui/badge";
 import { formatCurrencyIdr } from "@/features/format/currency";
 import { formatJakartaDateTime } from "@/features/format/datetime";
 import { decodeSession, SESSION_COOKIE_NAME } from "@/lib/auth/server-session";
@@ -27,7 +27,7 @@ export default async function AppShellPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="secondary">Online</Badge>
+          <NetworkStatusBadge />
           <LogoutButton />
         </div>
       </section>

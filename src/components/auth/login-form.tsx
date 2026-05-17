@@ -22,6 +22,9 @@ export function LoginForm() {
     let cancelled = false;
 
     async function restoreSessionForRoot() {
+      if (navigator.onLine) {
+        return;
+      }
       const local = await restoreLocalSession();
       if (!local || cancelled) {
         return;
@@ -87,6 +90,7 @@ export function LoginForm() {
         throw new Error(payload.message ?? "Login gagal.");
       }
 
+      await offlineDb.localSessions.delete("active");
       const encrypted = await encryptVerifier(password, password);
       await offlineDb.credentialCache.put({
         username: payload.user.username,

@@ -25,12 +25,29 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      caches.match(request).then((cachedPage) => {
+      (async () => {
+        const cachedPage = await caches.match(request);
         if (cachedPage) {
           return cachedPage;
         }
-        return fetch(request);
-      }).catch(async () => {
+
+        try {
+          const response = await fetch(request);
+          if (response.ok && response.type === "basic") {
+            const cache = await caches.open(SHELL_CACHE);
+            await cache.put(request, response.clone());
+          }
+          return response;
+        } catch {
+          const cachedRoot = await caches.match("/");
+          if (cachedRoot) {
+            return cachedRoot;
+          }
+
+          const cachedOffline = await caches.match("/offline");
+          return cachedOffline ?? Response.error();
+        }
+      })().catch(async () => {
         const cachedRoot = await caches.match("/");
         if (cachedRoot) {
           return cachedRoot;
