@@ -27,11 +27,11 @@
 **Goal:** Deliver inventory stock operations with robust delta-based offline/online synchronization and stock warning behavior.
 **Mode:** mvp
 **Requirements:** INV-01, INV-02, INV-03, INV-04, SYNC-03, SYNC-04, SYNC-05, SYNC-06
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — Offline stock in/adjust mutation slice with soft negative-stock warning and schema push gate
+- [x] 02-01-PLAN.md — Offline stock in/adjust mutation slice with soft negative-stock warning and schema push gate
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
