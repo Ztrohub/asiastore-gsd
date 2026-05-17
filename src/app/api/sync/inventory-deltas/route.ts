@@ -62,7 +62,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, results: [], message: "Payload event tidak valid." }, { status: 400 });
   }
 
-  const replay = await applyInventoryDeltaBatch(body.events);
+  const hasUserMismatch = body.events.some((event) => event.id_user && event.id_user !== session.userId);
+  if (hasUserMismatch) {
+    return NextResponse.json({ ok: false, results: [], message: "User event tidak sesuai sesi." }, { status: 400 });
+  }
+  const sanitizedEvents = body.events.map((event) => ({ ...event, id_user: session.userId }));
+
+  const replay = await applyInventoryDeltaBatch(sanitizedEvents);
   return NextResponse.json({
     ok: true,
     results: replay.acks,
