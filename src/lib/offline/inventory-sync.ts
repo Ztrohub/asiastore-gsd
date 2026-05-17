@@ -21,7 +21,7 @@ type SyncStatus = {
 };
 
 const MAX_ATTEMPTS = 5;
-const NON_RETRYABLE_REASONS = new Set(["PRODUCT_NOT_FOUND", "INVALID_PAYLOAD", "SCHEMA_ERROR"]);
+const NON_RETRYABLE_REASONS = new Set(["PRODUCT_NOT_FOUND", "INVALID_PAYLOAD", "SCHEMA_ERROR", "MISSING_USER_ID"]);
 
 let syncStatus: SyncStatus = {
   unstable: false,
@@ -34,7 +34,6 @@ let syncStatus: SyncStatus = {
 async function runOnePass() {
   const rows = await getRetryableInventoryQueue();
   let exhaustedThisPass = false;
-
   for (const row of rows) {
     if (!row.id) continue;
     if (row.attemptCount >= MAX_ATTEMPTS) {
