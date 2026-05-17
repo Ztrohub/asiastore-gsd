@@ -43,7 +43,7 @@ export async function markAttempt(id: number, failed: boolean) {
   if (!current) return;
 
   const nextAttemptCount = current.attemptCount + 1;
-  const status = failed ? "failed" : "sent";
+  const status = failed ? "pending" : "sent";
   await offlineDb.syncQueue.update(id, {
     status,
     attemptCount: nextAttemptCount,
