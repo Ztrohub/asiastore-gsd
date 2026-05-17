@@ -25,8 +25,8 @@ export function StockMutationForm({
   const [warningOpen, setWarningOpen] = useState(false);
 
   const quantity = Number(qty) || 0;
-  const projectedStock =
-    jenisMutasi === "STOCK_IN" ? currentStock + quantity : currentStock + quantity;
+  const deltaQuantity = jenisMutasi === "STOCK_IN" ? Math.abs(quantity) : -Math.abs(quantity);
+  const projectedStock = currentStock + deltaQuantity;
   const shouldWarn = currentStock <= 0 || projectedStock <= 0;
 
   async function commit() {
@@ -34,7 +34,7 @@ export function StockMutationForm({
       jenis_mutasi: jenisMutasi,
       id_transaksi: transactionId,
       id_produk: productId,
-      delta_qty: quantity,
+      delta_qty: deltaQuantity,
       logical_clock: logicalClock,
     });
   }
