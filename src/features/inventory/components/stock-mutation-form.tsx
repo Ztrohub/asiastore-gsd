@@ -90,9 +90,13 @@ export function StockMutationForm({
       <NegativeStockWarning
         open={warningOpen}
         onClose={() => setWarningOpen(false)}
-        onBypass={() => {
+        onBypass={async () => {
           setWarningOpen(false);
-          commit().catch(() => undefined);
+          try {
+            await commit();
+          } catch {
+            // Error state is already surfaced by useStockMutation.
+          }
         }}
       />
     </>
