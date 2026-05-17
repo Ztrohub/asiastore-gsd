@@ -2,8 +2,8 @@
 phase: 1
 slug: foundation-auth-and-offline-core
 status: approved
-shadcn_initialized: false
-preset: none
+shadcn_initialized: true
+preset: new-york
 created: 2026-05-17
 ---
 
@@ -17,9 +17,9 @@ created: 2026-05-17
 
 | Property | Value |
 |----------|-------|
-| Tool | none |
-| Preset | not applicable |
-| Component library | none |
+| Tool | shadcn |
+| Preset | new-york |
+| Component library | radix |
 | Icon library | lucide |
 | Font | Inter, system-ui, sans-serif |
 
@@ -58,12 +58,13 @@ Exceptions: none
 
 | Role | Value | Usage |
 |------|-------|-------|
-| Dominant (60%) | #F7F7F4 | App background and default surfaces |
-| Secondary (30%) | #E5E7EB | Cards, panel separators, neutral UI sections |
-| Accent (10%) | #0B6E4F | Primary CTA, focused input ring, active nav state |
+| Dominant (60%) | Light: #F7F7F4, Dark: #0F172A | App background and default surfaces |
+| Secondary (30%) | Light: #E5E7EB, Dark: #1E293B | Cards, panel separators, neutral UI sections |
+| Accent (10%) | Light: #0B6E4F, Dark: #34D399 | Primary CTA, focused input ring, active nav state |
 | Destructive | #B42318 | Destructive actions only |
 
 Accent reserved for: primary CTA buttons, active navigation marker, keyboard-focus ring, and critical positive status badges.
+Theme contract: light and dark themes are first-class and must be switchable by class-based theming (`.light` / `.dark`) with the same spacing, typography, and interaction behavior.
 
 ---
 
@@ -102,7 +103,7 @@ Accent reserved for: primary CTA buttons, active navigation marker, keyboard-foc
 
 | Registry | Blocks Used | Safety Gate |
 |----------|-------------|-------------|
-| shadcn official | none | not required |
+| shadcn official | button, input, form, table, dialog, dropdown-menu, badge, toast | not required |
 | third-party registries | none | shadcn view + diff required |
 
 ---
