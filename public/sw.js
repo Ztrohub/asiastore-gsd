@@ -23,7 +23,21 @@ self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  if (url.pathname.startsWith("/api/auth/login") || url.pathname.startsWith("/api/auth/session")) {
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(async () => {
+        const cachedOffline = await caches.match("/offline");
+        return cachedOffline ?? Response.error();
+      }),
+    );
+    return;
+  }
+
+  if (
+    url.pathname.startsWith("/api/auth/login") ||
+    url.pathname.startsWith("/api/auth/session") ||
+    url.pathname.startsWith("/api/auth/logout")
+  ) {
     return;
   }
 
@@ -39,6 +53,9 @@ self.addEventListener("fetch", (event) => {
 
       return fetch(request)
         .then((response) => {
+          if (response.type === "opaqueredirect") {
+            return response;
+          }
           const cloned = response.clone();
           caches.open(SHELL_CACHE).then((cache) => {
             cache.put(request, cloned);
