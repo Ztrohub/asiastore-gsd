@@ -1,0 +1,115 @@
+$ next dev "--port" "3000"
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandlerOld focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{rsc:{...}, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="app/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/app" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+                  <SegmentViewNode type="page" pagePath="app/page.tsx">
+                    <SegmentTrieNode>
+                    <AppShellPage>
+                      <main className="mx-auto fl...">
+                        <LogoutIntentFlusher>
+                        <section className="grid gap-4...">
+                          <div>
+                          <div className="flex items...">
+                            <NetworkStatusBadge>
+                              <Badge variant="secondary">
+                                <span
+                                  data-slot="badge"
+                                  data-variant="secondary"
+                                  className={"group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center ..."}
+                                  ref={null}
+                                >
++                                 Online
+-                                 Offline
+                            ...
+                        ...
+                  ...
+                ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at span (<anonymous>)
+    at Badge (src/components/ui/badge.tsx:36:19)
+    at NetworkStatusBadge (src/components/app/network-status-badge.tsx:9:10)
+    at AppShellPage (src\app\app\page.tsx:53:11)
+  34 |   ...props
+  35 | }: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
+> 36 |   return useRender({
+     |                   ^
+  37 |     defaultTagName: "span",
+  38 |     props: mergeProps<"span">(
+  39 |       {
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+[browser] Uncaught Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <InnerScrollAndFocusHandlerOld focusAndScrollRef={{scrollRef:null, ...}} cacheNode={{rsc:{...}, ...}}>
+      <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+        <LoadingBoundary name="app/" loading={null}>
+          <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+            <RedirectBoundary>
+              <RedirectErrorBoundary router={{...}}>
+                <InnerLayoutRouter url="/app" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+                  <SegmentViewNode type="page" pagePath="app/page.tsx">
+                    <SegmentTrieNode>
+                    <AppShellPage>
+                      <main className="mx-auto fl...">
+                        <LogoutIntentFlusher>
+                        <section className="grid gap-4...">
+                          <div>
+                          <div className="flex items...">
+                            <NetworkStatusBadge>
+                              <Badge variant="secondary">
+                                <span
+                                  data-slot="badge"
+                                  data-variant="secondary"
+                                  className={"group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center ..."}
+                                  ref={null}
+                                >
++                                 Online
+-                                 Offline
+                            ...
+                        ...
+                  ...
+                ...
+      ...
+
+    at <unknown> (https://react.dev/link/hydration-mismatch)
+    at span (<anonymous>)
+    at Badge (src/components/ui/badge.tsx:36:19)
+    at NetworkStatusBadge (src/components/app/network-status-badge.tsx:9:10)
+    at AppShellPage (src\app\app\page.tsx:53:11)
+  34 |   ...props
+  35 | }: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
+> 36 |   return useRender({
+     |                   ^
+  37 |     defaultTagName: "span",
+  38 |     props: mergeProps<"span">(
+  39 |       {

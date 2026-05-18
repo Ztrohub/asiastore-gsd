@@ -5,7 +5,6 @@ import { MoonStar, SunMedium } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ServiceWorkerRegister } from "@/features/pwa/service-worker-register";
 import { useConnectivity } from "@/hooks/use-connectivity";
 import { encryptVerifier, decryptVerifier } from "@/lib/crypto/device-crypto";
 import { offlineDb } from "@/lib/offline/db";
@@ -164,7 +163,6 @@ export function LoginForm() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background p-4">
-      <ServiceWorkerRegister />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(11,110,79,0.17),transparent_42%),radial-gradient(circle_at_80%_0%,rgba(52,211,153,0.23),transparent_30%),linear-gradient(to_bottom_right,transparent,rgba(15,23,42,0.05))]" />
       <div className="absolute right-6 top-6">
         <ThemeToggle />

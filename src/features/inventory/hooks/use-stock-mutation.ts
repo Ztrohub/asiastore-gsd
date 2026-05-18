@@ -25,15 +25,42 @@ export async function persistStockMutation(input: StockMutationInput) {
     id_user: activeSession.userId,
   };
   const event =
-    input.jenis_mutasi === "STOCK_IN"
-      ? buildStockInMutationEvent(baseInput)
-      : buildStockAdjustmentMutationEvent(baseInput);
+    input.jenis_mutasi === "STOCK_ADJUSTMENT"
+      ? buildStockAdjustmentMutationEvent(baseInput)
+      : buildStockInMutationEvent(baseInput);
 
   await offlineDb.transaction(
     "rw",
+    offlineDb.products,
     offlineDb.inventoryMutationEvents,
     offlineDb.syncQueue,
     async () => {
+      const currentProduct = await offlineDb.products.get(event.id_produk);
+      if (!currentProduct) {
+        throw new Error("Produk tidak ditemukan.");
+      }
+
+      const targetUnit = event.unit_mutasi ?? "SMALL";
+      const currentSmallStock = Math.max(0, Math.trunc(currentProduct.stok_saat_ini));
+      const currentLargeStock = Math.max(
+        0,
+        Math.trunc(currentProduct.stok_unit_besar_saat_ini ?? 0),
+      );
+      const nextSmallStock =
+        targetUnit === "SMALL"
+          ? Math.max(0, currentSmallStock + event.delta_qty)
+          : currentSmallStock;
+      const nextLargeStock =
+        targetUnit === "LARGE"
+          ? Math.max(0, currentLargeStock + event.delta_qty)
+          : currentLargeStock;
+      await offlineDb.products.put({
+        ...currentProduct,
+        stok_saat_ini: nextSmallStock,
+        stok_unit_besar_saat_ini: nextLargeStock,
+        updatedAt: Date.now(),
+      });
+
       await offlineDb.inventoryMutationEvents.add(event);
       await offlineDb.syncQueue.add({
         status: "pending",

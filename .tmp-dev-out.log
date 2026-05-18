@@ -1,0 +1,103 @@
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.7:3000
+- Environments: .env
+✓ Ready in 536ms
+Creating turbopack project {
+  dir: 'C:\\WKWK\\asiatekoracle\\projects\\asiastore-gsd',
+  testMode: true
+}
+
+ GET /api/health 200 in 171ms (next.js: 155ms, application-code: 16ms)
+ GET /api/health 200 in 7ms (next.js: 3ms, application-code: 4ms)
+ GET / 200 in 388ms (next.js: 128ms, application-code: 260ms)
+ GET /api/health 200 in 6ms (next.js: 3ms, application-code: 4ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."username", "public"."User"."role"::text, "public"."User"."passwordHash", "public"."User"."passwordVersion", "public"."User"."isActive", "public"."User"."lastCredentialChangeAt", "public"."User"."createdAt", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."username" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query INSERT INTO "public"."LoginAudit" ("id","userId","loginAt","isOffline","ipAddress","userAgent","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING "public"."LoginAudit"."id", "public"."LoginAudit"."userId", "public"."LoginAudit"."loginAt", "public"."LoginAudit"."isOffline", "public"."LoginAudit"."ipAddress", "public"."LoginAudit"."userAgent", "public"."LoginAudit"."createdAt"
+ POST /api/auth/login 200 in 429ms (next.js: 51ms, application-code: 379ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."username", "public"."User"."role"::text, "public"."User"."isActive", "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+ GET /app 200 in 296ms (next.js: 50ms, application-code: 245ms)
+ GET /api/health 200 in 14ms (next.js: 8ms, application-code: 6ms)
+ GET /api/health 200 in 23ms (next.js: 18ms, application-code: 5ms)
+ GET /app/inventory 200 in 185ms (next.js: 28ms, application-code: 158ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 155ms (next.js: 29ms, application-code: 125ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query BEGIN
+prisma:query SELECT "public"."InventoryMutationEvent"."id_queue" FROM "public"."InventoryMutationEvent" WHERE ("public"."InventoryMutationEvent"."id_queue" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query INSERT INTO "public"."InventoryMutationEvent" ("id_queue","id_transaksi","id_produk","id_user","jenis_mutasi","delta_qty","logical_clock","client_timestamp","createdAt") VALUES ($1,$2,$3,$4,CAST($5::text AS "public"."InventoryMutationType"),$6,$7,$8,$9) RETURNING "public"."InventoryMutationEvent"."id_queue", "public"."InventoryMutationEvent"."id_transaksi", "public"."InventoryMutationEvent"."id_produk", "public"."InventoryMutationEvent"."id_user", "public"."InventoryMutationEvent"."jenis_mutasi"::text, "public"."InventoryMutationEvent"."delta_qty", "public"."InventoryMutationEvent"."logical_clock", "public"."InventoryMutationEvent"."client_timestamp", "public"."InventoryMutationEvent"."createdAt"
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."stok_saat_ini" FROM "public"."Product" WHERE ("public"."Product"."id_produk" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 291ms (next.js: 5ms, application-code: 286ms)
+prisma:query UPDATE "public"."Product" SET "stok_saat_ini" = $1, "last_synced_at" = $2, "updatedAt" = $3 WHERE ("public"."Product"."id_produk" = $4 AND 1=1) RETURNING "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt"
+prisma:query COMMIT
+ POST /api/sync/inventory-deltas 200 in 340ms (next.js: 25ms, application-code: 315ms)
+ GET / 200 in 53ms (next.js: 3ms, application-code: 50ms)
+ GET /api/health 200 in 7ms (next.js: 3ms, application-code: 4ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."username", "public"."User"."role"::text, "public"."User"."passwordHash", "public"."User"."passwordVersion", "public"."User"."isActive", "public"."User"."lastCredentialChangeAt", "public"."User"."createdAt", "public"."User"."updatedAt" FROM "public"."User" WHERE ("public"."User"."username" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query INSERT INTO "public"."LoginAudit" ("id","userId","loginAt","isOffline","ipAddress","userAgent","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING "public"."LoginAudit"."id", "public"."LoginAudit"."userId", "public"."LoginAudit"."loginAt", "public"."LoginAudit"."isOffline", "public"."LoginAudit"."ipAddress", "public"."LoginAudit"."userAgent", "public"."LoginAudit"."createdAt"
+ POST /api/auth/login 200 in 102ms (next.js: 1857µs, application-code: 100ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."username", "public"."User"."role"::text, "public"."User"."isActive", "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+ GET /app 200 in 99ms (next.js: 3ms, application-code: 96ms)
+ GET /api/health 200 in 10ms (next.js: 6ms, application-code: 5ms)
+ GET /app/inventory 200 in 123ms (next.js: 3ms, application-code: 120ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 75ms (next.js: 3ms, application-code: 72ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 67ms (next.js: 2ms, application-code: 64ms)
+prisma:query SELECT 1
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 104ms (next.js: 1858µs, application-code: 102ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 73ms (next.js: 1853µs, application-code: 71ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 72ms (next.js: 3ms, application-code: 69ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT 1
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 101ms (next.js: 1637µs, application-code: 99ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 72ms (next.js: 1534µs, application-code: 71ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 59ms (next.js: 1558µs, application-code: 57ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT 1
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 64ms (next.js: 1814µs, application-code: 62ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query BEGIN
+prisma:query SELECT "public"."InventoryMutationEvent"."id_queue" FROM "public"."InventoryMutationEvent" WHERE ("public"."InventoryMutationEvent"."id_queue" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query INSERT INTO "public"."InventoryMutationEvent" ("id_queue","id_transaksi","id_produk","id_user","jenis_mutasi","delta_qty","logical_clock","client_timestamp","createdAt") VALUES ($1,$2,$3,$4,CAST($5::text AS "public"."InventoryMutationType"),$6,$7,$8,$9) RETURNING "public"."InventoryMutationEvent"."id_queue", "public"."InventoryMutationEvent"."id_transaksi", "public"."InventoryMutationEvent"."id_produk", "public"."InventoryMutationEvent"."id_user", "public"."InventoryMutationEvent"."jenis_mutasi"::text, "public"."InventoryMutationEvent"."delta_qty", "public"."InventoryMutationEvent"."logical_clock", "public"."InventoryMutationEvent"."client_timestamp", "public"."InventoryMutationEvent"."createdAt"
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."stok_saat_ini" FROM "public"."Product" WHERE ("public"."Product"."id_produk" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query UPDATE "public"."Product" SET "stok_saat_ini" = $1, "last_synced_at" = $2, "updatedAt" = $3 WHERE ("public"."Product"."id_produk" = $4 AND 1=1) RETURNING "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt"
+prisma:query COMMIT
+ POST /api/sync/inventory-deltas 200 in 395ms (next.js: 1383µs, application-code: 394ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 63ms (next.js: 4ms, application-code: 59ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 66ms (next.js: 4ms, application-code: 62ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 87ms (next.js: 6ms, application-code: 81ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 70ms (next.js: 2ms, application-code: 68ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 93ms (next.js: 4ms, application-code: 89ms)
+prisma:query SELECT "public"."User"."id", "public"."User"."isActive", "public"."User"."role"::text, "public"."User"."passwordVersion" FROM "public"."User" WHERE ("public"."User"."id" = $1 AND 1=1) LIMIT $2 OFFSET $3
+prisma:query SELECT "public"."Product"."id_produk", "public"."Product"."nama_produk", "public"."Product"."sku", "public"."Product"."harga_jual", "public"."Product"."stok_saat_ini", "public"."Product"."is_active", "public"."Product"."last_synced_at", "public"."Product"."createdAt", "public"."Product"."updatedAt" FROM "public"."Product" WHERE 1=1 ORDER BY "public"."Product"."nama_produk" ASC OFFSET $1
+ GET /api/inventory/products 200 in 72ms (next.js: 4ms, application-code: 67ms)
+[?25h
+[ELIFECYCLE] Command failed with exit code 4294967295.

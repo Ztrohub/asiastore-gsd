@@ -41,6 +41,7 @@ export type AppMetaRecord = {
 };
 
 export type InventoryMutationType = "SALES_OUT" | "STOCK_IN" | "STOCK_ADJUSTMENT";
+export type InventoryMutationUnit = "SMALL" | "LARGE";
 
 export type InventoryMutationEventRecord = {
   id_queue: string;
@@ -48,10 +49,30 @@ export type InventoryMutationEventRecord = {
   id_produk: string;
   id_user: string;
   jenis_mutasi: InventoryMutationType;
+  unit_mutasi: InventoryMutationUnit;
   delta_qty: number;
   logical_clock: number;
   client_timestamp: number;
   createdAt: number;
+};
+
+export type ProductRecord = {
+  id_produk: string;
+  nama_produk: string;
+  sku?: string;
+  harga_jual: number;
+  harga_jual_unit_besar?: number;
+  stok_saat_ini: number;
+  stok_unit_besar_saat_ini?: number;
+  is_active: boolean;
+  unit_small_name?: string;
+  unit_large_name?: string;
+  unit_large_to_small?: number;
+  allow_buy_in_small?: boolean;
+  allow_buy_in_large?: boolean;
+  allow_sell_in_small?: boolean;
+  allow_sell_in_large?: boolean;
+  updatedAt: number;
 };
 
 class LocalPosDatabase extends Dexie {
@@ -60,6 +81,7 @@ class LocalPosDatabase extends Dexie {
   syncQueue!: EntityTable<SyncQueueRecord, "id">;
   appMeta!: EntityTable<AppMetaRecord, "key">;
   inventoryMutationEvents!: EntityTable<InventoryMutationEventRecord, "id_queue">;
+  products!: EntityTable<ProductRecord, "id_produk">;
 
   constructor() {
     super("asiatek-pos-local-db");
@@ -85,6 +107,27 @@ class LocalPosDatabase extends Dexie {
       appMeta: "key",
       inventoryMutationEvents:
         "id_queue, id_transaksi, id_produk, id_user, jenis_mutasi, client_timestamp, logical_clock",
+    });
+    this.version(4).stores({
+      credentialCache: "username, userId, updatedAt, passwordVersion, role",
+      localSessions: "key, username, lastActivityAt, mustReloginAt",
+      syncQueue:
+        "++id, status, attemptCount, nextRetryAt, entityType, entityId, createdAt",
+      appMeta: "key",
+      inventoryMutationEvents:
+        "id_queue, id_transaksi, id_produk, id_user, jenis_mutasi, client_timestamp, logical_clock",
+      products: "id_produk, nama_produk, sku, harga_jual, stok_saat_ini, is_active, updatedAt",
+    });
+    this.version(5).stores({
+      credentialCache: "username, userId, updatedAt, passwordVersion, role",
+      localSessions: "key, username, lastActivityAt, mustReloginAt",
+      syncQueue:
+        "++id, status, attemptCount, nextRetryAt, entityType, entityId, createdAt",
+      appMeta: "key",
+      inventoryMutationEvents:
+        "id_queue, id_transaksi, id_produk, id_user, jenis_mutasi, unit_mutasi, client_timestamp, logical_clock",
+      products:
+        "id_produk, nama_produk, sku, harga_jual, harga_jual_unit_besar, stok_saat_ini, stok_unit_besar_saat_ini, is_active, updatedAt",
     });
   }
 }

@@ -38,6 +38,14 @@ export async function getRetryableInventoryQueue(now = Date.now()) {
     .sortBy("createdAt");
 }
 
+export async function getRetryableQueueByEntity(entityType: string, now = Date.now()) {
+  return offlineDb.syncQueue
+    .where("status")
+    .equals("pending")
+    .and((row) => row.entityType === entityType && row.nextRetryAt <= now)
+    .sortBy("createdAt");
+}
+
 export async function markSendFailed(id: number) {
   const current = await offlineDb.syncQueue.get(id);
   if (!current) return;
@@ -62,11 +70,29 @@ export async function markFailed(id: number) {
   await offlineDb.syncQueue.update(id, { status: "failed" });
 }
 
-export async function reviveFailedInventoryQueue(now = Date.now()) {
+type ReviveFailedQueueOptions = {
+  now?: number;
+  entityTypes?: string[];
+  minAttemptCount?: number;
+};
+
+export async function reviveFailedQueue(options?: ReviveFailedQueueOptions) {
+  const now = options?.now ?? Date.now();
+  const minAttemptCount = options?.minAttemptCount ?? 0;
+  const entityTypes = options?.entityTypes ?? [];
+
   const failedRows = await offlineDb.syncQueue
     .where("status")
     .equals("failed")
-    .and((row) => row.entityType === "inventory_mutation")
+    .and((row) => {
+      if (row.attemptCount < minAttemptCount) {
+        return false;
+      }
+      if (entityTypes.length === 0) {
+        return true;
+      }
+      return entityTypes.includes(row.entityType);
+    })
     .toArray();
 
   await Promise.all(
@@ -81,4 +107,11 @@ export async function reviveFailedInventoryQueue(now = Date.now()) {
   );
 
   return failedRows.length;
+}
+
+export async function reviveFailedInventoryQueue(now = Date.now()) {
+  return reviveFailedQueue({
+    now,
+    entityTypes: ["inventory_mutation"],
+  });
 }

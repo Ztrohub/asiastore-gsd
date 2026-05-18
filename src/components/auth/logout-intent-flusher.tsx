@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { offlineDb } from "@/lib/offline/db";
 
+const LOGOUT_INTENT_FLUSH_POLL_MS = 30_000;
+
 export function LogoutIntentFlusher() {
   const router = useRouter();
 
@@ -53,7 +55,7 @@ export function LogoutIntentFlusher() {
     window.addEventListener("online", onOnline);
     const timer = window.setInterval(() => {
       flushIfNeeded().catch(() => undefined);
-    }, 5000);
+    }, LOGOUT_INTENT_FLUSH_POLL_MS);
 
     return () => {
       cancelled = true;

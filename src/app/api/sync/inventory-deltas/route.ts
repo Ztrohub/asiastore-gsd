@@ -8,6 +8,7 @@ type SyncDeltaBody = {
   events?: InventoryDeltaEvent[];
 };
 const ALLOWED_MUTATION_TYPES = new Set(["SALES_OUT", "STOCK_IN", "STOCK_ADJUSTMENT"]);
+const ALLOWED_MUTATION_UNITS = new Set(["SMALL", "LARGE"]);
 const MAX_SYNC_EVENTS_PER_BATCH = 200;
 
 export async function POST(request: NextRequest) {
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
       !event.id_transaksi ||
       !event.id_user ||
       !ALLOWED_MUTATION_TYPES.has(event.jenis_mutasi) ||
+      (event.unit_mutasi !== undefined && !ALLOWED_MUTATION_UNITS.has(event.unit_mutasi)) ||
       !Number.isInteger(event.delta_qty) ||
       !Number.isInteger(event.logical_clock) ||
       event.logical_clock < 0 ||

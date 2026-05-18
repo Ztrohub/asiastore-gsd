@@ -7,6 +7,7 @@ export type InventoryDeltaEvent = {
   id_produk: string;
   id_user?: string;
   jenis_mutasi: "SALES_OUT" | "STOCK_IN" | "STOCK_ADJUSTMENT";
+  unit_mutasi?: "SMALL" | "LARGE";
   delta_qty: number;
   logical_clock: number;
   received_seq: number;
@@ -21,9 +22,20 @@ type ReplayResult = {
   orderingPolicy: "fifo_server_receive_then_client_timestamp";
 };
 
-const KNOWN_REPLAY_FAILURE_REASONS = new Set(["MISSING_USER_ID"]);
+const KNOWN_REPLAY_FAILURE_REASONS = new Set([
+  "MISSING_USER_ID",
+  "PRODUCT_NOT_FOUND",
+  "OUT_OF_STOCK_SMALL",
+  "OUT_OF_STOCK_LARGE",
+]);
 
 function mapReplayFailureReason(error: unknown): string {
+  if (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2025"
+  ) {
+    return "PRODUCT_NOT_FOUND";
+  }
   if (!(error instanceof Error)) {
     return "REPLAY_WRITE_FAILED";
   }
@@ -86,12 +98,51 @@ export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): P
               id_produk: event.id_produk,
               id_user: event.id_user,
               jenis_mutasi: event.jenis_mutasi,
+              unit_mutasi: event.unit_mutasi ?? "SMALL",
               delta_qty: event.delta_qty,
               logical_clock: event.logical_clock,
               client_timestamp: new Date(event.client_timestamp),
             },
           });
-          finalStockByProduct[event.id_produk] = (finalStockByProduct[event.id_produk] ?? 0) + event.delta_qty;
+
+          const currentProduct = await tx.product.findUnique({
+            where: { id_produk: event.id_produk },
+            select: { stok_saat_ini: true, stok_unit_besar_saat_ini: true },
+          });
+          if (!currentProduct) {
+            throw new Error("PRODUCT_NOT_FOUND");
+          }
+
+          const mutationUnit = event.unit_mutasi ?? "SMALL";
+          const currentSmallStock = Math.max(0, Math.trunc(currentProduct.stok_saat_ini));
+          const currentLargeStock = Math.max(
+            0,
+            Math.trunc(currentProduct.stok_unit_besar_saat_ini ?? 0),
+          );
+          let nextSmallStock = currentSmallStock;
+          let nextLargeStock = currentLargeStock;
+
+          if (mutationUnit === "SMALL") {
+            nextSmallStock = currentSmallStock + event.delta_qty;
+            if (nextSmallStock < 0) {
+              throw new Error("OUT_OF_STOCK_SMALL");
+            }
+          } else {
+            nextLargeStock = currentLargeStock + event.delta_qty;
+            if (nextLargeStock < 0) {
+              throw new Error("OUT_OF_STOCK_LARGE");
+            }
+          }
+
+          await tx.product.update({
+            where: { id_produk: event.id_produk },
+            data: {
+              stok_saat_ini: nextSmallStock,
+              stok_unit_besar_saat_ini: nextLargeStock,
+              last_synced_at: new Date(event.client_timestamp),
+            },
+          });
+          finalStockByProduct[event.id_produk] = nextSmallStock;
           appliedOrder.push(event.id_queue);
         }
         acks.push({ id_queue: event.id_queue, status: "acked" });
