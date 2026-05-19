@@ -12,11 +12,13 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { InventorySyncBootstrap } from "@/features/inventory/components/inventory-sync-bootstrap";
+import { PosSyncBootstrap } from "@/features/pos/components/pos-sync-bootstrap";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <InventorySyncBootstrap />
+      <PosSyncBootstrap />
       <header className="border-b border-border">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">

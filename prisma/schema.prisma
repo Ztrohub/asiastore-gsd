@@ -50,6 +50,11 @@ enum InventoryMutationUnit {
   LARGE
 }
 
+enum PosPaymentMethod {
+  CASH
+  BANK_TRANSFER
+}
+
 model InventoryMutationEvent {
   id_queue         String                @id
   id_transaksi     String
@@ -88,4 +93,41 @@ model Product {
 
   @@index([nama_produk])
   @@index([is_active])
+}
+
+model PosTransaction {
+  id_transaksi      String           @id
+  short_id          String           @unique
+  kasir_user_id     String
+  kasir_username    String
+  payment_method    PosPaymentMethod
+  subtotal_amount   Int
+  item_discount     Int @default(0)
+  order_discount    Int @default(0)
+  total_amount      Int
+  amount_received   Int?
+  change_amount     Int?
+  counts_for_cash   Boolean          @default(true)
+  note              String?
+  client_timestamp  DateTime
+  createdAt         DateTime         @default(now())
+  lines             PosTransactionLine[]
+
+  @@index([client_timestamp])
+  @@index([payment_method, client_timestamp])
+}
+
+model PosTransactionLine {
+  id                 String         @id @default(cuid())
+  id_transaksi       String
+  id_produk          String
+  nama_produk        String
+  unit_price         Int
+  qty                Float
+  line_discount      Int @default(0)
+  line_total         Int
+  createdAt          DateTime @default(now())
+  transaction        PosTransaction @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade)
+
+  @@index([id_transaksi])
 }

@@ -7,6 +7,7 @@ import {
   buildStockInMutationEvent,
   type MutationBuilderInput,
 } from "@/lib/inventory/mutation-event";
+import { normalizeQuantityInput } from "@/lib/inventory/quantity";
 
 type MutationKind = "STOCK_IN" | "STOCK_ADJUSTMENT";
 
@@ -22,6 +23,7 @@ export async function persistStockMutation(input: StockMutationInput) {
 
   const baseInput: MutationBuilderInput = {
     ...input,
+    delta_qty: input.jenis_mutasi === "STOCK_IN" ? normalizeQuantityInput(String(input.delta_qty)) : input.delta_qty,
     id_user: activeSession.userId,
   };
   const event =
@@ -41,18 +43,15 @@ export async function persistStockMutation(input: StockMutationInput) {
       }
 
       const targetUnit = event.unit_mutasi ?? "SMALL";
-      const currentSmallStock = Math.max(0, Math.trunc(currentProduct.stok_saat_ini));
-      const currentLargeStock = Math.max(
-        0,
-        Math.trunc(currentProduct.stok_unit_besar_saat_ini ?? 0),
-      );
+      const currentSmallStock = currentProduct.stok_saat_ini;
+      const currentLargeStock = currentProduct.stok_unit_besar_saat_ini ?? 0;
       const nextSmallStock =
         targetUnit === "SMALL"
-          ? Math.max(0, currentSmallStock + event.delta_qty)
+          ? currentSmallStock + event.delta_qty
           : currentSmallStock;
       const nextLargeStock =
         targetUnit === "LARGE"
-          ? Math.max(0, currentLargeStock + event.delta_qty)
+          ? currentLargeStock + event.delta_qty
           : currentLargeStock;
       await offlineDb.products.put({
         ...currentProduct,

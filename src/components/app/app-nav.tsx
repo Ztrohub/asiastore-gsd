@@ -8,6 +8,8 @@ export function AppNav() {
   const pathname = usePathname();
   const dashboardActive = pathname === "/app";
   const inventoryActive = pathname.startsWith("/app/inventory");
+  const posActive = pathname.startsWith("/app/pos");
+  const printerActive = pathname.startsWith("/app/settings/printer");
 
   return (
     <nav className="space-y-2 text-sm">
@@ -20,7 +22,15 @@ export function AppNav() {
       >
         Dashboard
       </Link>
-      <p className="rounded-md px-3 py-2 text-muted-foreground">POS (phase berikutnya)</p>
+      <Link
+        className={cn(
+          "block rounded-md px-3 py-2 hover:bg-muted",
+          posActive && "bg-primary/10 font-medium",
+        )}
+        href="/app/pos"
+      >
+        POS
+      </Link>
       <Link
         className={cn(
           "block rounded-md px-3 py-2 hover:bg-muted",
@@ -29,6 +39,15 @@ export function AppNav() {
         href="/app/inventory"
       >
         Inventori
+      </Link>
+      <Link
+        className={cn(
+          "block rounded-md px-3 py-2 hover:bg-muted",
+          printerActive && "bg-primary/10 font-medium",
+        )}
+        href="/app/settings/printer"
+      >
+        Printer Bridge
       </Link>
     </nav>
   );

@@ -1,0 +1,44 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import { PosReceiptPrompt } from "@/features/pos/components/pos-receipt-prompt";
+
+describe("receipt prompt flow", () => {
+  it("defaults to Print and supports arrow key navigation", async () => {
+    const user = userEvent.setup();
+    const onPrint = vi.fn();
+    const onSkip = vi.fn();
+    render(
+      <PosReceiptPrompt
+        onPrint={onPrint}
+        onSkip={onSkip}
+        open
+        printError={null}
+        printing={false}
+      />,
+    );
+    const printButton = screen.getByRole("button", { name: "Print" });
+    expect(printButton).toHaveClass("ring-2");
+
+    await user.keyboard("{Enter}");
+    expect(onPrint).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{Enter}");
+    expect(onSkip).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows error without retry control", () => {
+    render(
+      <PosReceiptPrompt
+        onPrint={vi.fn()}
+        onSkip={vi.fn()}
+        open
+        printError="Print gagal. Silakan cek printer."
+        printing={false}
+      />,
+    );
+    expect(screen.getByText("Print gagal. Silakan cek printer.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+  });
+});

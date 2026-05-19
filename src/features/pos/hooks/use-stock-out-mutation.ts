@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { offlineDb, type InventoryMutationUnit } from "@/lib/offline/db";
 import { buildSalesOutMutationEvent, type MutationBuilderInput } from "@/lib/inventory/mutation-event";
+import { normalizeQuantityInput } from "@/lib/inventory/quantity";
 
 type StockOutInput = Omit<MutationBuilderInput, "id_user" | "delta_qty"> & {
   delta_qty: number;
@@ -27,19 +28,10 @@ export async function persistStockOutMutation(input: StockOutInput) {
         throw new Error("Produk tidak ditemukan.");
       }
 
-      const quantity = Math.max(1, Math.trunc(Math.abs(input.delta_qty) || 0));
+      const quantity = normalizeQuantityInput(String(Math.abs(input.delta_qty)));
       const mutationUnit = input.unit_mutasi ?? "SMALL";
-      const currentSmallStock = Math.max(0, Math.trunc(currentProduct.stok_saat_ini));
-      const currentLargeStock = Math.max(
-        0,
-        Math.trunc(currentProduct.stok_unit_besar_saat_ini ?? 0),
-      );
-      if (mutationUnit === "SMALL" && currentSmallStock < quantity) {
-        throw new Error("Stok unit kecil tidak mencukupi.");
-      }
-      if (mutationUnit === "LARGE" && currentLargeStock < quantity) {
-        throw new Error("Stok unit besar tidak mencukupi.");
-      }
+      const currentSmallStock = currentProduct.stok_saat_ini;
+      const currentLargeStock = currentProduct.stok_unit_besar_saat_ini ?? 0;
 
       const deltaQty = -quantity;
       const event = buildSalesOutMutationEvent({
@@ -51,11 +43,11 @@ export async function persistStockOutMutation(input: StockOutInput) {
 
       const nextSmallStock =
         mutationUnit === "SMALL"
-          ? Math.max(0, currentSmallStock + deltaQty)
+          ? currentSmallStock + deltaQty
           : currentSmallStock;
       const nextLargeStock =
         mutationUnit === "LARGE"
-          ? Math.max(0, currentLargeStock + deltaQty)
+          ? currentLargeStock + deltaQty
           : currentLargeStock;
       await offlineDb.products.put({
         ...currentProduct,

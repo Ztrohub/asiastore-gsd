@@ -75,6 +75,38 @@ export type ProductRecord = {
   updatedAt: number;
 };
 
+export type PosPaymentMethod = "cash" | "bank_transfer";
+
+export type PosTransactionLineRecord = {
+  id_produk: string;
+  nama_produk: string;
+  unit_price: number;
+  qty: number;
+  unit_mutasi?: InventoryMutationUnit;
+  unit_label?: string;
+  line_discount: number;
+  line_total: number;
+};
+
+export type PosTransactionRecord = {
+  id_transaksi: string;
+  short_id: string;
+  kasir_user_id: string;
+  kasir_username: string;
+  payment_method: PosPaymentMethod;
+  subtotal_amount: number;
+  item_discount: number;
+  order_discount: number;
+  total_amount: number;
+  amount_received?: number;
+  change_amount?: number;
+  counts_for_cash: boolean;
+  note?: string;
+  lines: PosTransactionLineRecord[];
+  client_timestamp: number;
+  createdAt: number;
+};
+
 class LocalPosDatabase extends Dexie {
   credentialCache!: EntityTable<CredentialCacheRecord, "username">;
   localSessions!: EntityTable<LocalSessionRecord, "key">;
@@ -82,6 +114,7 @@ class LocalPosDatabase extends Dexie {
   appMeta!: EntityTable<AppMetaRecord, "key">;
   inventoryMutationEvents!: EntityTable<InventoryMutationEventRecord, "id_queue">;
   products!: EntityTable<ProductRecord, "id_produk">;
+  posTransactions!: EntityTable<PosTransactionRecord, "id_transaksi">;
 
   constructor() {
     super("asiatek-pos-local-db");
@@ -128,6 +161,18 @@ class LocalPosDatabase extends Dexie {
         "id_queue, id_transaksi, id_produk, id_user, jenis_mutasi, unit_mutasi, client_timestamp, logical_clock",
       products:
         "id_produk, nama_produk, sku, harga_jual, harga_jual_unit_besar, stok_saat_ini, stok_unit_besar_saat_ini, is_active, updatedAt",
+    });
+    this.version(6).stores({
+      credentialCache: "username, userId, updatedAt, passwordVersion, role",
+      localSessions: "key, username, lastActivityAt, mustReloginAt",
+      syncQueue:
+        "++id, status, attemptCount, nextRetryAt, entityType, entityId, createdAt",
+      appMeta: "key",
+      inventoryMutationEvents:
+        "id_queue, id_transaksi, id_produk, id_user, jenis_mutasi, unit_mutasi, client_timestamp, logical_clock",
+      products:
+        "id_produk, nama_produk, sku, harga_jual, harga_jual_unit_besar, stok_saat_ini, stok_unit_besar_saat_ini, is_active, updatedAt",
+      posTransactions: "id_transaksi, short_id, payment_method, counts_for_cash, client_timestamp, createdAt",
     });
   }
 }
