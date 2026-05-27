@@ -15,13 +15,13 @@ type ProductPayload = {
   nama_produk?: string;
   sku?: string;
   harga_jual?: number;
-  harga_jual_unit_besar?: number;
+  harga_jual_unit_besar?: number | null;
   stok_saat_ini?: number;
-  stok_unit_besar_saat_ini?: number;
+  stok_unit_besar_saat_ini?: number | null;
   is_active?: boolean;
   unit_small_name?: string;
-  unit_large_name?: string;
-  unit_large_to_small?: number;
+  unit_large_name?: string | null;
+  unit_large_to_small?: number | null;
   allow_buy_in_small?: boolean;
   allow_buy_in_large?: boolean;
   allow_sell_in_small?: boolean;
@@ -44,41 +44,53 @@ async function authorizeSession() {
   return session;
 }
 
+function optionalNumber(value: number | null | undefined) {
+  return typeof value === "number" ? value : undefined;
+}
+
+function optionalString(value: string | null | undefined) {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
 function isValidProductPayload(product: ProductPayload) {
   if (!product.nama_produk?.trim()) return false;
   if (!Number.isInteger(product.harga_jual)) return false;
   if ((product.harga_jual ?? 0) < 100 || (product.harga_jual ?? 0) > 999999999) return false;
+  const hargaJualUnitBesar = optionalNumber(product.harga_jual_unit_besar);
   if (
-    product.harga_jual_unit_besar !== undefined &&
-    (!Number.isInteger(product.harga_jual_unit_besar) ||
-      product.harga_jual_unit_besar < 100 ||
-      product.harga_jual_unit_besar > 999999999)
+    product.harga_jual_unit_besar != null &&
+    (hargaJualUnitBesar === undefined ||
+      hargaJualUnitBesar < 100 ||
+      hargaJualUnitBesar > 999999999)
   ) {
     return false;
   }
   if (!Number.isInteger(product.stok_saat_ini)) return false;
+  const stokUnitBesarSaatIni = optionalNumber(product.stok_unit_besar_saat_ini);
   if (
-    product.stok_unit_besar_saat_ini !== undefined &&
-    (!Number.isInteger(product.stok_unit_besar_saat_ini) || product.stok_unit_besar_saat_ini < 0)
+    product.stok_unit_besar_saat_ini != null &&
+    (stokUnitBesarSaatIni === undefined || stokUnitBesarSaatIni < 0)
   ) {
     return false;
   }
   if (typeof product.is_active !== "boolean") return false;
   if (product.sku && product.sku.length > 64) return false;
 
-  const smallUnitName = product.unit_small_name?.trim();
+  const smallUnitName = optionalString(product.unit_small_name);
   if (product.unit_small_name !== undefined && !smallUnitName) return false;
   if (smallUnitName && smallUnitName.length > 24) return false;
 
-  const largeUnitName = product.unit_large_name?.trim();
-  if (product.unit_large_name !== undefined && product.unit_large_name.length > 0 && !largeUnitName) return false;
+  const largeUnitName = optionalString(product.unit_large_name);
+  if (product.unit_large_name != null && product.unit_large_name.length > 0 && !largeUnitName) return false;
   if (largeUnitName && largeUnitName.length > 24) return false;
 
   const hasLargeUnit = Boolean(largeUnitName);
+  const unitLargeToSmall = optionalNumber(product.unit_large_to_small);
   if (hasLargeUnit) {
-    if (!Number.isInteger(product.unit_large_to_small)) return false;
-    if ((product.unit_large_to_small ?? 0) < 2) return false;
-  } else if (product.unit_large_to_small !== undefined) {
+    if (unitLargeToSmall === undefined) return false;
+    if ((unitLargeToSmall ?? 0) < 2) return false;
+  } else if (product.unit_large_to_small != null) {
     return false;
   }
 
@@ -102,7 +114,7 @@ function isValidProductPayload(product: ProductPayload) {
   if (!allowBuyInSmall && !allowBuyInLarge) return false;
   if (!allowSellInSmall && !allowSellInLarge) return false;
   if ((allowBuyInLarge || allowSellInLarge) && !hasLargeUnit) return false;
-  if (!hasLargeUnit && product.harga_jual_unit_besar !== undefined) return false;
+  if (!hasLargeUnit && hargaJualUnitBesar !== undefined) return false;
 
   return true;
 }
@@ -175,13 +187,13 @@ export async function POST(request: NextRequest) {
         nama_produk: item.nama_produk!.trim(),
         sku: item.sku?.trim() || undefined,
         harga_jual: item.harga_jual!,
-        harga_jual_unit_besar: item.harga_jual_unit_besar,
+        harga_jual_unit_besar: optionalNumber(item.harga_jual_unit_besar),
         stok_saat_ini: item.stok_saat_ini!,
-        stok_unit_besar_saat_ini: item.stok_unit_besar_saat_ini ?? 0,
+        stok_unit_besar_saat_ini: optionalNumber(item.stok_unit_besar_saat_ini) ?? 0,
         is_active: item.is_active!,
         unit_small_name: item.unit_small_name?.trim() || undefined,
-        unit_large_name: item.unit_large_name?.trim() || undefined,
-        unit_large_to_small: item.unit_large_to_small,
+        unit_large_name: optionalString(item.unit_large_name),
+        unit_large_to_small: optionalNumber(item.unit_large_to_small),
         allow_buy_in_small: item.allow_buy_in_small,
         allow_buy_in_large: item.allow_buy_in_large,
         allow_sell_in_small: item.allow_sell_in_small,

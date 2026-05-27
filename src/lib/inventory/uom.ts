@@ -5,24 +5,29 @@ export type UomFlow = "purchase" | "sale";
 
 const DEFAULT_SMALL_UNIT = "pcs";
 
-function normalizeUnitName(value: string | undefined, fallback: string) {
+function normalizeUnitName(value: string | null | undefined, fallback: string) {
   const normalized = value?.trim();
   return normalized ? normalized : fallback;
 }
 
-function normalizeLargeUnitName(value: string | undefined) {
+function normalizeLargeUnitName(value: string | null | undefined) {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
 }
 
-function normalizeLargeFactor(value: number | undefined) {
+function normalizeLargeFactor(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isInteger(value)) return null;
   if (value < 2) return null;
   return value;
 }
 
-function normalizeFlag(value: boolean | undefined, fallback: boolean) {
+function normalizeFlag(value: boolean | null | undefined, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function normalizeOptionalInteger(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isInteger(value)) return undefined;
+  return value;
 }
 
 export function normalizeProductUom(product: ProductRecord): ProductRecord {
@@ -42,10 +47,10 @@ export function normalizeProductUom(product: ProductRecord): ProductRecord {
 
   const allowBuySmall = rawAllowBuySmall || !allowBuyLarge;
   const allowSellSmall = rawAllowSellSmall || !allowSellLarge;
-  const largeSalePrice =
-    allowSellLarge && !Number.isInteger(product.harga_jual_unit_besar)
-      ? product.harga_jual
-      : product.harga_jual_unit_besar;
+  const normalizedLargeSalePrice = normalizeOptionalInteger(product.harga_jual_unit_besar);
+  const largeSalePrice = allowSellLarge
+    ? (normalizedLargeSalePrice ?? product.harga_jual)
+    : undefined;
 
   return {
     ...product,

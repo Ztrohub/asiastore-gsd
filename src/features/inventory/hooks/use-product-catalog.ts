@@ -93,6 +93,15 @@ function validateOptionalPrice(harga: number | undefined) {
   validatePrice(harga);
 }
 
+function optionalNumber(value: number | null | undefined) {
+  return typeof value === "number" ? value : undefined;
+}
+
+function optionalString(value: string | null | undefined) {
+  const normalized = value?.trim();
+  return normalized ? normalized : undefined;
+}
+
 async function queueProductSync(product: ProductRecord) {
   return enqueueDelta({
     entityType: "inventory_product",
@@ -153,7 +162,7 @@ export async function persistProductCatalog(input: ProductInput) {
       input.sku === undefined ? existing?.sku : input.sku.trim() || undefined,
     harga_jual: input.harga_jual,
     harga_jual_unit_besar:
-      input.harga_jual_unit_besar ?? existing?.harga_jual_unit_besar,
+      input.harga_jual_unit_besar ?? optionalNumber(existing?.harga_jual_unit_besar),
     stok_saat_ini: Math.max(0, Math.trunc(input.stok_saat_ini ?? existing?.stok_saat_ini ?? 0)),
     stok_unit_besar_saat_ini: Math.max(
       0,
@@ -161,9 +170,9 @@ export async function persistProductCatalog(input: ProductInput) {
     ),
     is_active: input.is_active ?? existing?.is_active ?? true,
     unit_small_name: input.unit_small_name ?? existing?.unit_small_name,
-    unit_large_name: input.unit_large_name ?? existing?.unit_large_name,
+    unit_large_name: input.unit_large_name ?? optionalString(existing?.unit_large_name),
     unit_large_to_small:
-      input.unit_large_to_small ?? existing?.unit_large_to_small,
+      input.unit_large_to_small ?? optionalNumber(existing?.unit_large_to_small),
     allow_buy_in_small:
       input.allow_buy_in_small ?? existing?.allow_buy_in_small,
     allow_buy_in_large:
