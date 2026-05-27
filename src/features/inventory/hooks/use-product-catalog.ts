@@ -27,11 +27,15 @@ type ProductInput = {
 const PRODUCT_SYNC_CURSOR_KEY = "inventory_products_last_sync_cursor";
 const PRODUCT_CATALOG_POLL_MS = 30_000;
 const PRODUCT_SYNC_CURSOR_OVERLAP_MS = 1_000;
+const PRODUCT_SYNC_CURSOR_FUTURE_TOLERANCE_MS = 5 * 60 * 1_000;
 
 async function getProductSyncCursor() {
   const cursorMeta = await offlineDb.appMeta.get(PRODUCT_SYNC_CURSOR_KEY);
   const parsed = Number(cursorMeta?.value ?? "");
   if (!Number.isInteger(parsed) || parsed < 0) {
+    return undefined;
+  }
+  if (parsed > Date.now() + PRODUCT_SYNC_CURSOR_FUTURE_TOLERANCE_MS) {
     return undefined;
   }
   return parsed;
@@ -64,6 +68,15 @@ export function normalizeUpdatedAt(value: unknown) {
     if (!Number.isNaN(parsed)) return parsed;
   }
   return Date.now();
+}
+
+function parseUpdatedAtForCursor(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return undefined;
 }
 
 function validatePrice(harga: number) {
@@ -212,9 +225,9 @@ export function useProductCatalog() {
         };
         const serverProducts = payload.products;
         if (!payload.ok || !serverProducts) return;
-        const serverUpdatedAts = serverProducts.map((product) =>
-          normalizeUpdatedAt(product.updatedAt),
-        );
+        const serverUpdatedAts = serverProducts
+          .map((product) => parseUpdatedAtForCursor(product.updatedAt))
+          .filter((value): value is number => typeof value === "number");
         const maxFromRows =
           serverUpdatedAts.length > 0 ? Math.max(...serverUpdatedAts) : undefined;
         const nextCursor =
