@@ -97,12 +97,26 @@ describe("server product upsert conflict handling", () => {
     expect(findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
-          updatedAt: {
-            gt: new Date(1779000000000),
-          },
+          OR: [
+            { createdAt: { gt: new Date(1779000000000) } },
+            { updatedAt: { gt: new Date(1779000000000) } },
+            { last_synced_at: { gt: new Date(1779000000000) } },
+          ],
         },
       }),
     );
+  });
+
+  it("uses the latest product change timestamp across created, updated, and synced times", async () => {
+    const { getProductChangeTime } = await import("@/lib/db/product-catalog");
+
+    expect(
+      getProductChangeTime({
+        createdAt: new Date(1779000000000),
+        updatedAt: new Date(1779000001000),
+        last_synced_at: new Date(1779000005000),
+      }),
+    ).toBe(1779000005000);
   });
 
   it("lists full products when cursor is not provided", async () => {

@@ -4,6 +4,7 @@ import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { decodeSession, SESSION_COOKIE_NAME } from "@/lib/auth/server-session";
 import { prisma } from "@/lib/db/prisma";
 import {
+  getProductChangeTime,
   listProducts,
   ProductCatalogConflictError,
   upsertProduct,
@@ -132,10 +133,15 @@ export async function GET(request: NextRequest) {
   const products = await listProducts({ updatedAfterMs: updatedAfter });
   const cursor =
     products.length > 0
-      ? Math.max(...products.map((product: { updatedAt: Date }) => product.updatedAt.getTime()))
+      ? Math.max(...products.map(getProductChangeTime))
       : (updatedAfter ?? 0);
 
-  return NextResponse.json({ ok: true, products, cursor });
+  const responseProducts = products.map((product) => ({
+    ...product,
+    updatedAt: new Date(getProductChangeTime(product)),
+  }));
+
+  return NextResponse.json({ ok: true, products: responseProducts, cursor });
 }
 
 export async function POST(request: NextRequest) {

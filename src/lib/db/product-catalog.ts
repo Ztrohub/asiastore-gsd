@@ -23,6 +23,12 @@ export type ProductListParams = {
   updatedAfterMs?: number;
 };
 
+type ProductChangeTimestamps = {
+  createdAt: Date;
+  updatedAt: Date;
+  last_synced_at: Date | null;
+};
+
 export class ProductCatalogConflictError extends Error {
   readonly code = "SKU_CONFLICT";
   readonly sku: string;
@@ -93,19 +99,35 @@ function isStaleUpdate(updatedAt: number | undefined, lastSyncedAt: Date | null)
   return Boolean(lastSyncedAt && updatedAt && updatedAt < lastSyncedAt.getTime());
 }
 
+export function getProductChangeTime(product: ProductChangeTimestamps) {
+  return Math.max(
+    product.createdAt.getTime(),
+    product.updatedAt.getTime(),
+    product.last_synced_at?.getTime() ?? 0,
+  );
+}
+
 export async function listProducts(params?: ProductListParams) {
   const updatedAfterMs = params?.updatedAfterMs;
   const hasUpdatedAfter = Number.isFinite(updatedAfterMs);
 
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where: hasUpdatedAfter
       ? {
-          updatedAt: {
-            gt: new Date(updatedAfterMs!),
-          },
+          OR: [
+            { createdAt: { gt: new Date(updatedAfterMs!) } },
+            { updatedAt: { gt: new Date(updatedAfterMs!) } },
+            { last_synced_at: { gt: new Date(updatedAfterMs!) } },
+          ],
         }
       : undefined,
     orderBy: [{ updatedAt: "asc" }, { nama_produk: "asc" }],
+  });
+
+  return products.sort((a, b) => {
+    const byChangeTime = getProductChangeTime(a) - getProductChangeTime(b);
+    if (byChangeTime !== 0) return byChangeTime;
+    return a.nama_produk.localeCompare(b.nama_produk);
   });
 }
 
