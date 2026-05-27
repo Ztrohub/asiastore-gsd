@@ -5,3 +5,8 @@
 ✓ Ready in 5.0s
 
  GET /api/health 200 in 951ms (next.js: 925ms, application-code: 26ms)
+ GET / 200 in 1577ms (next.js: 491ms, application-code: 1087ms)
+ GET /manifest.webmanifest 200 in 226ms (next.js: 197ms, application-code: 29ms)
+ GET /api/health 200 in 276ms (next.js: 251ms, application-code: 25ms)
+ GET /icon-192.png 404 in 927ms (next.js: 465ms, application-code: 463ms)
+ GET /icon-512.png 404 in 425ms (next.js: 19ms, application-code: 406ms)

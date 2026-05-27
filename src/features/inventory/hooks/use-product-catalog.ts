@@ -98,7 +98,8 @@ function getPendingLocalProductLocks(queueRows: SyncQueueRecord[]) {
   const pendingMutationProductIds = new Set<string>();
 
   for (const row of queueRows) {
-    if (row.status === "acked") continue;
+    const hasBlockingLocalSync = row.status === "pending" || row.status === "sent";
+    if (!hasBlockingLocalSync) continue;
     if (row.entityType === "inventory_product") {
       pendingProductIds.add(row.entityId);
       continue;
@@ -224,7 +225,9 @@ export function useProductCatalog() {
           .where("entityType")
           .anyOf("inventory_product", "inventory_mutation")
           .toArray();
-        const unresolvedLocalDeltas = queueRows.filter((row) => row.status !== "acked").length;
+        const unresolvedLocalDeltas = queueRows.filter(
+          (row) => row.status === "pending" || row.status === "sent",
+        ).length;
         const { pendingProductIds, pendingMutationProductIds } =
           getPendingLocalProductLocks(queueRows);
 
