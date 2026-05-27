@@ -1,6 +1,6 @@
 "use client";
 
-import { getRetryableQueueByEntity, markAcked, markFailed, markSendFailed } from "@/lib/offline/sync-queue";
+import { getRetryableQueueByEntity, markAcked, markFailed, markSendFailed, reviveFailedQueue } from "@/lib/offline/sync-queue";
 import { postPosTransactions } from "@/lib/offline/pos-sync-transport";
 import { InventorySyncTransportError } from "@/lib/offline/inventory-sync-transport";
 
@@ -51,13 +51,23 @@ export async function runPosSyncPass() {
       if (ack?.status === "acked") {
         await markAcked(row.id);
       } else {
-        await markFailed(row.id, {
+        const meta = {
           reason: "Server tidak mengonfirmasi transaksi POS.",
           code: "ACK_MISSING",
-        });
+        };
+        await markSendFailed(row.id, meta);
+        await markFailed(row.id, meta);
       }
     } catch (error) {
       await markSendFailed(row.id, buildPosFailureMeta(error));
     }
   }
+}
+
+export async function retryPosSyncNow() {
+  await reviveFailedQueue({
+    entityTypes: ["pos_transaction"],
+    minAttemptCount: 0,
+  });
+  await runPosSyncPass();
 }

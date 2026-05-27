@@ -151,6 +151,22 @@ export async function reviveFailedInventoryQueue(now = Date.now()) {
   });
 }
 
+export async function requeueSyncItem(id: number, now = Date.now()) {
+  const current = await offlineDb.syncQueue.get(id);
+  if (!current) return false;
+
+  await offlineDb.syncQueue.update(id, {
+    status: "pending",
+    nextRetryAt: now,
+    lastAttemptAt: undefined,
+    lastErrorReason: undefined,
+    lastErrorCode: undefined,
+    lastErrorAt: undefined,
+  });
+
+  return true;
+}
+
 function formatRetryTime(timestamp: number) {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
@@ -168,6 +184,9 @@ export function resolveUnsyncedQueueReason(row: SyncQueueRecord, now = Date.now(
     return row.lastErrorReason.trim();
   }
   if (row.status === "failed") {
+    if (row.attemptCount === 0) {
+      return "Gagal sinkronisasi (data lama tanpa detail error). Gunakan tombol Retry untuk coba ulang.";
+    }
     return "Sinkronisasi gagal dan memerlukan pengecekan manual.";
   }
   if (row.nextRetryAt > now && row.attemptCount > 0) {

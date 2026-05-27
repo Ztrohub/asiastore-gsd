@@ -4,3 +4,4 @@
 - Environments: .env
 ✓ Ready in 5.0s
 
+ GET /api/health 200 in 951ms (next.js: 925ms, application-code: 26ms)

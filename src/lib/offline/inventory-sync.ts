@@ -7,7 +7,6 @@ import {
   markFailed,
   markSendFailed,
   reviveFailedQueue,
-  reviveFailedInventoryQueue,
 } from "@/lib/offline/sync-queue";
 import {
   InventorySyncTransportError,
@@ -147,6 +146,11 @@ function buildAckFailureMeta(reason?: string) {
   };
 }
 
+async function failWithoutRetry(queueId: number, meta: { reason: string; code: string }) {
+  await markSendFailed(queueId, meta);
+  await markFailed(queueId, meta);
+}
+
 async function refreshSyncStatus() {
   const queueRows = await offlineDb.syncQueue
     .where("entityType")
@@ -216,7 +220,7 @@ async function runOnePass() {
         await markAcked(row.id);
       } catch (error) {
         if (!shouldRetryTransportError(error)) {
-          await markFailed(row.id, buildTransportFailureMeta(error));
+          await failWithoutRetry(row.id, buildTransportFailureMeta(error));
           continue;
         }
         if (!isRuntimeOnline()) {
@@ -258,7 +262,7 @@ async function runOnePass() {
         }
 
         if (ack?.status === "failed" && NON_RETRYABLE_REASONS.has(ack.reason ?? "")) {
-          await markFailed(row.id, buildAckFailureMeta(ack.reason));
+          await failWithoutRetry(row.id, buildAckFailureMeta(ack.reason));
           continue;
         }
 
@@ -275,7 +279,7 @@ async function runOnePass() {
         }
       } catch (error) {
         if (!shouldRetryTransportError(error)) {
-          await markFailed(row.id, buildTransportFailureMeta(error));
+          await failWithoutRetry(row.id, buildTransportFailureMeta(error));
           continue;
         }
         if (!isRuntimeOnline()) {
@@ -322,7 +326,10 @@ export function startInventorySyncLoop(params?: { intervalMs?: number }) {
 }
 
 export async function retryInventorySyncNow() {
-  await reviveFailedInventoryQueue();
+  await reviveFailedQueue({
+    entityTypes: [...TRACKED_ENTITY_TYPES],
+    minAttemptCount: 0,
+  });
   await runOnePass();
 }
 
