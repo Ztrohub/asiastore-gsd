@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest";
+import type { InventoryDeltaEvent } from "@/lib/db/inventory-replay";
 
 describe("deterministic server replay ordering", () => {
   it("applies FIFO receive order and tie-breaks by smallest client_timestamp", async () => {
     const { applyInventoryDeltaBatch } = await import("@/lib/db/inventory-replay");
 
-    const input = [
+    const input: InventoryDeltaEvent[] = [
       {
         id_queue: "q-1",
         id_produk: "p-1",
         id_transaksi: "tx-1",
         jenis_mutasi: "STOCK_IN",
         delta_qty: 10,
+        logical_clock: 1,
         received_seq: 1,
         client_timestamp: 2000,
       },
@@ -20,6 +22,7 @@ describe("deterministic server replay ordering", () => {
         id_transaksi: "tx-2",
         jenis_mutasi: "SALES_OUT",
         delta_qty: -3,
+        logical_clock: 2,
         received_seq: 2,
         client_timestamp: 1100,
       },
@@ -29,6 +32,7 @@ describe("deterministic server replay ordering", () => {
         id_transaksi: "tx-3",
         jenis_mutasi: "STOCK_ADJUSTMENT",
         delta_qty: -2,
+        logical_clock: 3,
         received_seq: 2,
         client_timestamp: 1000,
       },
@@ -46,13 +50,14 @@ describe("deterministic server replay ordering", () => {
 
   it("allows negative final stock while preserving sequential transactional apply", async () => {
     const { applyInventoryDeltaBatch } = await import("@/lib/db/inventory-replay");
-    const batch = [
+    const batch: InventoryDeltaEvent[] = [
       {
         id_queue: "q-4",
         id_produk: "p-neg",
         id_transaksi: "tx-4",
         jenis_mutasi: "SALES_OUT",
         delta_qty: -5,
+        logical_clock: 1,
         received_seq: 1,
         client_timestamp: 1000,
       },
@@ -62,6 +67,7 @@ describe("deterministic server replay ordering", () => {
         id_transaksi: "tx-5",
         jenis_mutasi: "SALES_OUT",
         delta_qty: -3,
+        logical_clock: 2,
         received_seq: 2,
         client_timestamp: 1001,
       },

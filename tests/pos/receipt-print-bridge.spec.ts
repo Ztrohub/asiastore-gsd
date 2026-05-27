@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { PrinterBridgeSettings } from "@/features/pos/lib/printer-bridge-settings";
 
 const connectQzTrayMock = vi.fn();
 const resolveQzPrinterNameMock = vi.fn();
@@ -11,7 +12,7 @@ vi.mock("@/features/pos/lib/qz-client", () => ({
 
 import { printReceiptThroughBridge } from "@/features/pos/lib/print-bridge";
 
-const baseSettings = {
+const baseSettings: PrinterBridgeSettings = {
   qzHost: "localhost",
   qzUseSecure: true,
   qzSecurePorts: "8181,8282",

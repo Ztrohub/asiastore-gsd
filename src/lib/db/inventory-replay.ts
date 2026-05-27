@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 export type InventoryDeltaEvent = {
   id_queue: string;
@@ -31,7 +32,7 @@ const KNOWN_REPLAY_FAILURE_REASONS = new Set([
 
 function mapReplayFailureReason(error: unknown): string {
   if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error instanceof PrismaClientKnownRequestError &&
     error.code === "P2025"
   ) {
     return "PRODUCT_NOT_FOUND";
@@ -47,7 +48,7 @@ function mapReplayFailureReason(error: unknown): string {
 
 function isDuplicateQueueError(error: unknown): boolean {
   return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error instanceof PrismaClientKnownRequestError &&
     error.code === "P2002" &&
     Array.isArray(error.meta?.target) &&
     error.meta.target.includes("id_queue")
@@ -80,7 +81,7 @@ export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): P
     };
   }
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     for (const event of ordered) {
       try {
         const existing = await tx.inventoryMutationEvent.findUnique({

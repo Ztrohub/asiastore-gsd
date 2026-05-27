@@ -1,4 +1,5 @@
-import { Prisma, PosPaymentMethod } from "@prisma/client";
+import { PosPaymentMethod } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "@/lib/db/prisma";
 
 type PosTransactionBatchInput = {
@@ -89,7 +90,7 @@ export async function createPosTransactionBatch(transactions: PosTransactionBatc
       });
       results.push({ id_transaksi: tx.id_transaksi, status: "acked" });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error instanceof PrismaClientKnownRequestError) {
         results.push({ id_transaksi: tx.id_transaksi, status: "failed" });
         continue;
       }

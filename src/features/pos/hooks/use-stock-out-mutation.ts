@@ -4,13 +4,14 @@ import { useCallback, useState } from "react";
 import { offlineDb, type InventoryMutationUnit } from "@/lib/offline/db";
 import { buildSalesOutMutationEvent, type MutationBuilderInput } from "@/lib/inventory/mutation-event";
 import { normalizeQuantityInput } from "@/lib/inventory/quantity";
+import type { InventoryMutationEventRecord } from "@/lib/offline/db";
 
 type StockOutInput = Omit<MutationBuilderInput, "id_user" | "delta_qty"> & {
   delta_qty: number;
   unit_mutasi?: InventoryMutationUnit;
 };
 
-export async function persistStockOutMutation(input: StockOutInput) {
+export async function persistStockOutMutation(input: StockOutInput): Promise<InventoryMutationEventRecord> {
   const activeSession = await offlineDb.localSessions.get("active");
   if (!activeSession?.userId) {
     throw new Error("Sesi user tidak ditemukan.");

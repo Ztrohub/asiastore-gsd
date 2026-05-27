@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { offlineDb, type ProductRecord, type SyncQueueRecord } from "@/lib/offline/db";
-import { enqueueDelta } from "@/lib/offline/sync-queue";
+import { enqueueDelta, markAcked } from "@/lib/offline/sync-queue";
 import { normalizeProductUom } from "@/lib/inventory/uom";
+import { postProductUpserts } from "@/lib/offline/inventory-sync-transport";
 
 type ProductInput = {
   id_produk?: string;
@@ -25,6 +26,7 @@ type ProductInput = {
 
 const PRODUCT_SYNC_CURSOR_KEY = "inventory_products_last_sync_cursor";
 const PRODUCT_CATALOG_POLL_MS = 30_000;
+const PRODUCT_SYNC_CURSOR_OVERLAP_MS = 1_000;
 
 async function getProductSyncCursor() {
   const cursorMeta = await offlineDb.appMeta.get(PRODUCT_SYNC_CURSOR_KEY);
@@ -79,12 +81,16 @@ function validateOptionalPrice(harga: number | undefined) {
 }
 
 async function queueProductSync(product: ProductRecord) {
-  await enqueueDelta({
+  return enqueueDelta({
     entityType: "inventory_product",
     entityId: product.id_produk,
     deltaPayload: JSON.stringify(product),
     allowNegativeStock: true,
   });
+}
+
+function isRuntimeOnline() {
+  return typeof navigator === "undefined" ? true : navigator.onLine;
 }
 
 function getPendingLocalProductLocks(queueRows: SyncQueueRecord[]) {
@@ -155,7 +161,17 @@ export async function persistProductCatalog(input: ProductInput) {
     updatedAt: now,
   });
   await offlineDb.products.put(product);
-  await queueProductSync(product);
+  const queueId = await queueProductSync(product);
+
+  if (isRuntimeOnline()) {
+    try {
+      await postProductUpserts([product]);
+      await markAcked(queueId);
+    } catch {
+      // Keep queue pending for retry loop.
+    }
+  }
+
   return product;
 }
 
@@ -178,9 +194,13 @@ export function useProductCatalog() {
     syncPassRef.current = (async () => {
       try {
         const lastCursor = await getProductSyncCursor();
-        const url =
+        const incrementalCursor =
           typeof lastCursor === "number"
-            ? `/api/inventory/products?updated_after=${lastCursor}`
+            ? Math.max(0, lastCursor - PRODUCT_SYNC_CURSOR_OVERLAP_MS)
+            : undefined;
+        const url =
+          typeof incrementalCursor === "number"
+            ? `/api/inventory/products?updated_after=${incrementalCursor}`
             : "/api/inventory/products";
         const response = await fetch(url, { cache: "no-store" });
         if (!response.ok) return;

@@ -1,0 +1,24 @@
+services:
+  asiastore-gsd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # --- PASS PUBLIC VARS FOR BUILD TIME ---
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    container_name: asiastore-gsd
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # --- PASS SECRETS FOR RUNTIME ---
+    env_file:
+      - .env  # Automatically reads your local .env file when the container starts
+    environment:
+      - DATABASE_URL=postgresql://asiastore_user:JelasLebihEnak45@10.0.1.10:5432/asiastore2
+    networks:
+      - web-network
+
+networks:
+  web-network:
+    external: true

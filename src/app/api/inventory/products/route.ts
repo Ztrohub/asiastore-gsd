@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { decodeSession, SESSION_COOKIE_NAME } from "@/lib/auth/server-session";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
   const products = await listProducts({ updatedAfterMs: updatedAfter });
   const cursor =
     products.length > 0
-      ? Math.max(...products.map((product) => product.updatedAt.getTime()))
+      ? Math.max(...products.map((product: { updatedAt: Date }) => product.updatedAt.getTime()))
       : (updatedAfter ?? 0);
 
   return NextResponse.json({ ok: true, products, cursor });
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
       );
     }
     if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error instanceof PrismaClientKnownRequestError &&
       error.code === "P2002" &&
       Array.isArray(error.meta?.target) &&
       error.meta.target.includes("sku")
