@@ -1,4 +1,4 @@
-const SHELL_CACHE = "asiatek-shell-v1";
+const SHELL_CACHE = "asiatek-shell-v2";
 const SHELL_ASSETS = ["/", "/offline", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -58,12 +58,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (
-    url.pathname.startsWith("/api/auth/login") ||
-    url.pathname.startsWith("/api/auth/session") ||
-    url.pathname.startsWith("/api/auth/logout") ||
-    url.pathname.startsWith("/api/health")
-  ) {
+  if (url.pathname.startsWith("/api/")) {
     return;
   }
 
