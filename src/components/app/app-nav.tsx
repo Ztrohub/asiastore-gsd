@@ -9,6 +9,7 @@ export function AppNav() {
   const dashboardActive = pathname === "/app";
   const inventoryActive = pathname.startsWith("/app/inventory");
   const posActive = pathname.startsWith("/app/pos");
+  const queueActive = pathname.startsWith("/app/sync-queue");
   const printerActive = pathname.startsWith("/app/settings/printer");
 
   return (
@@ -39,6 +40,15 @@ export function AppNav() {
         href="/app/inventory"
       >
         Inventori
+      </Link>
+      <Link
+        className={cn(
+          "block rounded-md px-3 py-2 hover:bg-muted",
+          queueActive && "bg-primary/10 font-medium",
+        )}
+        href="/app/sync-queue"
+      >
+        Queue Sync
       </Link>
       <Link
         className={cn(

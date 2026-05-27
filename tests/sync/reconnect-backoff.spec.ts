@@ -138,7 +138,13 @@ describe("inventory reconnect sync and retry backoff", () => {
     await retryInventorySyncNow();
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(markSendFailed).toHaveBeenCalledWith(13);
+    expect(markSendFailed).toHaveBeenCalledWith(
+      13,
+      expect.objectContaining({
+        reason: expect.any(String),
+        code: expect.any(String),
+      }),
+    );
     expect(markSendFailed).toHaveBeenCalledTimes(1);
 
     const { getInventorySyncStatus } = await import("@/lib/offline/inventory-sync");
@@ -187,6 +193,50 @@ describe("inventory reconnect sync and retry backoff", () => {
 
     expect(postInventoryDeltas).not.toHaveBeenCalled();
     expect(markSendFailed).not.toHaveBeenCalled();
+
+    stop();
+  });
+
+  it("keeps product queue retryable when sync fails with 401", async () => {
+    getRetryableQueueByEntity.mockResolvedValue([
+      {
+        id: 21,
+        status: "pending",
+        attemptCount: 0,
+        entityType: "inventory_product",
+        entityId: "prod-21",
+        deltaPayload: JSON.stringify({
+          id_produk: "prod-21",
+          nama_produk: "Produk Sinkron",
+          harga_jual: 12000,
+          stok_saat_ini: 5,
+          is_active: true,
+          updatedAt: Date.now(),
+        }),
+      },
+    ]);
+    getPendingQueue.mockResolvedValue([]);
+    postProductUpserts.mockRejectedValue(
+      new MockInventorySyncTransportError("unauthorized", {
+        retryable: false,
+        status: 401,
+      }),
+    );
+
+    const { startInventorySyncLoop } = await import("@/lib/offline/inventory-sync");
+    const stop = startInventorySyncLoop({ intervalMs: 5_000 });
+
+    window.dispatchEvent(new Event("online"));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(markSendFailed).toHaveBeenCalledWith(
+      21,
+      expect.objectContaining({
+        reason: expect.any(String),
+        code: expect.any(String),
+      }),
+    );
+    expect(markFailed).not.toHaveBeenCalled();
 
     stop();
   });

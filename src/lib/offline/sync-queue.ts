@@ -3,6 +3,12 @@ import { offlineDb, type SyncQueueRecord } from "@/lib/offline/db";
 const BASE_BACKOFF_MS = 1_000;
 const MAX_BACKOFF_MS = 5 * 60 * 1_000;
 
+export type SyncQueueFailureMeta = {
+  reason?: string;
+  code?: string;
+  at?: number;
+};
+
 export function calculateNextRetryAt(attemptCount: number, now = Date.now()) {
   if (attemptCount <= 0) {
     return now;
@@ -27,7 +33,11 @@ export async function enqueueDelta(params: {
     allowNegativeStock: params.allowNegativeStock,
     createdAt: Date.now(),
   };
-  return offlineDb.syncQueue.add(record);
+  const id = await offlineDb.syncQueue.add(record);
+  if (typeof id !== "number") {
+    throw new Error("Gagal menambahkan antrean sinkronisasi.");
+  }
+  return id;
 }
 
 export async function getRetryableInventoryQueue(now = Date.now()) {
@@ -46,16 +56,24 @@ export async function getRetryableQueueByEntity(entityType: string, now = Date.n
     .sortBy("createdAt");
 }
 
-export async function markSendFailed(id: number) {
+export async function markSendFailed(id: number, meta?: SyncQueueFailureMeta) {
   const current = await offlineDb.syncQueue.get(id);
   if (!current) return;
 
+  const now = Date.now();
   const nextAttemptCount = current.attemptCount + 1;
+  const reason = meta?.reason ?? current.lastErrorReason;
+  const code = meta?.code ?? current.lastErrorCode;
+  const errorAt = reason ? (meta?.at ?? now) : current.lastErrorAt;
+
   await offlineDb.syncQueue.update(id, {
     status: "pending",
     attemptCount: nextAttemptCount,
-    lastAttemptAt: Date.now(),
-    nextRetryAt: calculateNextRetryAt(nextAttemptCount),
+    lastAttemptAt: now,
+    nextRetryAt: calculateNextRetryAt(nextAttemptCount, now),
+    lastErrorReason: reason,
+    lastErrorCode: code,
+    lastErrorAt: errorAt,
   });
 }
 
@@ -63,11 +81,28 @@ export async function markAcked(id: number) {
   await offlineDb.syncQueue.update(id, {
     status: "acked",
     lastAttemptAt: Date.now(),
+    lastErrorReason: undefined,
+    lastErrorCode: undefined,
+    lastErrorAt: undefined,
   });
 }
 
-export async function markFailed(id: number) {
-  await offlineDb.syncQueue.update(id, { status: "failed" });
+export async function markFailed(id: number, meta?: SyncQueueFailureMeta) {
+  const current = await offlineDb.syncQueue.get(id);
+  if (!current) return;
+
+  const now = Date.now();
+  const reason = meta?.reason ?? current.lastErrorReason;
+  const code = meta?.code ?? current.lastErrorCode;
+  const errorAt = reason ? (meta?.at ?? now) : current.lastErrorAt;
+
+  await offlineDb.syncQueue.update(id, {
+    status: "failed",
+    lastAttemptAt: now,
+    lastErrorReason: reason,
+    lastErrorCode: code,
+    lastErrorAt: errorAt,
+  });
 }
 
 type ReviveFailedQueueOptions = {
@@ -114,4 +149,32 @@ export async function reviveFailedInventoryQueue(now = Date.now()) {
     now,
     entityTypes: ["inventory_mutation"],
   });
+}
+
+function formatRetryTime(timestamp: number) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date(timestamp));
+}
+
+export function resolveUnsyncedQueueReason(row: SyncQueueRecord, now = Date.now()) {
+  if (row.lastErrorReason?.trim()) {
+    return row.lastErrorReason.trim();
+  }
+  if (row.status === "failed") {
+    return "Sinkronisasi gagal dan memerlukan pengecekan manual.";
+  }
+  if (row.nextRetryAt > now && row.attemptCount > 0) {
+    return `Menunggu retry otomatis berikutnya pada ${formatRetryTime(row.nextRetryAt)}.`;
+  }
+  if (row.attemptCount > 0) {
+    return "Menunggu proses retry sinkronisasi.";
+  }
+  return "Menunggu proses sinkronisasi awal.";
 }

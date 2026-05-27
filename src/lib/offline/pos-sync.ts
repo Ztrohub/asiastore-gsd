@@ -2,6 +2,43 @@
 
 import { getRetryableQueueByEntity, markAcked, markFailed, markSendFailed } from "@/lib/offline/sync-queue";
 import { postPosTransactions } from "@/lib/offline/pos-sync-transport";
+import { InventorySyncTransportError } from "@/lib/offline/inventory-sync-transport";
+
+function buildPosFailureMeta(error: unknown) {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    return {
+      reason: "Perangkat sedang offline. Menunggu koneksi internet kembali.",
+      code: "OFFLINE",
+    };
+  }
+
+  if (error instanceof InventorySyncTransportError) {
+    const status = error.status ?? 0;
+    if (status === 401 || status === 403) {
+      return {
+        reason: "Sesi login tidak valid. Login ulang agar sinkronisasi POS dapat dilanjutkan.",
+        code: "AUTH_REQUIRED",
+      };
+    }
+    if (status >= 400 && status < 500) {
+      return {
+        reason: `Permintaan sinkronisasi POS ditolak server (${status}).`,
+        code: "REQUEST_REJECTED",
+      };
+    }
+    if (status >= 500) {
+      return {
+        reason: `Server bermasalah (${status}). Akan dicoba ulang otomatis.`,
+        code: "SERVER_ERROR",
+      };
+    }
+  }
+
+  return {
+    reason: "Gagal terhubung ke server. Akan dicoba ulang otomatis.",
+    code: "NETWORK_ERROR",
+  };
+}
 
 export async function runPosSyncPass() {
   const rows = await getRetryableQueueByEntity("pos_transaction");
@@ -14,10 +51,13 @@ export async function runPosSyncPass() {
       if (ack?.status === "acked") {
         await markAcked(row.id);
       } else {
-        await markFailed(row.id);
+        await markFailed(row.id, {
+          reason: "Server tidak mengonfirmasi transaksi POS.",
+          code: "ACK_MISSING",
+        });
       }
-    } catch {
-      await markSendFailed(row.id);
+    } catch (error) {
+      await markSendFailed(row.id, buildPosFailureMeta(error));
     }
   }
 }

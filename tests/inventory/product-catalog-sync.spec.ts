@@ -14,6 +14,7 @@ vi.mock("@/lib/offline/db", () => ({
 describe("product catalog offline-first sync contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    addQueue.mockResolvedValue(1);
   });
 
   it("writes product locally and enqueues pending inventory_product sync row", async () => {

@@ -45,6 +45,7 @@ const NON_RETRYABLE_REASONS = new Set([
   "MISSING_USER_ID",
 ]);
 const NON_RETRYABLE_TRANSPORT_STATUS = new Set([400, 404, 413, 422]);
+const AUTH_RETRYABLE_STATUSES = new Set([401, 403]);
 const TRACKED_ENTITY_TYPES = ["inventory_mutation", "inventory_product"] as const;
 const INVENTORY_SYNC_POLL_MS = 30_000;
 
@@ -59,6 +60,91 @@ let activePass: Promise<void> | null = null;
 
 function isRuntimeOnline() {
   return typeof navigator === "undefined" ? true : navigator.onLine;
+}
+
+function shouldRetryTransportError(error: unknown) {
+  if (!(error instanceof InventorySyncTransportError)) {
+    return true;
+  }
+
+  const status = error.status ?? 0;
+  if (AUTH_RETRYABLE_STATUSES.has(status)) {
+    return true;
+  }
+  if (!error.retryable) {
+    return false;
+  }
+  if (NON_RETRYABLE_TRANSPORT_STATUS.has(status)) {
+    return false;
+  }
+  return true;
+}
+
+function buildTransportFailureMeta(error: unknown) {
+  if (!isRuntimeOnline()) {
+    return {
+      reason: "Perangkat sedang offline. Menunggu koneksi internet kembali.",
+      code: "OFFLINE",
+    };
+  }
+
+  if (error instanceof InventorySyncTransportError) {
+    const status = error.status ?? 0;
+    if (AUTH_RETRYABLE_STATUSES.has(status)) {
+      return {
+        reason: "Sesi login tidak valid. Login ulang agar sinkronisasi dapat dilanjutkan.",
+        code: "AUTH_REQUIRED",
+      };
+    }
+    if (status >= 400 && status < 500) {
+      return {
+        reason: `Permintaan sinkronisasi ditolak server (${status}). Periksa data antrean.`,
+        code: "REQUEST_REJECTED",
+      };
+    }
+    if (status >= 500) {
+      return {
+        reason: `Server bermasalah (${status}). Akan dicoba ulang otomatis.`,
+        code: "SERVER_ERROR",
+      };
+    }
+  }
+
+  return {
+    reason: "Gagal terhubung ke server. Akan dicoba ulang otomatis.",
+    code: "NETWORK_ERROR",
+  };
+}
+
+function buildAckFailureMeta(reason?: string) {
+  if (reason === "PRODUCT_NOT_FOUND") {
+    return {
+      reason: "Produk tidak ditemukan di server saat replay mutasi.",
+      code: "PRODUCT_NOT_FOUND",
+    };
+  }
+  if (reason === "INVALID_PAYLOAD") {
+    return {
+      reason: "Payload mutasi tidak valid.",
+      code: "INVALID_PAYLOAD",
+    };
+  }
+  if (reason === "SCHEMA_ERROR") {
+    return {
+      reason: "Skema data mutasi tidak sesuai.",
+      code: "SCHEMA_ERROR",
+    };
+  }
+  if (reason === "MISSING_USER_ID") {
+    return {
+      reason: "ID user pada event mutasi tidak tersedia.",
+      code: "MISSING_USER_ID",
+    };
+  }
+  return {
+    reason: "Mutasi ditolak server dan tidak dapat diproses otomatis.",
+    code: reason ?? "REJECTED_BY_SERVER",
+  };
 }
 
 async function refreshSyncStatus() {
@@ -101,7 +187,10 @@ async function runOnePass() {
     for (const row of productRows) {
       if (!row.id) continue;
       if (row.attemptCount >= MAX_ATTEMPTS) {
-        await markFailed(row.id);
+        await markFailed(row.id, {
+          reason: "Melebihi batas percobaan sinkronisasi otomatis.",
+          code: "MAX_RETRIES_EXCEEDED",
+        });
         continue;
       }
       try {
@@ -126,19 +215,19 @@ async function runOnePass() {
         await postProductUpserts([payload]);
         await markAcked(row.id);
       } catch (error) {
-        if (
-          error instanceof InventorySyncTransportError &&
-          (!error.retryable || NON_RETRYABLE_TRANSPORT_STATUS.has(error.status ?? 0))
-        ) {
-          await markFailed(row.id);
+        if (!shouldRetryTransportError(error)) {
+          await markFailed(row.id, buildTransportFailureMeta(error));
           continue;
         }
         if (!isRuntimeOnline()) {
           continue;
         }
-        await markSendFailed(row.id);
+        await markSendFailed(row.id, buildTransportFailureMeta(error));
         if (row.attemptCount + 1 >= MAX_ATTEMPTS) {
-          await markFailed(row.id);
+          await markFailed(row.id, {
+            reason: "Melebihi batas percobaan sinkronisasi otomatis.",
+            code: "MAX_RETRIES_EXCEEDED",
+          });
         }
       }
     }
@@ -147,7 +236,10 @@ async function runOnePass() {
     for (const row of rows) {
       if (!row.id) continue;
       if (row.attemptCount >= MAX_ATTEMPTS) {
-        await markFailed(row.id);
+        await markFailed(row.id, {
+          reason: "Melebihi batas percobaan sinkronisasi otomatis.",
+          code: "MAX_RETRIES_EXCEEDED",
+        });
         continue;
       }
 
@@ -166,31 +258,37 @@ async function runOnePass() {
         }
 
         if (ack?.status === "failed" && NON_RETRYABLE_REASONS.has(ack.reason ?? "")) {
-          await markFailed(row.id);
+          await markFailed(row.id, buildAckFailureMeta(ack.reason));
           continue;
         }
 
-        await markSendFailed(row.id);
+        await markSendFailed(row.id, {
+          reason: "Server belum mengonfirmasi mutasi. Akan dicoba ulang.",
+          code: "ACK_MISSING",
+        });
         const nextAttempts = row.attemptCount + 1;
         if (nextAttempts >= MAX_ATTEMPTS) {
-          await markFailed(row.id);
+          await markFailed(row.id, {
+            reason: "Melebihi batas percobaan sinkronisasi otomatis.",
+            code: "MAX_RETRIES_EXCEEDED",
+          });
         }
       } catch (error) {
-        if (
-          error instanceof InventorySyncTransportError &&
-          (!error.retryable || NON_RETRYABLE_TRANSPORT_STATUS.has(error.status ?? 0))
-        ) {
-          await markFailed(row.id);
+        if (!shouldRetryTransportError(error)) {
+          await markFailed(row.id, buildTransportFailureMeta(error));
           continue;
         }
         if (!isRuntimeOnline()) {
           continue;
         }
 
-        await markSendFailed(row.id);
+        await markSendFailed(row.id, buildTransportFailureMeta(error));
         const nextAttempts = row.attemptCount + 1;
         if (nextAttempts >= MAX_ATTEMPTS) {
-          await markFailed(row.id);
+          await markFailed(row.id, {
+            reason: "Melebihi batas percobaan sinkronisasi otomatis.",
+            code: "MAX_RETRIES_EXCEEDED",
+          });
         }
       }
     }

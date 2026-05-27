@@ -28,6 +28,9 @@ export type SyncQueueRecord = {
   attemptCount: number;
   nextRetryAt: number;
   lastAttemptAt?: number;
+  lastErrorReason?: string;
+  lastErrorCode?: string;
+  lastErrorAt?: number;
   entityType: string;
   entityId: string;
   deltaPayload: string;
