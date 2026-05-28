@@ -5,6 +5,12 @@ import { offlineDb, type ProductRecord, type SyncQueueRecord } from "@/lib/offli
 import { enqueueDelta, markAcked } from "@/lib/offline/sync-queue";
 import { normalizeProductUom } from "@/lib/inventory/uom";
 import { postProductUpserts } from "@/lib/offline/inventory-sync-transport";
+import {
+  buildProductCursorQuery,
+  maxProductSyncCursor,
+  parseProductSyncCursor,
+  serializeProductSyncCursor,
+} from "@/lib/sync/product-sync-cursor";
 
 type ProductInput = {
   id_produk?: string;
@@ -26,37 +32,46 @@ type ProductInput = {
 
 const PRODUCT_SYNC_CURSOR_KEY = "inventory_products_last_sync_cursor";
 const PRODUCT_CATALOG_POLL_MS = 30_000;
-const PRODUCT_SYNC_CURSOR_OVERLAP_MS = 1_000;
 const PRODUCT_SYNC_CURSOR_FUTURE_TOLERANCE_MS = 5 * 60 * 1_000;
 
 async function getProductSyncCursor() {
   const cursorMeta = await offlineDb.appMeta.get(PRODUCT_SYNC_CURSOR_KEY);
-  const parsed = Number(cursorMeta?.value ?? "");
-  if (!Number.isInteger(parsed) || parsed < 0) {
+  const parsed = parseProductSyncCursor(cursorMeta?.value);
+  if (!parsed) {
     return undefined;
   }
-  if (parsed > Date.now() + PRODUCT_SYNC_CURSOR_FUTURE_TOLERANCE_MS) {
+  if (parsed.timestamp > Date.now() + PRODUCT_SYNC_CURSOR_FUTURE_TOLERANCE_MS) {
     return undefined;
   }
-  return parsed;
+  return serializeProductSyncCursor(parsed);
 }
 
-async function setProductSyncCursor(cursor: number) {
-  const current = await getProductSyncCursor();
-  const nextCursor =
-    typeof current === "number" && current > cursor ? current : cursor;
+async function setProductSyncCursor(cursor: string) {
+  const current = parseProductSyncCursor(await getProductSyncCursor());
+  const incoming = parseProductSyncCursor(cursor);
+  if (!incoming) {
+    return current ? serializeProductSyncCursor(current) : undefined;
+  }
+  const nextCursor = serializeProductSyncCursor(maxProductSyncCursor(current, incoming));
+  if (!nextCursor) {
+    return undefined;
+  }
 
   await offlineDb.appMeta.put({
     key: PRODUCT_SYNC_CURSOR_KEY,
-    value: String(nextCursor),
+    value: nextCursor,
   });
 
   return nextCursor;
 }
 
-function resolveCursor(value: unknown, fallback: number | undefined) {
+function resolveCursor(value: unknown, fallback: string | undefined) {
+  const parsed = parseProductSyncCursor(value);
+  if (parsed) {
+    return serializeProductSyncCursor(parsed);
+  }
   if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
-    return Math.trunc(value);
+    return String(Math.trunc(value));
   }
   return fallback;
 }
@@ -217,14 +232,7 @@ export function useProductCatalog() {
     syncPassRef.current = (async () => {
       try {
         const lastCursor = await getProductSyncCursor();
-        const incrementalCursor =
-          typeof lastCursor === "number"
-            ? Math.max(0, lastCursor - PRODUCT_SYNC_CURSOR_OVERLAP_MS)
-            : undefined;
-        const url =
-          typeof incrementalCursor === "number"
-            ? `/api/inventory/products?updated_after=${incrementalCursor}`
-            : "/api/inventory/products";
+        const url = buildProductCursorQuery(lastCursor);
         const response = await fetch(url, { cache: "no-store" });
         if (!response.ok) return;
         const payload = (await response.json()) as {
@@ -240,8 +248,8 @@ export function useProductCatalog() {
         const maxFromRows =
           serverUpdatedAts.length > 0 ? Math.max(...serverUpdatedAts) : undefined;
         const nextCursor =
-          resolveCursor(payload.cursor, maxFromRows ?? lastCursor) ??
-          maxFromRows ??
+          resolveCursor(payload.cursor, maxFromRows ? String(maxFromRows) : lastCursor) ??
+          (maxFromRows ? String(maxFromRows) : undefined) ??
           lastCursor;
         const queueRows = await offlineDb.syncQueue
           .where("entityType")
@@ -270,7 +278,7 @@ export function useProductCatalog() {
             });
           }
         });
-        if (typeof nextCursor === "number") {
+        if (typeof nextCursor === "string") {
           await setProductSyncCursor(nextCursor);
         }
         await refreshLocal();

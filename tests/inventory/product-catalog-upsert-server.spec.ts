@@ -98,9 +98,9 @@ describe("server product upsert conflict handling", () => {
       expect.objectContaining({
         where: {
           OR: [
-            { createdAt: { gt: new Date(1779000000000) } },
-            { updatedAt: { gt: new Date(1779000000000) } },
-            { last_synced_at: { gt: new Date(1779000000000) } },
+            { createdAt: { gte: new Date(1779000000000) } },
+            { updatedAt: { gte: new Date(1779000000000) } },
+            { last_synced_at: { gte: new Date(1779000000000) } },
           ],
         },
       }),
@@ -130,5 +130,39 @@ describe("server product upsert conflict handling", () => {
         where: undefined,
       }),
     );
+  });
+
+  it("filters out already-consumed rows when the cursor includes the last processed product id", async () => {
+    const cursorTimestamp = 1779000005000;
+    findMany.mockResolvedValue([
+      {
+        id_produk: "prod-a",
+        nama_produk: "Produk A",
+        createdAt: new Date(cursorTimestamp),
+        updatedAt: new Date(cursorTimestamp),
+        last_synced_at: null,
+      },
+      {
+        id_produk: "prod-b",
+        nama_produk: "Produk B",
+        createdAt: new Date(cursorTimestamp),
+        updatedAt: new Date(cursorTimestamp),
+        last_synced_at: null,
+      },
+      {
+        id_produk: "prod-c",
+        nama_produk: "Produk C",
+        createdAt: new Date(cursorTimestamp + 10),
+        updatedAt: new Date(cursorTimestamp + 10),
+        last_synced_at: null,
+      },
+    ]);
+
+    const { listProducts } = await import("@/lib/db/product-catalog");
+    const rows = await listProducts({
+      cursor: `${cursorTimestamp}:prod-a`,
+    } as never);
+
+    expect(rows.map((row) => row.id_produk)).toEqual(["prod-b", "prod-c"]);
   });
 });

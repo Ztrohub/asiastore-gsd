@@ -9,6 +9,10 @@ import {
   ProductCatalogConflictError,
   upsertProduct,
 } from "@/lib/db/product-catalog";
+import {
+  parseProductSyncCursor,
+  serializeProductSyncCursor,
+} from "@/lib/sync/product-sync-cursor";
 
 type ProductPayload = {
   id_produk?: string;
@@ -128,32 +132,49 @@ function parseUpdatedAfter(raw: string | null) {
   return parsed;
 }
 
+function parseProductCursor(request: NextRequest) {
+  const rawCursor = request.nextUrl.searchParams.get("cursor");
+  if (rawCursor !== null) {
+    const parsedCursor = parseProductSyncCursor(rawCursor);
+    return parsedCursor ?? null;
+  }
+
+  const updatedAfter = parseUpdatedAfter(request.nextUrl.searchParams.get("updated_after"));
+  if (updatedAfter === null) {
+    return null;
+  }
+  return parseProductSyncCursor(updatedAfter);
+}
+
 export async function GET(request: NextRequest) {
   const session = await authorizeSession();
   if (!session) {
     return NextResponse.json({ ok: false, message: "Unauthorized" }, { status: 401 });
   }
 
-  const updatedAfter = parseUpdatedAfter(request.nextUrl.searchParams.get("updated_after"));
-  if (updatedAfter === null) {
+  const cursor = parseProductCursor(request);
+  if (cursor === null) {
     return NextResponse.json(
-      { ok: false, message: "Parameter updated_after tidak valid." },
+      { ok: false, message: "Parameter cursor tidak valid." },
       { status: 400 },
     );
   }
 
-  const products = await listProducts({ updatedAfterMs: updatedAfter });
-  const cursor =
+  const products = await listProducts({ cursor: serializeProductSyncCursor(cursor) });
+  const nextCursor =
     products.length > 0
-      ? Math.max(...products.map(getProductChangeTime))
-      : (updatedAfter ?? 0);
+      ? serializeProductSyncCursor({
+          timestamp: getProductChangeTime(products[products.length - 1]),
+          id_produk: products[products.length - 1].id_produk,
+        })
+      : (serializeProductSyncCursor(cursor) ?? "0");
 
   const responseProducts = products.map((product) => ({
     ...product,
     updatedAt: new Date(getProductChangeTime(product)),
   }));
 
-  return NextResponse.json({ ok: true, products: responseProducts, cursor });
+  return NextResponse.json({ ok: true, products: responseProducts, cursor: nextCursor });
 }
 
 export async function POST(request: NextRequest) {

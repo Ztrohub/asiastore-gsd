@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/db/prisma";
+import {
+  isProductAfterCursor,
+  parseProductSyncCursor,
+} from "@/lib/sync/product-sync-cursor";
 
 export type ProductUpsertInput = {
   id_produk?: string;
@@ -21,6 +25,7 @@ export type ProductUpsertInput = {
 
 export type ProductListParams = {
   updatedAfterMs?: number;
+  cursor?: string;
 };
 
 type ProductChangeTimestamps = {
@@ -108,27 +113,34 @@ export function getProductChangeTime(product: ProductChangeTimestamps) {
 }
 
 export async function listProducts(params?: ProductListParams) {
-  const updatedAfterMs = params?.updatedAfterMs;
-  const hasUpdatedAfter = Number.isFinite(updatedAfterMs);
+  const parsedCursor = parseProductSyncCursor(params?.cursor ?? params?.updatedAfterMs);
 
   const products = await prisma.product.findMany({
-    where: hasUpdatedAfter
+    where: parsedCursor
       ? {
           OR: [
-            { createdAt: { gt: new Date(updatedAfterMs!) } },
-            { updatedAt: { gt: new Date(updatedAfterMs!) } },
-            { last_synced_at: { gt: new Date(updatedAfterMs!) } },
+            { createdAt: { gte: new Date(parsedCursor.timestamp) } },
+            { updatedAt: { gte: new Date(parsedCursor.timestamp) } },
+            { last_synced_at: { gte: new Date(parsedCursor.timestamp) } },
           ],
         }
       : undefined,
-    orderBy: [{ updatedAt: "asc" }, { nama_produk: "asc" }],
+    orderBy: [{ updatedAt: "asc" }, { id_produk: "asc" }],
   });
 
-  return products.sort((a, b) => {
+  const sorted = products.sort((a, b) => {
     const byChangeTime = getProductChangeTime(a) - getProductChangeTime(b);
     if (byChangeTime !== 0) return byChangeTime;
-    return a.nama_produk.localeCompare(b.nama_produk);
+    return a.id_produk.localeCompare(b.id_produk);
   });
+
+  if (!parsedCursor) {
+    return sorted;
+  }
+
+  return sorted.filter((product) =>
+    isProductAfterCursor(getProductChangeTime(product), product.id_produk, parsedCursor),
+  );
 }
 
 export async function upsertProduct(input: ProductUpsertInput) {
