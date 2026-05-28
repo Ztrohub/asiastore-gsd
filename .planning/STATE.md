@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 02.1
 status: unknown
 stopped_at: Phase 3 planned
-last_updated: "2026-05-29T04:54:19.7134307+07:00"
+last_updated: "2026-05-29T05:26:28.1986311+07:00"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -69,5 +69,6 @@ Resume file: .planning/phases/03-pos-checkout-and-receipt-printing/03-01-PLAN.md
 | 260529-5ym | tambahkan tombol void berwarna merah dengan shortcut keyboard di tampilan PoS untuk menghapus semua item di keranjang dan membatalkan transaksi | 2026-05-29 | 47321de | [260529-5ym-tambahkan-tombol-void-berwarna-merah-den](./quick/260529-5ym-tambahkan-tombol-void-berwarna-merah-den/) |
 | 260529-695 | tambahkan popup konfirmasi untuk void transaksi di PoS sebelum semua item keranjang dihapus | 2026-05-29 | bf03c54 | [260529-695-tambahkan-popup-konfirmasi-untuk-void-tr](./quick/260529-695-tambahkan-popup-konfirmasi-untuk-void-tr/) |
 | 260529-6m4 | di semua modal qty (ketika memasukkan ke keranjang atau mengubah qty keranjang) qty sudah terselect, sehingga user tidak perlu menghapus default qty 1 tapi langsung menimpa dengan jumlah qty yang ingin diimput. Di modal edit qty kerenjang tambahkan tombol delete untuk menghapus item dari keranjang | 2026-05-29 | 31256da | [260529-6m4-di-semua-modal-qty-ketika-memasukkan-ke-](./quick/260529-6m4-di-semua-modal-qty-ketika-memasukkan-ke-/) |
+| 260529-7hm | menekan tombol del di keyboard saat modal edit qty keranjang muncul seharusnya menghapus item dari keranjang dan menampilkan pesan konfirmasi menghapus item, bukan menghapus value field qty. Di beberapa modal konfirmasi seperti hapus item dan cetak receipt fokus ditandai dengan border putih (hapus/print) tapi terdapat cursor fokus default berwarna hijau di sekitar tombol lainnya (batal/lewati) sehingga membingungkan user. Hilangkan cursor default agar tidak membingungkan user. | 2026-05-29 | 7365602 | [260529-7hm-menekan-tombol-del-di-keyboard-saat-moda](./quick/260529-7hm-menekan-tombol-del-di-keyboard-saat-moda/) |
 
-Last activity: 2026-05-29 - Completed quick task 260529-6m4: di semua modal qty (ketika memasukkan ke keranjang atau mengubah qty keranjang) qty sudah terselect, sehingga user tidak perlu menghapus default qty 1 tapi langsung menimpa dengan jumlah qty yang ingin diimput. Di modal edit qty kerenjang tambahkan tombol delete untuk menghapus item dari keranjang
+Last activity: 2026-05-29 - Completed quick task 260529-7hm: menekan tombol del di keyboard saat modal edit qty keranjang muncul seharusnya menghapus item dari keranjang dan menampilkan pesan konfirmasi menghapus item, bukan menghapus value field qty. Di beberapa modal konfirmasi seperti hapus item dan cetak receipt fokus ditandai dengan border putih (hapus/print) tapi terdapat cursor fokus default berwarna hijau di sekitar tombol lainnya (batal/lewati) sehingga membingungkan user. Hilangkan cursor default agar tidak membingungkan user.
