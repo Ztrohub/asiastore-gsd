@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  getDialogActionButtonClass,
+  isDialogActionNavigationTarget,
+  useDialogActionNavigation,
+} from "@/components/ui/dialog-actions";
 import {
   Dialog,
   DialogContent,
@@ -21,10 +25,6 @@ type Props = {
   onConfirm: () => void;
 };
 
-const confirmOutlineButtonClass =
-  "focus-visible:ring-0 focus-visible:border-border dark:focus-visible:border-input";
-const confirmPrimaryButtonClass = "focus-visible:ring-0 focus-visible:border-transparent";
-
 export function PosRemoveDialog({
   open,
   itemName,
@@ -34,10 +34,13 @@ export function PosRemoveDialog({
   onClose,
   onConfirm,
 }: Props) {
-  const [selected, setSelected] = useState<"cancel" | "delete">("delete");
+  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
+    actions: ["cancel", "delete"] as const,
+    defaultAction: "delete",
+  });
 
   const submit = () => {
-    if (selected === "delete") {
+    if (selectedAction === "delete") {
       onConfirm();
       return;
     }
@@ -48,13 +51,16 @@ export function PosRemoveDialog({
     <Dialog onOpenChange={(next) => !next && onClose()} open={open}>
       <DialogContent
         onKeyDown={(event) => {
-          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+          if (
+            (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+            isDialogActionNavigationTarget(event.target)
+          ) {
             event.preventDefault();
             event.stopPropagation();
-            setSelected((prev) => (prev === "delete" ? "cancel" : "delete"));
+            moveSelectedAction(event.key === "ArrowRight" ? 1 : -1);
             return;
           }
-          if (event.key === "Enter") {
+          if (event.key === "Enter" && isDialogActionNavigationTarget(event.target)) {
             event.preventDefault();
             event.stopPropagation();
             submit();
@@ -76,9 +82,13 @@ export function PosRemoveDialog({
         </DialogHeader>
         <DialogFooter>
           <Button
-            className={`${confirmOutlineButtonClass} ${selected === "cancel" ? "ring-2 ring-white" : ""}`}
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "cancel",
+              variant: "outline",
+            })}
+            onFocus={() => setSelectedAction("cancel")}
             onClick={() => {
-              setSelected("cancel");
+              setSelectedAction("cancel");
               onClose();
             }}
             type="button"
@@ -87,9 +97,14 @@ export function PosRemoveDialog({
             Batal
           </Button>
           <Button
-            className={`${confirmPrimaryButtonClass} ${selected === "delete" ? "ring-2 ring-white" : ""}`}
+            autoFocus
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "delete",
+              variant: "solid",
+            })}
+            onFocus={() => setSelectedAction("delete")}
             onClick={() => {
-              setSelected("delete");
+              setSelectedAction("delete");
               onConfirm();
             }}
             type="button"

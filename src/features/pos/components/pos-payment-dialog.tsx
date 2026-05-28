@@ -3,6 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  getDialogActionButtonClass,
+  isDialogActionNavigationTarget,
+  useDialogActionNavigation,
+} from "@/components/ui/dialog-actions";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -41,6 +46,10 @@ export function PosPaymentDialog({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
+    actions: ["cancel", "confirm"] as const,
+    defaultAction: "confirm",
+  });
 
   const totals = useMemo(() => computeCheckoutTotals(lines, orderDiscount), [lines, orderDiscount]);
   const rawAmountReceived = Math.max(0, Math.trunc(Number(amountReceivedInput || "0")));
@@ -64,9 +73,35 @@ export function PosPaymentDialog({
     }
   };
 
+  const submitSelectedAction = () => {
+    if (selectedAction === "confirm") {
+      submit().catch(() => undefined);
+      return;
+    }
+    onClose();
+  };
+
   return (
     <Dialog onOpenChange={(state) => !state && onClose()} open={open}>
-      <DialogContent showCloseButton={false}>
+      <DialogContent
+        onKeyDown={(event) => {
+          if (
+            (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+            isDialogActionNavigationTarget(event.target)
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            moveSelectedAction(event.key === "ArrowRight" ? 1 : -1);
+            return;
+          }
+          if (event.key === "Enter" && isDialogActionNavigationTarget(event.target)) {
+            event.preventDefault();
+            event.stopPropagation();
+            submitSelectedAction();
+          }
+        }}
+        showCloseButton={false}
+      >
         <DialogHeader>
           <DialogTitle>{paymentMethod === "cash" ? "Pembayaran Tunai" : "Pembayaran Transfer"}</DialogTitle>
           <DialogDescription>
@@ -148,14 +183,27 @@ export function PosPaymentDialog({
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
         <DialogFooter>
-          <Button onClick={onClose} type="button" variant="outline">
+          <Button
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "cancel",
+              variant: "outline",
+            })}
+            onClick={onClose}
+            onFocus={() => setSelectedAction("cancel")}
+            type="button"
+            variant="outline"
+          >
             Batal
           </Button>
           <Button
             autoFocus={paymentMethod !== "cash"}
-            data-focus-cursor="true"
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "confirm",
+              variant: "solid",
+            })}
             disabled={submitting}
             onClick={() => submit().catch(() => undefined)}
+            onFocus={() => setSelectedAction("confirm")}
             type="button"
           >
             Proses transaksi
@@ -165,4 +213,3 @@ export function PosPaymentDialog({
     </Dialog>
   );
 }
-

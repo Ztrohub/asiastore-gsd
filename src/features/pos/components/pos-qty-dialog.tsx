@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  getDialogActionButtonClass,
+  isDialogActionNavigationTarget,
+  useDialogActionNavigation,
+} from "@/components/ui/dialog-actions";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -37,6 +42,10 @@ export function PosQtyDialog({
   const [qty, setQty] = useState(defaultQty);
   const [unitMutasi, setUnitMutasi] = useState<InventoryMutationUnit>(defaultUnitMutasi);
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
+    actions: ["cancel", "save"] as const,
+    defaultAction: "save",
+  });
 
   const activeUnitIndex = Math.max(
     0,
@@ -55,9 +64,35 @@ export function PosQtyDialog({
     qtyInputRef.current?.select();
   }, [open]);
 
+  function submitSelectedAction() {
+    if (selectedAction === "save") {
+      onConfirm({ qty, unit_mutasi: unitMutasi });
+      return;
+    }
+    onClose();
+  }
+
   return (
     <Dialog onOpenChange={(next) => !next && onClose()} open={open}>
-      <DialogContent showCloseButton={false}>
+      <DialogContent
+        onKeyDown={(event) => {
+          if (
+            (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+            isDialogActionNavigationTarget(event.target)
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            moveSelectedAction(event.key === "ArrowRight" ? 1 : -1);
+            return;
+          }
+          if (event.key === "Enter" && isDialogActionNavigationTarget(event.target)) {
+            event.preventDefault();
+            event.stopPropagation();
+            submitSelectedAction();
+          }
+        }}
+        showCloseButton={false}
+      >
         <DialogHeader>
           <DialogTitle>Qty Item</DialogTitle>
           <DialogDescription>{productName ?? "Produk"}</DialogDescription>
@@ -115,10 +150,27 @@ export function PosQtyDialog({
           value={qty}
         />
         <DialogFooter>
-          <Button onClick={onClose} type="button" variant="outline">
+          <Button
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "cancel",
+              variant: "outline",
+            })}
+            onClick={onClose}
+            onFocus={() => setSelectedAction("cancel")}
+            type="button"
+            variant="outline"
+          >
             Batal
           </Button>
-          <Button onClick={() => onConfirm({ qty, unit_mutasi: unitMutasi })} type="button">
+          <Button
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "save",
+              variant: "solid",
+            })}
+            onClick={() => onConfirm({ qty, unit_mutasi: unitMutasi })}
+            onFocus={() => setSelectedAction("save")}
+            type="button"
+          >
             Simpan
           </Button>
         </DialogFooter>

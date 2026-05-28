@@ -3,6 +3,11 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  getDialogActionButtonClass,
+  isDialogActionNavigationTarget,
+  useDialogActionNavigation,
+} from "@/components/ui/dialog-actions";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -63,6 +68,10 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
   const [submitting, setSubmitting] = useState(false);
   const smallPriceInput = useProductPriceInput(editingProduct?.harga_jual ?? 0);
   const largePriceInput = useProductPriceInput(editingProduct?.harga_jual_unit_besar ?? 0);
+  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
+    actions: ["cancel", "save"] as const,
+    defaultAction: "save",
+  });
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -167,7 +176,30 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
 
   return (
     <Dialog onOpenChange={(next) => !next && onClose()} open={open}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl" showCloseButton={false}>
+      <DialogContent
+        className="max-h-[90vh] overflow-y-auto sm:max-w-5xl"
+        onKeyDown={(event) => {
+          if (
+            (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+            isDialogActionNavigationTarget(event.target)
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            moveSelectedAction(event.key === "ArrowRight" ? 1 : -1);
+            return;
+          }
+          if (event.key === "Enter" && isDialogActionNavigationTarget(event.target)) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (selectedAction === "save") {
+              formRef.current?.requestSubmit();
+              return;
+            }
+            onClose();
+          }
+        }}
+        showCloseButton={false}
+      >
         <DialogHeader>
           <DialogTitle>{editingProduct ? "Ubah Produk" : "Tambah Produk"}</DialogTitle>
           <DialogDescription>
@@ -386,10 +418,27 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
           {error ? <p className="text-xs text-destructive">{error}</p> : null}
 
           <DialogFooter className="px-0 pb-0 pt-2">
-            <Button onClick={onClose} type="button" variant="outline">
+            <Button
+              className={getDialogActionButtonClass({
+                selected: selectedAction === "cancel",
+                variant: "outline",
+              })}
+              onClick={onClose}
+              onFocus={() => setSelectedAction("cancel")}
+              type="button"
+              variant="outline"
+            >
               Batal
             </Button>
-            <Button onClick={() => formRef.current?.requestSubmit()} type="button">
+            <Button
+              className={getDialogActionButtonClass({
+                selected: selectedAction === "save",
+                variant: "solid",
+              })}
+              onClick={() => formRef.current?.requestSubmit()}
+              onFocus={() => setSelectedAction("save")}
+              type="button"
+            >
               {submitting ? "Menyimpan..." : "Simpan Produk"}
             </Button>
           </DialogFooter>

@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  getDialogActionButtonClass,
+  isDialogActionNavigationTarget,
+  useDialogActionNavigation,
+} from "@/components/ui/dialog-actions";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -29,6 +34,10 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
     line ? String(Math.max(0, line.harga_jual * line.qty - line.line_discount)) : "0",
   );
   const qtyInputRef = useRef<HTMLInputElement>(null);
+  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
+    actions: ["delete", "cancel", "save"] as const,
+    defaultAction: "save",
+  });
 
   const unitPrice = line?.harga_jual ?? 0;
   const qtyPreview = Number(qtyInput || "0");
@@ -38,6 +47,18 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
     const qty = normalizeQuantityInput(qtyInput);
     const finalSubtotal = Math.max(0, Math.trunc(Number(finalSubtotalInput || "0")));
     onConfirm({ qty, finalSubtotal });
+  }
+
+  function submitSelectedAction() {
+    if (selectedAction === "delete") {
+      onDelete();
+      return;
+    }
+    if (selectedAction === "save") {
+      submit();
+      return;
+    }
+    onClose();
   }
 
   useEffect(() => {
@@ -54,6 +75,21 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
             event.preventDefault();
             event.stopPropagation();
             onDelete();
+            return;
+          }
+          if (
+            (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+            isDialogActionNavigationTarget(event.target)
+          ) {
+            event.preventDefault();
+            event.stopPropagation();
+            moveSelectedAction(event.key === "ArrowRight" ? 1 : -1);
+            return;
+          }
+          if (event.key === "Enter" && isDialogActionNavigationTarget(event.target)) {
+            event.preventDefault();
+            event.stopPropagation();
+            submitSelectedAction();
           }
         }}
         showCloseButton={false}
@@ -111,13 +147,39 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
         </label>
 
         <DialogFooter>
-          <Button onClick={onDelete} type="button" variant="destructive">
+          <Button
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "delete",
+              variant: "solid",
+            })}
+            onClick={onDelete}
+            onFocus={() => setSelectedAction("delete")}
+            type="button"
+            variant="destructive"
+          >
             Hapus
           </Button>
-          <Button onClick={onClose} type="button" variant="outline">
+          <Button
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "cancel",
+              variant: "outline",
+            })}
+            onClick={onClose}
+            onFocus={() => setSelectedAction("cancel")}
+            type="button"
+            variant="outline"
+          >
             Batal
           </Button>
-          <Button onClick={submit} type="button">
+          <Button
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "save",
+              variant: "solid",
+            })}
+            onClick={submit}
+            onFocus={() => setSelectedAction("save")}
+            type="button"
+          >
             Simpan
           </Button>
         </DialogFooter>

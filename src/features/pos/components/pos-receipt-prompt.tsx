@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  getDialogActionButtonClass,
+  isDialogActionNavigationTarget,
+  useDialogActionNavigation,
+} from "@/components/ui/dialog-actions";
 import {
   Dialog,
   DialogContent,
@@ -19,15 +23,14 @@ type PosReceiptPromptProps = {
   onPrint: () => Promise<void> | void;
 };
 
-const promptOutlineButtonClass =
-  "focus-visible:ring-0 focus-visible:border-border dark:focus-visible:border-input";
-const promptPrimaryButtonClass = "focus-visible:ring-0 focus-visible:border-transparent";
-
 export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }: PosReceiptPromptProps) {
-  const [selected, setSelected] = useState<"print" | "skip">("print");
+  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
+    actions: ["skip", "print"] as const,
+    defaultAction: "print",
+  });
 
   const submit = async () => {
-    if (selected === "print") {
+    if (selectedAction === "print") {
       await onPrint();
       return;
     }
@@ -38,13 +41,16 @@ export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }
     <Dialog onOpenChange={(state) => !state && onSkip()} open={open}>
       <DialogContent
         onKeyDown={(event) => {
-          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+          if (
+            (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+            isDialogActionNavigationTarget(event.target)
+          ) {
             event.preventDefault();
             event.stopPropagation();
-            setSelected((prev) => (prev === "print" ? "skip" : "print"));
+            moveSelectedAction(event.key === "ArrowRight" ? 1 : -1);
             return;
           }
-          if (event.key === "Enter") {
+          if (event.key === "Enter" && isDialogActionNavigationTarget(event.target)) {
             event.preventDefault();
             event.stopPropagation();
             submit().catch(() => undefined);
@@ -59,9 +65,13 @@ export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }
         {printError ? <p className="text-sm text-destructive">{printError}</p> : null}
         <DialogFooter>
           <Button
-            className={`${promptOutlineButtonClass} ${selected === "skip" ? "ring-2 ring-white" : ""}`}
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "skip",
+              variant: "outline",
+            })}
+            onFocus={() => setSelectedAction("skip")}
             onClick={() => {
-              setSelected("skip");
+              setSelectedAction("skip");
               onSkip();
             }}
             type="button"
@@ -70,10 +80,15 @@ export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }
             Lewati
           </Button>
           <Button
-            className={`${promptPrimaryButtonClass} ${selected === "print" ? "ring-2 ring-white" : ""}`}
+            autoFocus
+            className={getDialogActionButtonClass({
+              selected: selectedAction === "print",
+              variant: "solid",
+            })}
             disabled={printing}
+            onFocus={() => setSelectedAction("print")}
             onClick={async () => {
-              setSelected("print");
+              setSelectedAction("print");
               await onPrint();
             }}
             type="button"
