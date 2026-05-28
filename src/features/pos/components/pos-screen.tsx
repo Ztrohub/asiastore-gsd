@@ -490,6 +490,7 @@ export function PosScreen() {
         open={Boolean(pendingTransaction)}
         printError={printError ?? checkoutError}
         printing={printing}
+        transaction={pendingTransaction}
       />
     </section>
   );

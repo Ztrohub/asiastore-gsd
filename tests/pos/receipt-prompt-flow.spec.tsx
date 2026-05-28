@@ -15,6 +15,10 @@ describe("receipt prompt flow", () => {
         open
         printError={null}
         printing={false}
+        transaction={{
+          change_amount: 5000,
+          payment_method: "cash",
+        }}
       />,
     );
     const printButton = screen.getByRole("button", { name: "Print" });
@@ -43,6 +47,10 @@ describe("receipt prompt flow", () => {
         open
         printError={null}
         printing={false}
+        transaction={{
+          change_amount: 5000,
+          payment_method: "cash",
+        }}
       />,
     );
 
@@ -74,9 +82,54 @@ describe("receipt prompt flow", () => {
         open
         printError="Print gagal. Silakan cek printer."
         printing={false}
+        transaction={{
+          change_amount: 5000,
+          payment_method: "cash",
+        }}
       />,
     );
     expect(screen.getByText("Print gagal. Silakan cek printer.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();
+  });
+
+  it("shows cash change in a prominent block", () => {
+    render(
+      <PosReceiptPrompt
+        onPrint={vi.fn()}
+        onSkip={vi.fn()}
+        open
+        printError={null}
+        printing={false}
+        transaction={{
+          change_amount: 8000,
+          payment_method: "cash",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Kembalian customer")).toBeInTheDocument();
+    const changeAmount = screen.getByTestId("receipt-change-amount");
+    expect(changeAmount).toHaveTextContent(/Rp\s*8\.000/);
+    expect(changeAmount).toHaveClass("text-4xl");
+    expect(changeAmount).toHaveClass("font-semibold");
+  });
+
+  it("hides the change block for non-cash transactions", () => {
+    render(
+      <PosReceiptPrompt
+        onPrint={vi.fn()}
+        onSkip={vi.fn()}
+        open
+        printError={null}
+        printing={false}
+        transaction={{
+          change_amount: undefined,
+          payment_method: "bank_transfer",
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("Kembalian customer")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("receipt-change-amount")).not.toBeInTheDocument();
   });
 });

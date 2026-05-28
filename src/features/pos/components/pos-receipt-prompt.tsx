@@ -14,6 +14,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatCurrencyIdr } from "@/features/format/currency";
+import type { PosTransactionRecord } from "@/lib/offline/db";
 
 type PosReceiptPromptProps = {
   open: boolean;
@@ -21,14 +23,24 @@ type PosReceiptPromptProps = {
   printing: boolean;
   onSkip: () => void;
   onPrint: () => Promise<void> | void;
+  transaction?: Pick<PosTransactionRecord, "payment_method" | "change_amount"> | null;
 };
 
-export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }: PosReceiptPromptProps) {
+export function PosReceiptPrompt({
+  open,
+  printError,
+  printing,
+  onSkip,
+  onPrint,
+  transaction,
+}: PosReceiptPromptProps) {
   const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
     useDialogActionNavigation({
       actions: ["skip", "print"] as const,
       defaultAction: "print",
     });
+  const showChangeAmount = transaction?.payment_method === "cash";
+  const changeAmount = Math.max(0, transaction?.change_amount ?? 0);
 
   const submit = async () => {
     if (selectedAction === "print") {
@@ -63,6 +75,14 @@ export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }
           <DialogTitle>Cetak receipt?</DialogTitle>
           <DialogDescription>Transaksi sudah tersimpan. Cetak sekarang atau lewati.</DialogDescription>
         </DialogHeader>
+        {showChangeAmount ? (
+          <div className="rounded-lg border border-white bg-primary/10 px-4 py-5 text-center">
+            <p className="text-sm font-medium text-muted-foreground">Kembalian customer</p>
+            <p className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl" data-testid="receipt-change-amount">
+              {formatCurrencyIdr(changeAmount)}
+            </p>
+          </div>
+        ) : null}
         {printError ? <p className="text-sm text-destructive">{printError}</p> : null}
         <DialogFooter>
           <Button
