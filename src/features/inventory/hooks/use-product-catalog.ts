@@ -262,9 +262,6 @@ export function useProductCatalog() {
           getPendingLocalProductLocks(queueRows);
 
         await offlineDb.transaction("rw", offlineDb.products, async () => {
-          if (unresolvedLocalDeltas === 0 && typeof lastCursor !== "number") {
-            await offlineDb.products.clear();
-          }
           for (const product of serverProducts) {
             const hasLocalPendingChanges =
               pendingProductIds.has(product.id_produk) ||

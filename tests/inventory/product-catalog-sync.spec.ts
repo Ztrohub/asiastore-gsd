@@ -1,14 +1,34 @@
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const putProduct = vi.fn();
 const getProduct = vi.fn();
 const addQueue = vi.fn();
+const clearProducts = vi.fn();
+const appMetaGet = vi.fn();
+const appMetaPut = vi.fn();
+const syncQueueToArray = vi.fn();
+const transaction = vi.fn();
+const productsToArray = vi.fn();
 
 vi.mock("@/lib/offline/db", () => ({
   offlineDb: {
-    products: { get: getProduct, put: putProduct, orderBy: () => ({ toArray: async () => [] }) },
-    syncQueue: { add: addQueue },
-    transaction: vi.fn(),
+    products: {
+      get: getProduct,
+      put: putProduct,
+      clear: clearProducts,
+      orderBy: () => ({ toArray: productsToArray }),
+    },
+    syncQueue: {
+      add: addQueue,
+      where: () => ({
+        anyOf: () => ({
+          toArray: syncQueueToArray,
+        }),
+      }),
+    },
+    appMeta: { get: appMetaGet, put: appMetaPut },
+    transaction,
   },
 }));
 
@@ -17,6 +37,18 @@ describe("product catalog offline-first sync contract", () => {
     vi.clearAllMocks();
     addQueue.mockResolvedValue(1);
     getProduct.mockResolvedValue(undefined);
+    productsToArray.mockResolvedValue([]);
+    syncQueueToArray.mockResolvedValue([]);
+    transaction.mockImplementation(async (...args: unknown[]) => {
+      const callback = args.at(-1);
+      if (typeof callback === "function") {
+        await callback();
+      }
+    });
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: false,
+    });
   });
 
   it("writes product locally and enqueues pending inventory_product sync row", async () => {
@@ -102,5 +134,77 @@ describe("product catalog offline-first sync contract", () => {
     expect(queuedPayload).not.toHaveProperty("harga_jual_unit_besar");
     expect(queuedPayload).not.toHaveProperty("unit_large_name");
     expect(queuedPayload).not.toHaveProperty("unit_large_to_small");
+  });
+
+  it("keeps local products when incremental sync returns an empty page", async () => {
+    const localProducts = [
+      {
+        id_produk: "prod-1",
+        nama_produk: "Produk Satu",
+        sku: "SKU-1",
+        harga_jual: 12000,
+        stok_saat_ini: 4,
+        is_active: true,
+        updatedAt: 1779946036531,
+      },
+      {
+        id_produk: "prod-2",
+        nama_produk: "Produk Dua",
+        sku: "SKU-2",
+        harga_jual: 15000,
+        stok_saat_ini: 7,
+        is_active: true,
+        updatedAt: 1779946041640,
+      },
+    ];
+    let productState = [...localProducts];
+    const cursorValue = "1779946041640:prod-2";
+
+    appMetaGet.mockImplementation(async (key: string) => {
+      if (key === "inventory_products_last_sync_cursor") {
+        return { key, value: cursorValue };
+      }
+      return undefined;
+    });
+    appMetaPut.mockImplementation(async ({ key, value }: { key: string; value: string }) => ({
+      key,
+      value,
+    }));
+    clearProducts.mockImplementation(async () => {
+      productState = [];
+    });
+    putProduct.mockImplementation(async (product: (typeof localProducts)[number]) => {
+      productState = productState.filter((item) => item.id_produk !== product.id_produk).concat(product);
+    });
+    productsToArray.mockImplementation(async () => [...productState]);
+
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, products: [], cursor: cursorValue }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { useProductCatalog } = await import("@/features/inventory/hooks/use-product-catalog");
+    const { result } = renderHook(() => useProductCatalog());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/inventory/products?cursor=${encodeURIComponent(cursorValue)}`,
+        { cache: "no-store" },
+      );
+    });
+    await waitFor(() => {
+      expect(result.current.products).toHaveLength(2);
+    });
+
+    expect(productState).toHaveLength(2);
+    expect(clearProducts).not.toHaveBeenCalled();
   });
 });
