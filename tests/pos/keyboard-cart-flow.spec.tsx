@@ -121,7 +121,7 @@ describe("pos keyboard cart flow", () => {
     expect(await screen.findByText("Hapus item?")).toBeInTheDocument();
   });
 
-  it("shows a red void button and resets the active transaction when clicked", async () => {
+  it("shows a red void button and requires confirmation before resetting the active transaction", async () => {
     const user = userEvent.setup();
     render(<PosScreen />);
 
@@ -143,6 +143,19 @@ describe("pos keyboard cart flow", () => {
     expect(voidButton).toBeEnabled();
     await user.click(voidButton);
 
+    expect(screen.getByText("Void transaksi?")).toBeInTheDocument();
+    expect(screen.getByText("Semua item, diskon, dan catatan transaksi akan dihapus.")).toBeInTheDocument();
+    expect(screen.getByText("Kopi Susu (pcs)")).toBeInTheDocument();
+    expect(noteInput).toHaveValue("Batalkan transaksi ini");
+    expect(discountInput).toHaveValue("1000");
+
+    await user.click(screen.getByRole("button", { name: "Batal" }));
+    expect(screen.queryByText("Void transaksi?")).not.toBeInTheDocument();
+    expect(screen.getByText("Kopi Susu (pcs)")).toBeInTheDocument();
+
+    await user.click(voidButton);
+    await user.click(screen.getByRole("button", { name: "Void transaksi" }));
+
     expect(screen.getByText("Belum ada item.")).toBeInTheDocument();
     expect(screen.getByTestId("cart-total")).toHaveTextContent(/Rp\s*0/);
     expect(noteInput).toHaveValue("");
@@ -151,7 +164,7 @@ describe("pos keyboard cart flow", () => {
     expect(search).toHaveFocus();
   });
 
-  it("supports voiding the active transaction with F10", async () => {
+  it("supports opening void confirmation with F10 and confirming by keyboard", async () => {
     const user = userEvent.setup();
     render(<PosScreen />);
 
@@ -161,6 +174,10 @@ describe("pos keyboard cart flow", () => {
 
     expect(screen.getByText("Kopi Susu (pcs)")).toBeInTheDocument();
     await user.keyboard("{F10}");
+
+    expect(screen.getByText("Void transaksi?")).toBeInTheDocument();
+    expect(screen.getByText("Kopi Susu (pcs)")).toBeInTheDocument();
+    await user.keyboard("{Enter}");
 
     expect(screen.getByText("Belum ada item.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Void (F10)" })).toBeDisabled();

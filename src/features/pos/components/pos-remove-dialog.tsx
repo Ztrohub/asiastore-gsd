@@ -14,11 +14,22 @@ import {
 type Props = {
   open: boolean;
   itemName?: string;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
   onClose: () => void;
   onConfirm: () => void;
 };
 
-export function PosRemoveDialog({ open, itemName, onClose, onConfirm }: Props) {
+export function PosRemoveDialog({
+  open,
+  itemName,
+  title,
+  description,
+  confirmLabel,
+  onClose,
+  onConfirm,
+}: Props) {
   const [selected, setSelected] = useState<"cancel" | "delete">("delete");
 
   const submit = () => {
@@ -54,8 +65,10 @@ export function PosRemoveDialog({ open, itemName, onClose, onConfirm }: Props) {
         showCloseButton={false}
       >
         <DialogHeader>
-          <DialogTitle>Hapus item?</DialogTitle>
-          <DialogDescription>{itemName ?? "Item ini"} akan dihapus dari keranjang.</DialogDescription>
+          <DialogTitle>{title ?? "Hapus item?"}</DialogTitle>
+          <DialogDescription>
+            {description ?? `${itemName ?? "Item ini"} akan dihapus dari keranjang.`}
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button
@@ -78,7 +91,7 @@ export function PosRemoveDialog({ open, itemName, onClose, onConfirm }: Props) {
             type="button"
             variant="destructive"
           >
-            Hapus
+            {confirmLabel ?? "Hapus"}
           </Button>
         </DialogFooter>
       </DialogContent>

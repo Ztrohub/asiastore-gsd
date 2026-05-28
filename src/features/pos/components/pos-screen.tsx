@@ -75,6 +75,8 @@ export function PosScreen() {
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteDialogKey, setDeleteDialogKey] = useState(0);
+  const [voidOpen, setVoidOpen] = useState(false);
+  const [voidDialogKey, setVoidDialogKey] = useState(0);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [paymentDialogKey, setPaymentDialogKey] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>("cash");
@@ -126,7 +128,7 @@ export function PosScreen() {
   const activeProduct = filteredProducts[safeProductIndex];
   const activeCartLine = lines[safeCartIndex];
   const hasBlockingDialog =
-    qtyOpen || cartItemOpen || deleteOpen || paymentOpen || Boolean(pendingTransaction);
+    qtyOpen || cartItemOpen || deleteOpen || voidOpen || paymentOpen || Boolean(pendingTransaction);
 
   const resetTransactionDraft = useCallback(() => {
     clearCart();
@@ -171,11 +173,12 @@ export function PosScreen() {
     [clearPrintStatus, lines.length],
   );
 
-  const handleVoidTransaction = useCallback(() => {
+  const requestVoidTransaction = useCallback(() => {
     if (lines.length === 0) return;
     clearPrintStatus();
-    resetTransactionDraft();
-  }, [clearPrintStatus, lines.length, resetTransactionDraft]);
+    setVoidDialogKey((prev) => prev + 1);
+    setVoidOpen(true);
+  }, [clearPrintStatus, lines.length]);
 
   const handlePosKeydown = useCallback(
     (event: PosKeyboardEvent) => {
@@ -195,7 +198,7 @@ export function PosScreen() {
       }
       if (!hasBlockingDialog && event.key === "F10" && lines.length > 0) {
         event.preventDefault();
-        handleVoidTransaction();
+        requestVoidTransaction();
         return;
       }
 
@@ -283,7 +286,7 @@ export function PosScreen() {
       openCartItemDialog,
       openPayment,
       openQtyForProduct,
-      handleVoidTransaction,
+      requestVoidTransaction,
       safeProductIndex,
       safeCartIndex,
       setCartIndex,
@@ -369,7 +372,7 @@ export function PosScreen() {
               setFocusMode("cart");
             }}
             onTransferCheckout={() => openPayment("bank_transfer")}
-            onVoidTransaction={handleVoidTransaction}
+            onVoidTransaction={requestVoidTransaction}
             orderDiscount={totals.orderDiscount}
             subtotal={totals.subtotal}
             total={totals.total}
@@ -433,6 +436,19 @@ export function PosScreen() {
           searchRef.current?.focus();
         }}
         open={deleteOpen}
+      />
+
+      <PosRemoveDialog
+        confirmLabel="Void transaksi"
+        description="Semua item, diskon, dan catatan transaksi akan dihapus."
+        key={`void-${voidDialogKey}`}
+        onClose={() => setVoidOpen(false)}
+        onConfirm={() => {
+          setVoidOpen(false);
+          resetTransactionDraft();
+        }}
+        open={voidOpen}
+        title="Void transaksi?"
       />
 
       <PosPaymentDialog
