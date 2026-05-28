@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 02.1
 status: unknown
 stopped_at: Phase 3 planned
-last_updated: "2026-05-29T06:04:13.5625583+07:00"
+last_updated: "2026-05-29T06:32:26.1228370+07:00"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -72,5 +72,6 @@ Resume file: .planning/phases/03-pos-checkout-and-receipt-printing/03-01-PLAN.md
 | 260529-7hm | menekan tombol del di keyboard saat modal edit qty keranjang muncul seharusnya menghapus item dari keranjang dan menampilkan pesan konfirmasi menghapus item, bukan menghapus value field qty. Di beberapa modal konfirmasi seperti hapus item dan cetak receipt fokus ditandai dengan border putih (hapus/print) tapi terdapat cursor fokus default berwarna hijau di sekitar tombol lainnya (batal/lewati) sehingga membingungkan user. Hilangkan cursor default agar tidak membingungkan user. | 2026-05-29 | 7365602 | [260529-7hm-menekan-tombol-del-di-keyboard-saat-moda](./quick/260529-7hm-menekan-tombol-del-di-keyboard-saat-moda/) |
 | 260529-7uo | buat cursor putih global di semua modal dialog. Buat agar user dapat berpindah tombol dialog dengan menekan arrow kiri-kanan | 2026-05-29 | 7923c55 | [260529-7uo-buat-cursor-putih-global-di-semua-modal-](./quick/260529-7uo-buat-cursor-putih-global-di-semua-modal-/) |
 | 260529-8bv | perbaiki cursor putih modal saat arrow kiri-kanan dipindah bolak-balik | 2026-05-29 | 9d7043d | [260529-8bv-perbaiki-cursor-putih-modal-saat-arrow-k](./quick/260529-8bv-perbaiki-cursor-putih-modal-saat-arrow-k/) |
+| 260529-91t | pertegas indikator cursor putih modal dialog agar terlihat jelas | 2026-05-29 | dd60b29 | [260529-91t-pertegas-indikator-cursor-putih-modal-di](./quick/260529-91t-pertegas-indikator-cursor-putih-modal-di/) |
 
-Last activity: 2026-05-29 - Completed quick task 260529-8bv: perbaiki cursor putih modal saat arrow kiri-kanan dipindah bolak-balik.
+Last activity: 2026-05-29 - Completed quick task 260529-91t: pertegas indikator cursor putih modal dialog agar terlihat jelas.
