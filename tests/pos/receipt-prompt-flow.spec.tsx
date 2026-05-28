@@ -20,6 +20,7 @@ describe("receipt prompt flow", () => {
     const printButton = screen.getByRole("button", { name: "Print" });
     const skipButton = screen.getByRole("button", { name: "Lewati" });
     expect(printButton).toHaveClass("ring-2");
+    expect(printButton).toHaveClass("border-white");
     expect(printButton).toHaveClass("focus-visible:ring-0");
     expect(printButton).toHaveClass("focus-visible:border-transparent");
     expect(skipButton).toHaveClass("focus-visible:ring-0");
@@ -54,11 +55,14 @@ describe("receipt prompt flow", () => {
     await user.keyboard("{ArrowLeft}");
     expect(skipButton).toHaveFocus();
     expect(skipButton).toHaveClass("ring-2");
+    expect(skipButton).toHaveClass("bg-primary/10");
+    expect(skipButton).toHaveClass("border-white");
     expect(printButton).not.toHaveClass("ring-2");
 
     await user.keyboard("{ArrowRight}");
     expect(printButton).toHaveFocus();
     expect(printButton).toHaveClass("ring-2");
+    expect(printButton).toHaveClass("border-white");
     expect(skipButton).not.toHaveClass("ring-2");
   });
 

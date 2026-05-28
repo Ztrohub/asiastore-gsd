@@ -8,7 +8,8 @@ type DialogActionVariant = "outline" | "solid";
 const dialogOutlineActionClass =
   "focus-visible:ring-0 focus-visible:border-border dark:focus-visible:border-input";
 const dialogSolidActionClass = "focus-visible:ring-0 focus-visible:border-transparent";
-const dialogSelectedActionClass = "ring-2 ring-white";
+const dialogSelectedOutlineActionClass = "border-white bg-primary/10 ring-2 ring-white hover:bg-primary/10";
+const dialogSelectedSolidActionClass = "border-white ring-2 ring-white";
 
 export function isDialogActionNavigationTarget(target: EventTarget | null) {
   const element = target instanceof HTMLElement ? target : null;
@@ -28,7 +29,11 @@ export function getDialogActionButtonClass({
 }) {
   return cn(
     variant === "outline" ? dialogOutlineActionClass : dialogSolidActionClass,
-    selected ? dialogSelectedActionClass : null,
+    selected
+      ? variant === "outline"
+        ? dialogSelectedOutlineActionClass
+        : dialogSelectedSolidActionClass
+      : null,
   );
 }
 

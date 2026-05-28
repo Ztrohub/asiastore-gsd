@@ -38,6 +38,7 @@ describe("dialog action navigation", () => {
     const processButton = screen.getByRole("button", { name: "Proses transaksi" });
 
     expect(processButton).toHaveClass("ring-2");
+    expect(processButton).toHaveClass("border-white");
     expect(cancelButton).toHaveClass("focus-visible:ring-0");
     expect(processButton).toHaveClass("focus-visible:border-transparent");
 
@@ -74,6 +75,7 @@ describe("dialog action navigation", () => {
     const saveButton = screen.getByRole("button", { name: "Simpan" });
 
     expect(saveButton).toHaveClass("ring-2");
+    expect(saveButton).toHaveClass("border-white");
     expect(cancelButton).toHaveClass("focus-visible:ring-0");
     expect(saveButton).toHaveClass("focus-visible:border-transparent");
 
@@ -112,6 +114,7 @@ describe("dialog action navigation", () => {
     const saveButton = screen.getByRole("button", { name: "Simpan" });
 
     expect(saveButton).toHaveClass("ring-2");
+    expect(saveButton).toHaveClass("border-white");
     expect(deleteButton).toHaveClass("focus-visible:ring-0");
     expect(cancelButton).toHaveClass("focus-visible:border-border");
 
@@ -139,15 +142,19 @@ describe("dialog action navigation", () => {
 
     expect(deleteButton).toHaveFocus();
     expect(deleteButton).toHaveClass("ring-2");
+    expect(deleteButton).toHaveClass("border-white");
 
     await user.keyboard("{ArrowLeft}");
     expect(cancelButton).toHaveFocus();
     expect(cancelButton).toHaveClass("ring-2");
+    expect(cancelButton).toHaveClass("bg-primary/10");
+    expect(cancelButton).toHaveClass("border-white");
     expect(deleteButton).not.toHaveClass("ring-2");
 
     await user.keyboard("{ArrowRight}");
     expect(deleteButton).toHaveFocus();
     expect(deleteButton).toHaveClass("ring-2");
+    expect(deleteButton).toHaveClass("border-white");
     expect(cancelButton).not.toHaveClass("ring-2");
   });
 
@@ -165,6 +172,7 @@ describe("dialog action navigation", () => {
     const saveButton = screen.getByRole("button", { name: "Simpan Produk" });
 
     expect(saveButton).toHaveClass("ring-2");
+    expect(saveButton).toHaveClass("border-white");
     expect(cancelButton).toHaveClass("focus-visible:ring-0");
     expect(saveButton).toHaveClass("focus-visible:border-transparent");
   });
