@@ -21,6 +21,10 @@ type Props = {
   onConfirm: () => void;
 };
 
+const confirmOutlineButtonClass =
+  "focus-visible:ring-0 focus-visible:border-border dark:focus-visible:border-input";
+const confirmPrimaryButtonClass = "focus-visible:ring-0 focus-visible:border-transparent";
+
 export function PosRemoveDialog({
   open,
   itemName,
@@ -72,7 +76,7 @@ export function PosRemoveDialog({
         </DialogHeader>
         <DialogFooter>
           <Button
-            className={selected === "cancel" ? "ring-2 ring-white" : ""}
+            className={`${confirmOutlineButtonClass} ${selected === "cancel" ? "ring-2 ring-white" : ""}`}
             onClick={() => {
               setSelected("cancel");
               onClose();
@@ -83,7 +87,7 @@ export function PosRemoveDialog({
             Batal
           </Button>
           <Button
-            className={selected === "delete" ? "ring-2 ring-white" : ""}
+            className={`${confirmPrimaryButtonClass} ${selected === "delete" ? "ring-2 ring-white" : ""}`}
             onClick={() => {
               setSelected("delete");
               onConfirm();

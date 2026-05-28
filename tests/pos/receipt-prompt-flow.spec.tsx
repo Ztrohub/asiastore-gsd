@@ -18,7 +18,12 @@ describe("receipt prompt flow", () => {
       />,
     );
     const printButton = screen.getByRole("button", { name: "Print" });
+    const skipButton = screen.getByRole("button", { name: "Lewati" });
     expect(printButton).toHaveClass("ring-2");
+    expect(printButton).toHaveClass("focus-visible:ring-0");
+    expect(printButton).toHaveClass("focus-visible:border-transparent");
+    expect(skipButton).toHaveClass("focus-visible:ring-0");
+    expect(skipButton).toHaveClass("focus-visible:border-border");
 
     await user.keyboard("{Enter}");
     expect(onPrint).toHaveBeenCalledTimes(1);

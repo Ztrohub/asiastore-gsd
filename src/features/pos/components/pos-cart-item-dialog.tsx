@@ -48,7 +48,16 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
 
   return (
     <Dialog onOpenChange={(next) => !next && onClose()} open={open}>
-      <DialogContent showCloseButton={false}>
+      <DialogContent
+        onKeyDown={(event) => {
+          if (event.key === "Delete") {
+            event.preventDefault();
+            event.stopPropagation();
+            onDelete();
+          }
+        }}
+        showCloseButton={false}
+      >
         <DialogHeader>
           <DialogTitle>Edit Item Keranjang</DialogTitle>
           <DialogDescription>{line?.nama_produk ?? "Item"}</DialogDescription>

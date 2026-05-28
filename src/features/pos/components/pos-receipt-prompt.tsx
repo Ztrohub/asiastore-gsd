@@ -19,6 +19,10 @@ type PosReceiptPromptProps = {
   onPrint: () => Promise<void> | void;
 };
 
+const promptOutlineButtonClass =
+  "focus-visible:ring-0 focus-visible:border-border dark:focus-visible:border-input";
+const promptPrimaryButtonClass = "focus-visible:ring-0 focus-visible:border-transparent";
+
 export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }: PosReceiptPromptProps) {
   const [selected, setSelected] = useState<"print" | "skip">("print");
 
@@ -55,7 +59,7 @@ export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }
         {printError ? <p className="text-sm text-destructive">{printError}</p> : null}
         <DialogFooter>
           <Button
-            className={selected === "skip" ? "ring-2 ring-white" : ""}
+            className={`${promptOutlineButtonClass} ${selected === "skip" ? "ring-2 ring-white" : ""}`}
             onClick={() => {
               setSelected("skip");
               onSkip();
@@ -66,7 +70,7 @@ export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }
             Lewati
           </Button>
           <Button
-            className={selected === "print" ? "ring-2 ring-white" : ""}
+            className={`${promptPrimaryButtonClass} ${selected === "print" ? "ring-2 ring-white" : ""}`}
             disabled={printing}
             onClick={async () => {
               setSelected("print");

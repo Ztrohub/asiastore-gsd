@@ -135,6 +135,8 @@ describe("pos keyboard cart flow", () => {
 
     fireEvent.keyDown(search, { key: "Delete" });
     expect(await screen.findByText("Hapus item?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Batal" })).toHaveClass("focus-visible:ring-0");
+    expect(screen.getByRole("button", { name: "Hapus" })).toHaveClass("focus-visible:ring-0");
   });
 
   it("selects cart qty on edit and provides a delete action from the edit dialog", async () => {
@@ -162,6 +164,24 @@ describe("pos keyboard cart flow", () => {
     await user.click(screen.getByRole("button", { name: "Hapus" }));
 
     expect(screen.getByText("Belum ada item.")).toBeInTheDocument();
+  });
+
+  it("uses Delete in cart edit dialog to open delete confirmation instead of clearing qty", async () => {
+    const user = userEvent.setup();
+    render(<PosScreen />);
+
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{Enter}");
+
+    const qtyInput = screen.getByLabelText("Qty Item Keranjang");
+    expect(qtyInput).toHaveValue("1");
+
+    await user.keyboard("{Delete}");
+
+    expect(await screen.findByText("Hapus item?")).toBeInTheDocument();
+    expect(screen.getByText("Kopi Susu (pcs)")).toBeInTheDocument();
   });
 
   it("shows a red void button and requires confirmation before resetting the active transaction", async () => {
