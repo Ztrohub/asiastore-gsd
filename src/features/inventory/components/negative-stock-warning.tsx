@@ -24,10 +24,11 @@ type Props = {
 
 export function NegativeStockWarning({ open, onBypass, onClose }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
-    actions: ["cancel", "confirm"] as const,
-    defaultAction: "confirm",
-  });
+  const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
+    useDialogActionNavigation({
+      actions: ["cancel", "confirm"] as const,
+      defaultAction: "confirm",
+    });
 
   useEffect(() => {
     if (!open) return;
@@ -78,6 +79,7 @@ export function NegativeStockWarning({ open, onBypass, onClose }: Props) {
             })}
             onClick={onClose}
             onFocus={() => setSelectedAction("cancel")}
+            ref={registerActionRef("cancel")}
             variant="outline"
           >
             Batal
@@ -90,6 +92,7 @@ export function NegativeStockWarning({ open, onBypass, onClose }: Props) {
             })}
             onClick={onBypass}
             onFocus={() => setSelectedAction("confirm")}
+            ref={registerActionRef("confirm")}
           >
             Tetap Lanjut
           </Button>

@@ -68,10 +68,11 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
   const [submitting, setSubmitting] = useState(false);
   const smallPriceInput = useProductPriceInput(editingProduct?.harga_jual ?? 0);
   const largePriceInput = useProductPriceInput(editingProduct?.harga_jual_unit_besar ?? 0);
-  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
-    actions: ["cancel", "save"] as const,
-    defaultAction: "save",
-  });
+  const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
+    useDialogActionNavigation({
+      actions: ["cancel", "save"] as const,
+      defaultAction: "save",
+    });
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -425,6 +426,7 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
               })}
               onClick={onClose}
               onFocus={() => setSelectedAction("cancel")}
+              ref={registerActionRef("cancel")}
               type="button"
               variant="outline"
             >
@@ -437,6 +439,7 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
               })}
               onClick={() => formRef.current?.requestSubmit()}
               onFocus={() => setSelectedAction("save")}
+              ref={registerActionRef("save")}
               type="button"
             >
               {submitting ? "Menyimpan..." : "Simpan Produk"}

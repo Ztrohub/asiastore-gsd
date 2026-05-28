@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 type DialogActionVariant = "outline" | "solid";
@@ -40,12 +40,21 @@ export function useDialogActionNavigation<T extends string>({
   defaultAction: T;
 }) {
   const [selectedAction, setSelectedAction] = useState<T>(defaultAction);
+  const actionRefs = useRef(new Map<T, HTMLButtonElement | null>());
+
+  function registerActionRef(action: T) {
+    return (node: HTMLButtonElement | null) => {
+      actionRefs.current.set(action, node);
+    };
+  }
 
   function moveSelectedAction(delta: number) {
     const currentIndex = Math.max(0, actions.indexOf(selectedAction));
     const nextIndex = (currentIndex + delta + actions.length) % actions.length;
-    setSelectedAction(actions[nextIndex]);
+    const nextAction = actions[nextIndex];
+    setSelectedAction(nextAction);
+    actionRefs.current.get(nextAction)?.focus();
   }
 
-  return { selectedAction, setSelectedAction, moveSelectedAction };
+  return { registerActionRef, selectedAction, setSelectedAction, moveSelectedAction };
 }

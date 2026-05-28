@@ -34,10 +34,11 @@ export function PosRemoveDialog({
   onClose,
   onConfirm,
 }: Props) {
-  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
-    actions: ["cancel", "delete"] as const,
-    defaultAction: "delete",
-  });
+  const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
+    useDialogActionNavigation({
+      actions: ["cancel", "delete"] as const,
+      defaultAction: "delete",
+    });
 
   const submit = () => {
     if (selectedAction === "delete") {
@@ -87,6 +88,7 @@ export function PosRemoveDialog({
               variant: "outline",
             })}
             onFocus={() => setSelectedAction("cancel")}
+            ref={registerActionRef("cancel")}
             onClick={() => {
               setSelectedAction("cancel");
               onClose();
@@ -103,6 +105,7 @@ export function PosRemoveDialog({
               variant: "solid",
             })}
             onFocus={() => setSelectedAction("delete")}
+            ref={registerActionRef("delete")}
             onClick={() => {
               setSelectedAction("delete");
               onConfirm();

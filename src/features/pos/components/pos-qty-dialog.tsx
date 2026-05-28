@@ -42,10 +42,11 @@ export function PosQtyDialog({
   const [qty, setQty] = useState(defaultQty);
   const [unitMutasi, setUnitMutasi] = useState<InventoryMutationUnit>(defaultUnitMutasi);
   const qtyInputRef = useRef<HTMLInputElement>(null);
-  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
-    actions: ["cancel", "save"] as const,
-    defaultAction: "save",
-  });
+  const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
+    useDialogActionNavigation({
+      actions: ["cancel", "save"] as const,
+      defaultAction: "save",
+    });
 
   const activeUnitIndex = Math.max(
     0,
@@ -157,6 +158,7 @@ export function PosQtyDialog({
             })}
             onClick={onClose}
             onFocus={() => setSelectedAction("cancel")}
+            ref={registerActionRef("cancel")}
             type="button"
             variant="outline"
           >
@@ -169,6 +171,7 @@ export function PosQtyDialog({
             })}
             onClick={() => onConfirm({ qty, unit_mutasi: unitMutasi })}
             onFocus={() => setSelectedAction("save")}
+            ref={registerActionRef("save")}
             type="button"
           >
             Simpan

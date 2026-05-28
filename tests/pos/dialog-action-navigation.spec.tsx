@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PosCartItemDialog } from "@/features/pos/components/pos-cart-item-dialog";
 import { PosPaymentDialog } from "@/features/pos/components/pos-payment-dialog";
 import { PosQtyDialog } from "@/features/pos/components/pos-qty-dialog";
+import { PosRemoveDialog } from "@/features/pos/components/pos-remove-dialog";
 import { ProductFormDialog } from "@/features/inventory/components/product-form-dialog";
 
 describe("dialog action navigation", () => {
@@ -119,6 +120,35 @@ describe("dialog action navigation", () => {
     await user.keyboard("{Enter}");
 
     expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps remove-dialog focus and white cursor in sync when arrows move back and forth", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <PosRemoveDialog
+        itemName="Kopi Susu"
+        onClose={() => undefined}
+        onConfirm={() => undefined}
+        open
+      />,
+    );
+
+    const deleteButton = screen.getByRole("button", { name: "Hapus" });
+    const cancelButton = screen.getByRole("button", { name: "Batal" });
+
+    expect(deleteButton).toHaveFocus();
+    expect(deleteButton).toHaveClass("ring-2");
+
+    await user.keyboard("{ArrowLeft}");
+    expect(cancelButton).toHaveFocus();
+    expect(cancelButton).toHaveClass("ring-2");
+    expect(deleteButton).not.toHaveClass("ring-2");
+
+    await user.keyboard("{ArrowRight}");
+    expect(deleteButton).toHaveFocus();
+    expect(deleteButton).toHaveClass("ring-2");
+    expect(cancelButton).not.toHaveClass("ring-2");
   });
 
   it("applies the same white cursor styling to the product form dialog footer", () => {

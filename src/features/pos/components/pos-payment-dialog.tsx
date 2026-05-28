@@ -46,10 +46,11 @@ export function PosPaymentDialog({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
-  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
-    actions: ["cancel", "confirm"] as const,
-    defaultAction: "confirm",
-  });
+  const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
+    useDialogActionNavigation({
+      actions: ["cancel", "confirm"] as const,
+      defaultAction: "confirm",
+    });
 
   const totals = useMemo(() => computeCheckoutTotals(lines, orderDiscount), [lines, orderDiscount]);
   const rawAmountReceived = Math.max(0, Math.trunc(Number(amountReceivedInput || "0")));
@@ -190,6 +191,7 @@ export function PosPaymentDialog({
             })}
             onClick={onClose}
             onFocus={() => setSelectedAction("cancel")}
+            ref={registerActionRef("cancel")}
             type="button"
             variant="outline"
           >
@@ -204,6 +206,7 @@ export function PosPaymentDialog({
             disabled={submitting}
             onClick={() => submit().catch(() => undefined)}
             onFocus={() => setSelectedAction("confirm")}
+            ref={registerActionRef("confirm")}
             type="button"
           >
             Proses transaksi

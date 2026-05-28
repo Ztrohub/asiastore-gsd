@@ -24,10 +24,11 @@ type PosReceiptPromptProps = {
 };
 
 export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }: PosReceiptPromptProps) {
-  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
-    actions: ["skip", "print"] as const,
-    defaultAction: "print",
-  });
+  const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
+    useDialogActionNavigation({
+      actions: ["skip", "print"] as const,
+      defaultAction: "print",
+    });
 
   const submit = async () => {
     if (selectedAction === "print") {
@@ -70,6 +71,7 @@ export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }
               variant: "outline",
             })}
             onFocus={() => setSelectedAction("skip")}
+            ref={registerActionRef("skip")}
             onClick={() => {
               setSelectedAction("skip");
               onSkip();
@@ -87,6 +89,7 @@ export function PosReceiptPrompt({ open, printError, printing, onSkip, onPrint }
             })}
             disabled={printing}
             onFocus={() => setSelectedAction("print")}
+            ref={registerActionRef("print")}
             onClick={async () => {
               setSelectedAction("print");
               await onPrint();

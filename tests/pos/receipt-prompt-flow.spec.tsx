@@ -33,6 +33,35 @@ describe("receipt prompt flow", () => {
     expect(onSkip).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps focus and white cursor in sync when moving back and forth between actions", async () => {
+    const user = userEvent.setup();
+    render(
+      <PosReceiptPrompt
+        onPrint={vi.fn()}
+        onSkip={vi.fn()}
+        open
+        printError={null}
+        printing={false}
+      />,
+    );
+
+    const printButton = screen.getByRole("button", { name: "Print" });
+    const skipButton = screen.getByRole("button", { name: "Lewati" });
+
+    expect(printButton).toHaveFocus();
+    expect(printButton).toHaveClass("ring-2");
+
+    await user.keyboard("{ArrowLeft}");
+    expect(skipButton).toHaveFocus();
+    expect(skipButton).toHaveClass("ring-2");
+    expect(printButton).not.toHaveClass("ring-2");
+
+    await user.keyboard("{ArrowRight}");
+    expect(printButton).toHaveFocus();
+    expect(printButton).toHaveClass("ring-2");
+    expect(skipButton).not.toHaveClass("ring-2");
+  });
+
   it("shows error without retry control", () => {
     render(
       <PosReceiptPrompt

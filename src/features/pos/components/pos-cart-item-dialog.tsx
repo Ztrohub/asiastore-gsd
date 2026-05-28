@@ -34,10 +34,11 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
     line ? String(Math.max(0, line.harga_jual * line.qty - line.line_discount)) : "0",
   );
   const qtyInputRef = useRef<HTMLInputElement>(null);
-  const { moveSelectedAction, selectedAction, setSelectedAction } = useDialogActionNavigation({
-    actions: ["delete", "cancel", "save"] as const,
-    defaultAction: "save",
-  });
+  const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
+    useDialogActionNavigation({
+      actions: ["delete", "cancel", "save"] as const,
+      defaultAction: "save",
+    });
 
   const unitPrice = line?.harga_jual ?? 0;
   const qtyPreview = Number(qtyInput || "0");
@@ -154,6 +155,7 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
             })}
             onClick={onDelete}
             onFocus={() => setSelectedAction("delete")}
+            ref={registerActionRef("delete")}
             type="button"
             variant="destructive"
           >
@@ -166,6 +168,7 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
             })}
             onClick={onClose}
             onFocus={() => setSelectedAction("cancel")}
+            ref={registerActionRef("cancel")}
             type="button"
             variant="outline"
           >
@@ -178,6 +181,7 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
             })}
             onClick={submit}
             onFocus={() => setSelectedAction("save")}
+            ref={registerActionRef("save")}
             type="button"
           >
             Simpan
