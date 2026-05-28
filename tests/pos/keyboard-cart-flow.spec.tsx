@@ -121,6 +121,52 @@ describe("pos keyboard cart flow", () => {
     expect(await screen.findByText("Hapus item?")).toBeInTheDocument();
   });
 
+  it("shows a red void button and resets the active transaction when clicked", async () => {
+    const user = userEvent.setup();
+    render(<PosScreen />);
+
+    const cartPanel = screen.getByTestId("cart-panel");
+    const search = screen.getByLabelText("Global Search");
+    const noteInput = screen.getByTestId("transaction-note");
+    const discountInput = within(cartPanel).getByRole("textbox");
+    const voidButton = screen.getByRole("button", { name: "Void (F10)" });
+
+    expect(voidButton).toBeDisabled();
+    expect(voidButton).toHaveClass("bg-destructive");
+
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+    await user.clear(discountInput);
+    await user.type(discountInput, "1000");
+    await user.type(noteInput, "Batalkan transaksi ini");
+
+    expect(voidButton).toBeEnabled();
+    await user.click(voidButton);
+
+    expect(screen.getByText("Belum ada item.")).toBeInTheDocument();
+    expect(screen.getByTestId("cart-total")).toHaveTextContent(/Rp\s*0/);
+    expect(noteInput).toHaveValue("");
+    expect(discountInput).toHaveValue("0");
+    expect(voidButton).toBeDisabled();
+    expect(search).toHaveFocus();
+  });
+
+  it("supports voiding the active transaction with F10", async () => {
+    const user = userEvent.setup();
+    render(<PosScreen />);
+
+    const search = screen.getByLabelText("Global Search");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByText("Kopi Susu (pcs)")).toBeInTheDocument();
+    await user.keyboard("{F10}");
+
+    expect(screen.getByText("Belum ada item.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Void (F10)" })).toBeDisabled();
+    expect(search).toHaveFocus();
+  });
+
   it("opens payment dialog from cart cash button", async () => {
     const user = userEvent.setup();
     render(<PosScreen />);

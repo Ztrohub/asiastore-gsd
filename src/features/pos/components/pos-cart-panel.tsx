@@ -10,6 +10,7 @@ type Props = {
   onSelect: (idx: number) => void;
   onCashCheckout: () => void;
   onTransferCheckout: () => void;
+  onVoidTransaction: () => void;
   focusMode: "products" | "cart";
   subtotal: number;
   itemDiscountTotal: number;
@@ -24,6 +25,7 @@ export function PosCartPanel({
   onSelect,
   onCashCheckout,
   onTransferCheckout,
+  onVoidTransaction,
   focusMode,
   subtotal,
   itemDiscountTotal,
@@ -109,24 +111,35 @@ export function PosCartPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            data-testid="checkout-cash-button"
+            disabled={lines.length === 0}
+            onClick={onCashCheckout}
+            type="button"
+          >
+            Tunai (F8)
+          </button>
+          <button
+            className="rounded-md border border-primary px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+            data-testid="checkout-transfer-button"
+            disabled={lines.length === 0}
+            onClick={onTransferCheckout}
+            type="button"
+          >
+            Transfer (F9)
+          </button>
+        </div>
         <button
-          className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-          data-testid="checkout-cash-button"
+          className="w-full rounded-md bg-destructive px-3 py-2 text-sm font-medium text-destructive-foreground transition hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+          data-testid="void-button"
           disabled={lines.length === 0}
-          onClick={onCashCheckout}
+          onClick={onVoidTransaction}
           type="button"
         >
-          Tunai (F8)
-        </button>
-        <button
-          className="rounded-md border border-primary px-3 py-2 text-sm font-medium text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-          data-testid="checkout-transfer-button"
-          disabled={lines.length === 0}
-          onClick={onTransferCheckout}
-          type="button"
-        >
-          Transfer (F9)
+          Void (F10)
         </button>
       </div>
     </div>

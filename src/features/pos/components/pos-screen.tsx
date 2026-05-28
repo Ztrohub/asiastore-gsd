@@ -128,6 +128,15 @@ export function PosScreen() {
   const hasBlockingDialog =
     qtyOpen || cartItemOpen || deleteOpen || paymentOpen || Boolean(pendingTransaction);
 
+  const resetTransactionDraft = useCallback(() => {
+    clearCart();
+    setOrderDiscountInput(0);
+    setQuery("");
+    setProductIndex(0);
+    setFocusMode("products");
+    searchRef.current?.focus();
+  }, [clearCart]);
+
   const openQtyForProduct = useCallback(
     (index: number) => {
       const product = filteredProducts[index];
@@ -162,6 +171,12 @@ export function PosScreen() {
     [clearPrintStatus, lines.length],
   );
 
+  const handleVoidTransaction = useCallback(() => {
+    if (lines.length === 0) return;
+    clearPrintStatus();
+    resetTransactionDraft();
+  }, [clearPrintStatus, lines.length, resetTransactionDraft]);
+
   const handlePosKeydown = useCallback(
     (event: PosKeyboardEvent) => {
       const target = event.target instanceof HTMLElement ? event.target : null;
@@ -176,6 +191,11 @@ export function PosScreen() {
       if (!hasBlockingDialog && event.key === "F9" && lines.length > 0) {
         event.preventDefault();
         openPayment("bank_transfer");
+        return;
+      }
+      if (!hasBlockingDialog && event.key === "F10" && lines.length > 0) {
+        event.preventDefault();
+        handleVoidTransaction();
         return;
       }
 
@@ -263,6 +283,7 @@ export function PosScreen() {
       openCartItemDialog,
       openPayment,
       openQtyForProduct,
+      handleVoidTransaction,
       safeProductIndex,
       safeCartIndex,
       setCartIndex,
@@ -311,7 +332,7 @@ export function PosScreen() {
         />
         <p className="mt-2 text-xs text-muted-foreground">
           Ketik langsung untuk cari produk | Arrow atas/bawah navigasi | Enter pilih/edit |
-          Arrow kanan ke keranjang | Delete hapus item | F8 tunai | F9 transfer
+          Arrow kanan ke keranjang | Delete hapus item | F8 tunai | F9 transfer | F10 void
         </p>
         <Link className="mt-2 inline-block text-xs text-primary underline underline-offset-2" href="/app/settings/printer">
           Ubah pengaturan QZ Tray
@@ -348,6 +369,7 @@ export function PosScreen() {
               setFocusMode("cart");
             }}
             onTransferCheckout={() => openPayment("bank_transfer")}
+            onVoidTransaction={handleVoidTransaction}
             orderDiscount={totals.orderDiscount}
             subtotal={totals.subtotal}
             total={totals.total}
@@ -426,12 +448,7 @@ export function PosScreen() {
             note,
           });
           setPaymentOpen(false);
-          clearCart();
-          setOrderDiscountInput(0);
-          setQuery("");
-          setProductIndex(0);
-          setFocusMode("products");
-          searchRef.current?.focus();
+          resetTransactionDraft();
           promptReceipt(saved);
         }}
         open={paymentOpen}
