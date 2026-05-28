@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,6 +36,7 @@ export function PosQtyDialog({
 }: Props) {
   const [qty, setQty] = useState(defaultQty);
   const [unitMutasi, setUnitMutasi] = useState<InventoryMutationUnit>(defaultUnitMutasi);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
 
   const activeUnitIndex = Math.max(
     0,
@@ -47,6 +48,12 @@ export function PosQtyDialog({
     const nextIndex = (activeUnitIndex + delta + unitOptions.length) % unitOptions.length;
     setUnitMutasi(unitOptions[nextIndex].unit_mutasi);
   }
+
+  useEffect(() => {
+    if (!open) return;
+    qtyInputRef.current?.focus();
+    qtyInputRef.current?.select();
+  }, [open]);
 
   return (
     <Dialog onOpenChange={(next) => !next && onClose()} open={open}>
@@ -84,6 +91,7 @@ export function PosQtyDialog({
           autoFocus
           inputMode="decimal"
           onChange={(event) => setQty(event.target.value)}
+          onFocus={(event) => event.currentTarget.select()}
           onKeyDown={(event) => {
             if (event.key === "ArrowLeft") {
               event.preventDefault();
@@ -103,6 +111,7 @@ export function PosQtyDialog({
               onConfirm({ qty, unit_mutasi: unitMutasi });
             }
           }}
+          ref={qtyInputRef}
           value={qty}
         />
         <DialogFooter>
@@ -117,4 +126,3 @@ export function PosQtyDialog({
     </Dialog>
   );
 }
-

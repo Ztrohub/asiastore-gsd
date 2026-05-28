@@ -417,6 +417,11 @@ export function PosScreen() {
         key={`cart-item-${cartItemDialogKey}`}
         line={editingCartIndex === null ? undefined : lines[editingCartIndex]}
         onClose={() => setCartItemOpen(false)}
+        onDelete={() => {
+          setCartItemOpen(false);
+          setDeleteDialogKey((prev) => prev + 1);
+          setDeleteOpen(true);
+        }}
         onConfirm={({ qty, finalSubtotal }) => {
           if (editingCartIndex === null) return;
           updateLineBySubtotal(editingCartIndex, qty, finalSubtotal);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,14 +19,16 @@ type Props = {
   open: boolean;
   line?: PosCartLine;
   onClose: () => void;
+  onDelete: () => void;
   onConfirm: (payload: { qty: number; finalSubtotal: number }) => void;
 };
 
-export function PosCartItemDialog({ open, line, onClose, onConfirm }: Props) {
+export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: Props) {
   const [qtyInput, setQtyInput] = useState(line ? String(line.qty) : "1");
   const [finalSubtotalInput, setFinalSubtotalInput] = useState(
     line ? String(Math.max(0, line.harga_jual * line.qty - line.line_discount)) : "0",
   );
+  const qtyInputRef = useRef<HTMLInputElement>(null);
 
   const unitPrice = line?.harga_jual ?? 0;
   const qtyPreview = Number(qtyInput || "0");
@@ -37,6 +39,12 @@ export function PosCartItemDialog({ open, line, onClose, onConfirm }: Props) {
     const finalSubtotal = Math.max(0, Math.trunc(Number(finalSubtotalInput || "0")));
     onConfirm({ qty, finalSubtotal });
   }
+
+  useEffect(() => {
+    if (!open) return;
+    qtyInputRef.current?.focus();
+    qtyInputRef.current?.select();
+  }, [open]);
 
   return (
     <Dialog onOpenChange={(next) => !next && onClose()} open={open}>
@@ -63,6 +71,7 @@ export function PosCartItemDialog({ open, line, onClose, onConfirm }: Props) {
             autoFocus
             inputMode="decimal"
             onChange={(event) => setQtyInput(event.target.value)}
+            onFocus={(event) => event.currentTarget.select()}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -70,6 +79,7 @@ export function PosCartItemDialog({ open, line, onClose, onConfirm }: Props) {
                 submit();
               }
             }}
+            ref={qtyInputRef}
             value={qtyInput}
           />
         </label>
@@ -92,6 +102,9 @@ export function PosCartItemDialog({ open, line, onClose, onConfirm }: Props) {
         </label>
 
         <DialogFooter>
+          <Button onClick={onDelete} type="button" variant="destructive">
+            Hapus
+          </Button>
           <Button onClick={onClose} type="button" variant="outline">
             Batal
           </Button>
@@ -103,4 +116,3 @@ export function PosCartItemDialog({ open, line, onClose, onConfirm }: Props) {
     </Dialog>
   );
 }
-

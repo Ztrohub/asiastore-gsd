@@ -76,6 +76,22 @@ describe("pos keyboard cart flow", () => {
     expect(screen.getByRole("button", { name: "Transfer (F9)" })).toBeEnabled();
   });
 
+  it("selects default qty in add-to-cart dialog so typing replaces the default value", async () => {
+    const user = userEvent.setup();
+    render(<PosScreen />);
+
+    await user.keyboard("{Enter}");
+    const qtyInput = await screen.findByLabelText("Qty");
+    expect(qtyInput).toHaveValue("1");
+
+    await user.keyboard("5");
+    await user.keyboard("{Enter}");
+
+    const cartRow = screen.getByTestId("cart-row-0");
+    expect(cartRow).toHaveTextContent("Kopi Susu (pcs)");
+    expect(cartRow).toHaveTextContent(/5\s*x\s*Rp\s*12\.000/);
+  });
+
   it("supports choosing large unit with keyboard in qty dialog", async () => {
     const user = userEvent.setup();
     render(<PosScreen />);
@@ -121,6 +137,33 @@ describe("pos keyboard cart flow", () => {
     expect(await screen.findByText("Hapus item?")).toBeInTheDocument();
   });
 
+  it("selects cart qty on edit and provides a delete action from the edit dialog", async () => {
+    const user = userEvent.setup();
+    render(<PosScreen />);
+
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByText("Edit Item Keranjang")).toBeInTheDocument();
+    const qtyInput = screen.getByLabelText("Qty Item Keranjang");
+    expect(qtyInput).toHaveValue("1");
+    expect(screen.getByRole("button", { name: "Hapus" })).toBeInTheDocument();
+
+    await user.keyboard("3");
+    await user.keyboard("{Enter}");
+    expect(screen.getByTestId("cart-row-0")).toHaveTextContent(/3\s*x\s*Rp\s*12\.000/);
+
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Hapus" }));
+    expect(await screen.findByText("Hapus item?")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Hapus" }));
+
+    expect(screen.getByText("Belum ada item.")).toBeInTheDocument();
+  });
+
   it("shows a red void button and requires confirmation before resetting the active transaction", async () => {
     const user = userEvent.setup();
     render(<PosScreen />);
@@ -144,7 +187,9 @@ describe("pos keyboard cart flow", () => {
     await user.click(voidButton);
 
     expect(screen.getByText("Void transaksi?")).toBeInTheDocument();
-    expect(screen.getByText("Semua item, diskon, dan catatan transaksi akan dihapus.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Semua item, diskon, dan catatan transaksi akan dihapus."),
+    ).toBeInTheDocument();
     expect(screen.getByText("Kopi Susu (pcs)")).toBeInTheDocument();
     expect(noteInput).toHaveValue("Batalkan transaksi ini");
     expect(discountInput).toHaveValue("1000");
