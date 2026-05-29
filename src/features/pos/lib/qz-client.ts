@@ -171,9 +171,6 @@ export async function connectQzTray(settings: PrinterBridgeSettings) {
   if (!qzHost) {
     throw new Error("Host QZ Tray belum diatur.");
   }
-  if (window.location.protocol === "https:" && !settings.qzUseSecure) {
-    throw new Error("Saat webapp HTTPS, aktifkan koneksi secure (WSS) untuk QZ Tray.");
-  }
 
   const securePorts = parsePortsCsv(settings.qzSecurePorts, "Port WSS");
   const insecurePorts = parsePortsCsv(settings.qzInsecurePorts, "Port WS");

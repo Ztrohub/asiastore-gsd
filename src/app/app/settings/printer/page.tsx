@@ -47,7 +47,7 @@ export default function PrinterBridgeSettingsPage() {
             }
             type="checkbox"
           />
-          <span>Gunakan WSS (wajib saat webapp HTTPS)</span>
+          <span>Gunakan WSS</span>
         </label>
 
         <label className="space-y-1 text-sm">

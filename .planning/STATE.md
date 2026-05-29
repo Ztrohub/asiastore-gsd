@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 02.1
 status: unknown
 stopped_at: Phase 3 planned
-last_updated: "2026-05-29T06:46:21.1692589+07:00"
+last_updated: "2026-05-29T14:12:17.6288187+07:00"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -74,5 +74,6 @@ Resume file: .planning/phases/03-pos-checkout-and-receipt-printing/03-01-PLAN.md
 | 260529-8bv | perbaiki cursor putih modal saat arrow kiri-kanan dipindah bolak-balik | 2026-05-29 | 9d7043d | [260529-8bv-perbaiki-cursor-putih-modal-saat-arrow-k](./quick/260529-8bv-perbaiki-cursor-putih-modal-saat-arrow-k/) |
 | 260529-91t | pertegas indikator cursor putih modal dialog agar terlihat jelas | 2026-05-29 | dd60b29 | [260529-91t-pertegas-indikator-cursor-putih-modal-di](./quick/260529-91t-pertegas-indikator-cursor-putih-modal-di/) |
 | 260529-9cf | tampilkan kembalian besar di modal cetak receipt berdasarkan uang diterima | 2026-05-29 | aecd8fe | [260529-9cf-tampilkan-kembalian-besar-di-modal-cetak](./quick/260529-9cf-tampilkan-kembalian-besar-di-modal-cetak/) |
+| 260529-9dg | lepas guard https untuk qz insecure | 2026-05-29 | uncommitted | [260529-9dg-lepas-guard-https-untuk-qz-insecure](./quick/260529-9dg-lepas-guard-https-untuk-qz-insecure/) |
 
-Last activity: 2026-05-29 - Completed quick task 260529-9cf: tampilkan kembalian besar di modal cetak receipt berdasarkan uang diterima.
+Last activity: 2026-05-29 - Completed quick task 260529-9dg: lepas guard https untuk qz insecure.
