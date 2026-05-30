@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,11 @@ import {
   getLargeUnitName,
   getSmallUnitName,
 } from "@/lib/inventory/uom";
+import {
+  createProductSearch,
+  getProductMatchIndices,
+  highlightMatchedText,
+} from "@/lib/search/product-fuzzy-search";
 
 type Props = {
   products: ProductRecord[];
@@ -25,6 +30,7 @@ export function StockInTab({ products, onCommitted }: Props) {
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState("1");
   const [unit, setUnit] = useState<InventoryMutationUnit>("SMALL");
+  const deferredQuery = useDeferredValue(query);
   const selectedProduct =
     products.find((product) => product.id_produk === productId) ?? products[0];
   const selectedProductId = selectedProduct?.id_produk ?? "";
@@ -51,14 +57,11 @@ export function StockInTab({ products, onCommitted }: Props) {
     ? unit
     : (unitOptions[0]?.value ?? "");
 
-  const filteredProducts = products.filter((product) => {
-    const keyword = query.trim().toLowerCase();
-    if (!keyword) return true;
-    return (
-      product.nama_produk.toLowerCase().includes(keyword) ||
-      product.sku?.toLowerCase().includes(keyword)
-    );
-  });
+  const searchProducts = useMemo(() => createProductSearch(products), [products]);
+  const filteredProducts = useMemo(
+    () => searchProducts(deferredQuery),
+    [deferredQuery, searchProducts],
+  );
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -111,19 +114,26 @@ export function StockInTab({ products, onCommitted }: Props) {
               {filteredProducts.length === 0 ? (
                 <p className="px-3 py-2 text-sm text-muted-foreground">Produk tidak ditemukan.</p>
               ) : (
-                filteredProducts.map((product) => (
+                filteredProducts.map((result) => (
                   <button
                     className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
-                    key={product.id_produk}
+                    key={result.product.id_produk}
                     onClick={() => {
-                      setProductId(product.id_produk);
-                      setQuery(product.nama_produk);
+                      setProductId(result.product.id_produk);
+                      setQuery(result.product.nama_produk);
                       setOpen(false);
                     }}
                     type="button"
                   >
-                    <span>{product.nama_produk}</span>
-                    <span className="text-xs text-muted-foreground">{product.sku ?? "-"}</span>
+                    <span>
+                      {highlightMatchedText(
+                        result.product.nama_produk,
+                        getProductMatchIndices(result.matches, "nama_produk"),
+                      )}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {result.product.sku ?? "-"}
+                    </span>
                   </button>
                 ))
               )}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { PosCartItemDialog } from "@/features/pos/components/pos-cart-item-dialog";
 import { PosCartPanel } from "@/features/pos/components/pos-cart-panel";
@@ -18,6 +18,7 @@ import { useReceiptPrinting } from "@/features/pos/hooks/use-receipt-printing";
 import { getSellUnitOptions } from "@/features/pos/lib/product-units";
 import { normalizeQuantityInput } from "@/lib/inventory/quantity";
 import type { InventoryMutationUnit, ProductRecord } from "@/lib/offline/db";
+import { createProductSearch } from "@/lib/search/product-fuzzy-search";
 
 type FocusMode = "products" | "cart";
 
@@ -65,6 +66,7 @@ export function PosScreen() {
   const { settings: printerSettings } = usePrinterBridgeSettings();
 
   const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
   const [productIndex, setProductIndex] = useState(0);
   const [focusMode, setFocusMode] = useState<FocusMode>("products");
   const [qtyOpen, setQtyOpen] = useState(false);
@@ -96,15 +98,15 @@ export function PosScreen() {
     clearPrintStatus,
   } = useReceiptPrinting();
 
-  const filteredProducts = useMemo(() => {
-    const keyword = query.trim().toLowerCase();
-    if (!keyword) return products;
-    return products.filter(
-      (item) =>
-        item.nama_produk.toLowerCase().includes(keyword) ||
-        item.sku?.toLowerCase().includes(keyword),
-    );
-  }, [products, query]);
+  const searchProducts = useMemo(() => createProductSearch(products), [products]);
+  const filteredProductResults = useMemo(
+    () => searchProducts(deferredQuery),
+    [deferredQuery, searchProducts],
+  );
+  const filteredProducts = useMemo(
+    () => filteredProductResults.map((result) => result.product),
+    [filteredProductResults],
+  );
 
   const checkoutLines = useMemo(
     () =>
@@ -356,7 +358,7 @@ export function PosScreen() {
               const idx = filteredProducts.findIndex((row) => row.id_produk === product.id_produk);
               if (idx >= 0) openQtyForProduct(idx);
             }}
-            products={filteredProducts}
+            results={filteredProductResults}
           />
         </div>
         <div className="space-y-2">

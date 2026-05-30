@@ -31,6 +31,16 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         is_active: true,
         updatedAt: Date.now(),
       },
+      {
+        id_produk: "p-3",
+        nama_produk: "Kopi Tubruk",
+        sku: "KOPI-003",
+        harga_jual: 15000,
+        stok_saat_ini: 6,
+        stok_unit_besar_saat_ini: 0,
+        is_active: true,
+        updatedAt: Date.now(),
+      },
     ],
     loading: false,
   }),
@@ -117,6 +127,17 @@ describe("pos keyboard cart flow", () => {
     expect(screen.getByText("Produk tidak ditemukan")).toBeInTheDocument();
     await user.keyboard("{Enter}");
     expect(screen.queryByText("Qty Item")).not.toBeInTheDocument();
+  });
+
+  it("ranks the closest fuzzy product first and highlights the name in POS results", async () => {
+    const user = userEvent.setup();
+    render(<PosScreen />);
+
+    await user.keyboard("susu kopi");
+
+    const firstRow = screen.getByTestId("product-row-0");
+    expect(firstRow).toHaveTextContent("Kopi Susu");
+    expect(firstRow.querySelector("strong")).not.toBeNull();
   });
 
   it("supports cart edit via arrow right + enter and delete confirmation", async () => {

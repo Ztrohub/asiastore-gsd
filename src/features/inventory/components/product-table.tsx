@@ -1,5 +1,6 @@
 "use client";
 
+import { useDeferredValue, useMemo } from "react";
 import { formatCurrencyIdr } from "@/features/format/currency";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,11 @@ import {
 } from "@/components/ui/table";
 import type { ProductRecord } from "@/lib/offline/db";
 import { getLargeUnitName, getSmallUnitName } from "@/lib/inventory/uom";
+import {
+  createProductSearch,
+  getProductMatchIndices,
+  highlightMatchedText,
+} from "@/lib/search/product-fuzzy-search";
 
 type Props = {
   products: ProductRecord[];
@@ -20,14 +26,9 @@ type Props = {
 };
 
 export function ProductTable({ products, query, onEdit }: Props) {
-  const normalizedQuery = query.trim().toLowerCase();
-  const filtered = normalizedQuery
-    ? products.filter(
-        (item) =>
-          item.nama_produk.toLowerCase().includes(normalizedQuery) ||
-          item.sku?.toLowerCase().includes(normalizedQuery),
-      )
-    : products;
+  const deferredQuery = useDeferredValue(query);
+  const searchProducts = useMemo(() => createProductSearch(products), [products]);
+  const filtered = useMemo(() => searchProducts(deferredQuery), [deferredQuery, searchProducts]);
 
   if (filtered.length === 0) {
     return (
@@ -49,17 +50,22 @@ export function ProductTable({ products, query, onEdit }: Props) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {filtered.map((product) => (
-          <TableRow key={product.id_produk}>
-            <TableCell>{product.nama_produk}</TableCell>
+        {filtered.map((result) => (
+          <TableRow key={result.product.id_produk}>
             <TableCell>
-              <PriceCell product={product} />
+              {highlightMatchedText(
+                result.product.nama_produk,
+                getProductMatchIndices(result.matches, "nama_produk"),
+              )}
             </TableCell>
             <TableCell>
-              <StockCell product={product} />
+              <PriceCell product={result.product} />
             </TableCell>
             <TableCell>
-              <Button onClick={() => onEdit(product)} size="sm" variant="outline">
+              <StockCell product={result.product} />
+            </TableCell>
+            <TableCell>
+              <Button onClick={() => onEdit(result.product)} size="sm" variant="outline">
                 Edit
               </Button>
             </TableCell>

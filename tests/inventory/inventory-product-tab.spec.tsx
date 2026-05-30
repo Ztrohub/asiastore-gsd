@@ -24,6 +24,24 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         is_active: true,
         updatedAt: Date.now(),
       },
+      {
+        id_produk: "p-2",
+        nama_produk: "Teh Tarik",
+        sku: "TEH-001",
+        harga_jual: 12000,
+        stok_saat_ini: 4,
+        is_active: true,
+        updatedAt: Date.now(),
+      },
+      {
+        id_produk: "p-3",
+        nama_produk: "Kopi Susu",
+        sku: "KOPI-002",
+        harga_jual: 17000,
+        stok_saat_ini: 3,
+        is_active: true,
+        updatedAt: Date.now(),
+      },
     ],
     loading: false,
     error: null,
@@ -62,7 +80,7 @@ describe("inventory product tab contract", () => {
 
   it("supports aktif/nonaktif toggle when editing product", async () => {
     render(<InventoryTabs />);
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
 
     const dialog = await screen.findByRole("dialog");
     const switchInput = within(dialog).getByLabelText("Produk aktif") as HTMLInputElement;
@@ -78,5 +96,18 @@ describe("inventory product tab contract", () => {
       id_produk: "p-1",
       is_active: false,
     });
+  });
+
+  it("uses fuzzy search ordering and highlights matched product-name segments", () => {
+    render(<InventoryTabs />);
+
+    fireEvent.change(screen.getAllByPlaceholderText("Cari nama atau SKU...")[0], {
+      target: { value: "tbruk kopi" },
+    });
+
+    const rows = screen.getAllByRole("row");
+    expect(rows[1]).toHaveTextContent("Kopi Tubruk");
+    const firstNameCell = within(rows[1]).getAllByRole("cell")[0];
+    expect(firstNameCell.querySelector("strong")).not.toBeNull();
   });
 });

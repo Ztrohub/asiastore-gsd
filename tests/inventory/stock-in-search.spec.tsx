@@ -30,6 +30,15 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         is_active: true,
         updatedAt: Date.now(),
       },
+      {
+        id_produk: "p-3",
+        nama_produk: "Teh Botol",
+        sku: "TEH-003",
+        harga_jual: 8000,
+        stok_saat_ini: 5,
+        is_active: true,
+        updatedAt: Date.now(),
+      },
     ],
     loading: false,
     error: null,
@@ -56,5 +65,18 @@ describe("stock in product search", () => {
 
     expect(screen.getByRole("button", { name: /Teh Tarik/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Kopi Hitam/ })).not.toBeInTheDocument();
+  });
+
+  it("keeps the closest fuzzy match at the top and highlights the matched name", () => {
+    render(<InventoryTabs />);
+    fireEvent.click(screen.getByRole("tab", { name: "Stock In" }));
+
+    fireEvent.change(screen.getByLabelText("Produk"), { target: { value: "teh tarik" } });
+
+    const options = screen.getAllByRole("button", { name: /Teh/ });
+    const closestMatch = options.find((option) => option.textContent?.includes("Teh Tarik"));
+
+    expect(options[0]).toHaveTextContent("Teh Tarik");
+    expect(closestMatch?.querySelector("strong")).not.toBeNull();
   });
 });
