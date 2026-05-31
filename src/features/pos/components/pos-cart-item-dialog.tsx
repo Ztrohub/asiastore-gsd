@@ -28,11 +28,20 @@ type Props = {
   onConfirm: (payload: { qty: number; finalSubtotal: number }) => void;
 };
 
+function getFinalSubtotal(line?: PosCartLine) {
+  if (!line) return 0;
+  return Math.max(0, Math.trunc(line.harga_jual * line.qty - line.line_discount));
+}
+
+function hasSubtotalOverride(line?: PosCartLine) {
+  if (!line) return false;
+  return getFinalSubtotal(line) !== Math.max(0, Math.trunc(line.harga_jual * line.qty));
+}
+
 export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: Props) {
   const [qtyInput, setQtyInput] = useState(line ? String(line.qty) : "1");
-  const [finalSubtotalInput, setFinalSubtotalInput] = useState(
-    line ? String(Math.max(0, line.harga_jual * line.qty - line.line_discount)) : "0",
-  );
+  const [finalSubtotalInput, setFinalSubtotalInput] = useState(String(getFinalSubtotal(line)));
+  const [hasManualSubtotalOverride, setHasManualSubtotalOverride] = useState(hasSubtotalOverride(line));
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
     useDialogActionNavigation({
@@ -116,7 +125,14 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
             aria-label="Qty Item Keranjang"
             autoFocus
             inputMode="decimal"
-            onChange={(event) => setQtyInput(event.target.value)}
+            onChange={(event) => {
+              const nextQtyInput = event.target.value;
+              setQtyInput(nextQtyInput);
+              if (hasManualSubtotalOverride) return;
+              const nextQtyPreview = Number(nextQtyInput || "0");
+              const nextBaseSubtotal = unitPrice * (Number.isFinite(nextQtyPreview) ? nextQtyPreview : 0);
+              setFinalSubtotalInput(String(Math.max(0, Math.trunc(nextBaseSubtotal))));
+            }}
             onFocus={(event) => event.currentTarget.select()}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -135,7 +151,12 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
           <Input
             aria-label="Subtotal Akhir Item"
             inputMode="numeric"
-            onChange={(event) => setFinalSubtotalInput(event.target.value)}
+            onChange={(event) => {
+              const nextValue = event.target.value;
+              setFinalSubtotalInput(nextValue);
+              const normalizedSubtotal = Math.max(0, Math.trunc(Number(nextValue || "0")));
+              setHasManualSubtotalOverride(normalizedSubtotal !== Math.max(0, Math.trunc(baseSubtotal)));
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();

@@ -187,6 +187,32 @@ describe("pos keyboard cart flow", () => {
     expect(screen.getByText("Belum ada item.")).toBeInTheDocument();
   });
 
+  it("keeps item subtotal in sync with edited qty until the cashier overrides it", async () => {
+    const user = userEvent.setup();
+    render(<PosScreen />);
+
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{ArrowRight}");
+    await user.keyboard("{Enter}");
+
+    const qtyInput = screen.getByLabelText("Qty Item Keranjang");
+    const subtotalInput = screen.getByLabelText("Subtotal Akhir Item");
+
+    expect(qtyInput).toHaveValue("1");
+    expect(subtotalInput).toHaveValue("12000");
+
+    await user.keyboard("2");
+
+    expect(qtyInput).toHaveValue("2");
+    expect(subtotalInput).toHaveValue("24000");
+
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByTestId("cart-row-0")).toHaveTextContent(/2\s*x\s*Rp\s*12\.000/);
+    expect(screen.getByTestId("cart-total")).toHaveTextContent(/24\.000/);
+  });
+
   it("uses Delete in cart edit dialog to open delete confirmation instead of clearing qty", async () => {
     const user = userEvent.setup();
     render(<PosScreen />);
