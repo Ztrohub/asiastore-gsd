@@ -27,7 +27,7 @@ export function PosProductTable({ results, activeIndex, focusMode, onSelect, onS
 
   return (
     <div
-      className="max-h-[26rem] overflow-auto rounded-lg border border-border xl:min-h-0 xl:flex-1 xl:max-h-none"
+      className="max-h-[26rem] overflow-auto rounded-lg border border-border lg:min-h-0 lg:flex-1 lg:max-h-none"
       data-testid="product-table"
     >
       {results.map((result, idx) => (

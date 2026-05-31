@@ -1,5 +1,24 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const seededProduct = {
+  id_produk: "seeded-product-1",
+  nama_produk: "Produk Contoh",
+  sku: "BRG-CONTOH-001",
+  harga_jual: 15000,
+  harga_jual_unit_besar: 165000,
+  stok_saat_ini: 25,
+  stok_unit_besar_saat_ini: 4,
+  is_active: true,
+  unit_small_name: "pcs",
+  unit_large_name: "dus",
+  unit_large_to_small: 12,
+  allow_buy_in_small: true,
+  allow_buy_in_large: true,
+  allow_sell_in_small: true,
+  allow_sell_in_large: true,
+  updatedAt: Date.now(),
+};
+
 async function login(page: Page) {
   await page.goto("/");
   await page.getByLabel("Username").fill("owner");
@@ -8,13 +27,27 @@ async function login(page: Page) {
   await page.waitForURL("**/app");
 }
 
-test("pos desktop third column layout fits within one large-screen viewport without page scroll", async ({
+async function openPosWithSeededCatalog(page: Page) {
+  await page.route("**/api/inventory/products**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        cursor: String(Date.now()),
+        products: [seededProduct],
+      }),
+    });
+  });
+  await page.goto("/app/pos");
+  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await expect(page.getByTestId("product-row-0")).toBeVisible();
+}
+
+test("pos desktop layout fits within one large-screen viewport without page scroll", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
-  await login(page);
-  await page.goto("/app/pos");
-  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await openPosWithSeededCatalog(page);
   await page.locator("main").click();
   await page.keyboard.type("produk");
   await expect(page.getByLabel("Global Search")).toHaveValue("produk");
@@ -59,6 +92,78 @@ test("pos desktop third column layout fits within one large-screen viewport with
   expect(pageMetrics!.summaryToRight).toBe(true);
   expect(pageMetrics!.productHeight).toBeGreaterThan(240);
   expect(pageMetrics!.cartHeight).toBeGreaterThan(240);
+});
+
+test("pos tablet landscape moves summary below the cart without changing keyboard flow", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openPosWithSeededCatalog(page);
+
+  await page.locator("main").click();
+  await page.keyboard.type("produk");
+  await page.keyboard.press("Enter");
+  await page.getByRole("dialog", { name: "Qty Item" }).getByRole("button", { name: "Simpan" }).click();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByTestId("cart-row-0")).toHaveAttribute("data-active", "true");
+
+  const layout = await page.evaluate(() => {
+    const cartPanel = document.querySelector("[data-testid='cart-panel']");
+    const summaryPanel = document.querySelector("[data-testid='transaction-summary-panel']");
+    const cartRect = cartPanel?.getBoundingClientRect();
+    const summaryRect = summaryPanel?.getBoundingClientRect();
+
+    return {
+      cartRect: cartRect
+        ? {
+            top: cartRect.top,
+            left: cartRect.left,
+            bottom: cartRect.bottom,
+            right: cartRect.right,
+          }
+        : null,
+      summaryRect: summaryRect
+        ? {
+            top: summaryRect.top,
+            left: summaryRect.left,
+            bottom: summaryRect.bottom,
+            right: summaryRect.right,
+          }
+        : null,
+      summaryBelowCart: Boolean(
+        summaryRect &&
+          cartRect &&
+          summaryRect.top >= cartRect.bottom - 8 &&
+          Math.abs(summaryRect.left - cartRect.left) <= 8,
+      ),
+    };
+  });
+
+  expect(layout.summaryBelowCart).toBe(true);
+});
+
+test("pos landscape workspace stays inside the viewport and keeps the product list scrollable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openPosWithSeededCatalog(page);
+
+  const metrics = await page.evaluate(() => {
+    const workspace = document.querySelector("[data-testid='pos-workspace']");
+    const productTable = document.querySelector("[data-testid='product-table']");
+    const workspaceRect = workspace?.getBoundingClientRect();
+
+    return {
+      viewportHeight: window.innerHeight,
+      documentHeight: document.documentElement.scrollHeight,
+      workspaceHeight: workspaceRect?.height ?? 0,
+      productOverflowY: productTable ? getComputedStyle(productTable).overflowY : null,
+    };
+  });
+
+  expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.workspaceHeight).toBeGreaterThan(300);
+  expect(metrics.productOverflowY).toBe("auto");
 });
 
 test("pos keyboard + cart + payment flow", async ({ page }) => {

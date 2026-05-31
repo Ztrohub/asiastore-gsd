@@ -309,7 +309,7 @@ export function PosScreen() {
   }, [handlePosKeydown]);
 
   return (
-    <section className="space-y-3 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
+    <section className="space-y-3 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       {printStatusMessage ? (
         <div
           className={`rounded-md border px-3 py-2 text-sm ${
@@ -322,7 +322,7 @@ export function PosScreen() {
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-border bg-card p-3 xl:flex-none">
+      <div className="rounded-lg border border-border bg-card p-3 lg:flex-none">
         <Input
           aria-label="Global Search"
           autoFocus
@@ -346,10 +346,10 @@ export function PosScreen() {
       </div>
 
       <div
-        className="grid gap-3 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,3fr)_minmax(320px,1.7fr)_minmax(320px,1.3fr)]"
+        className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1.5fr)_minmax(280px,1fr)] xl:grid-rows-[minmax(0,1fr)]"
         data-testid="pos-workspace"
       >
-        <div className="space-y-2 xl:flex xl:min-h-0 xl:flex-col">
+        <div className="space-y-2 lg:col-start-1 lg:row-span-2 lg:flex lg:min-h-0 lg:flex-col xl:row-span-1">
           {loading ? <p className="text-sm text-muted-foreground">Memuat produk...</p> : null}
           <PosProductTable
             activeIndex={safeProductIndex}
@@ -365,7 +365,7 @@ export function PosScreen() {
             results={filteredProductResults}
           />
         </div>
-        <div className="space-y-2 xl:flex xl:min-h-0 xl:flex-col">
+        <div className="space-y-2 lg:col-start-2 lg:row-start-1 lg:flex lg:min-h-0 lg:flex-col lg:[&>[data-testid='cart-panel']]:flex-1 lg:[&>[data-testid='cart-panel']]:min-h-0 lg:[&>[data-testid='cart-panel']]:overflow-hidden lg:[&_[data-testid='cart-list']]:flex-1 lg:[&_[data-testid='cart-list']]:min-h-0 lg:[&_[data-testid='cart-list']]:max-h-none">
           <PosCartPanel
             activeIndex={safeCartIndex}
             focusMode={focusMode}
@@ -376,19 +376,21 @@ export function PosScreen() {
             }}
           />
         </div>
-        <PosTransactionSummaryPanel
-          itemCount={lines.length}
-          itemDiscountTotal={totals.itemDiscount}
-          note={note}
-          onCashCheckout={() => openPayment("cash")}
-          onNoteChange={setNote}
-          onOrderDiscountChange={(value) => setOrderDiscountInput(Math.max(0, Math.trunc(value)))}
-          onTransferCheckout={() => openPayment("bank_transfer")}
-          onVoidTransaction={requestVoidTransaction}
-          orderDiscount={totals.orderDiscount}
-          subtotal={totals.subtotal}
-          total={totals.total}
-        />
+        <div className="lg:col-start-2 lg:row-start-2 lg:mt-3 xl:col-start-3 xl:row-start-1 xl:mt-0">
+          <PosTransactionSummaryPanel
+            itemCount={lines.length}
+            itemDiscountTotal={totals.itemDiscount}
+            note={note}
+            onCashCheckout={() => openPayment("cash")}
+            onNoteChange={setNote}
+            onOrderDiscountChange={(value) => setOrderDiscountInput(Math.max(0, Math.trunc(value)))}
+            onTransferCheckout={() => openPayment("bank_transfer")}
+            onVoidTransaction={requestVoidTransaction}
+            orderDiscount={totals.orderDiscount}
+            subtotal={totals.subtotal}
+            total={totals.total}
+          />
+        </div>
       </div>
 
       <PosQtyDialog
