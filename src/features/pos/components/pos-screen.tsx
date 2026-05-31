@@ -308,7 +308,7 @@ export function PosScreen() {
   }, [handlePosKeydown]);
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-3 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
       {printStatusMessage ? (
         <div
           className={`rounded-md border px-3 py-2 text-sm ${
@@ -321,7 +321,7 @@ export function PosScreen() {
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-border bg-card p-3">
+      <div className="rounded-lg border border-border bg-card p-3 xl:flex-none">
         <Input
           aria-label="Global Search"
           autoFocus
@@ -344,8 +344,8 @@ export function PosScreen() {
         </Link>
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(420px,2fr)]">
-        <div className="space-y-2">
+      <div className="grid gap-3 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,3fr)_minmax(420px,2fr)]">
+        <div className="space-y-2 xl:flex xl:min-h-0 xl:flex-col">
           {loading ? <p className="text-sm text-muted-foreground">Memuat produk...</p> : null}
           <PosProductTable
             activeIndex={safeProductIndex}
@@ -361,7 +361,7 @@ export function PosScreen() {
             results={filteredProductResults}
           />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 xl:flex xl:min-h-0 xl:flex-col">
           <PosCartPanel
             activeIndex={safeCartIndex}
             focusMode={focusMode}
@@ -382,7 +382,7 @@ export function PosScreen() {
           <label className="space-y-1 text-sm">
             <span>Catatan transaksi (opsional)</span>
             <textarea
-              className="h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring xl:h-20 xl:flex-none"
               data-testid="transaction-note"
               onChange={(event) => setNote(event.target.value)}
               value={note}

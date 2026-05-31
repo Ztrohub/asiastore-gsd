@@ -8,6 +8,24 @@ async function login(page: Page) {
   await page.waitForURL("**/app");
 }
 
+test("pos desktop layout fits within one large-screen viewport without page scroll", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await login(page);
+  await page.goto("/app/pos");
+  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+
+  const pageMetrics = await page.evaluate(() => ({
+    bodyScrollHeight: document.body.scrollHeight,
+    documentScrollHeight: document.documentElement.scrollHeight,
+    viewportHeight: window.innerHeight,
+  }));
+
+  expect(pageMetrics.bodyScrollHeight).toBeLessThanOrEqual(pageMetrics.viewportHeight);
+  expect(pageMetrics.documentScrollHeight).toBeLessThanOrEqual(pageMetrics.viewportHeight);
+});
+
 test("pos keyboard + cart + payment flow", async ({ page }) => {
   await login(page);
   await page.goto("/app/pos");
