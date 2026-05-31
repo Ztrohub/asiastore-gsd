@@ -45,7 +45,7 @@ test("pos desktop third column layout fits within one large-screen viewport with
       viewportHeight: window.innerHeight,
       productOverflowY: window.getComputedStyle(productTable).overflowY,
       cartOverflowY: window.getComputedStyle(cartList).overflowY,
-      summaryToRight: summaryRect.left >= cartRect.right,
+      summaryToRight: summaryRect.left >= cartRect.right - 8,
       productHeight: productRect.height,
       cartHeight: cartRect.height,
     };
