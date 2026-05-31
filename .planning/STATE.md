@@ -61,6 +61,7 @@ Resume file: .planning/phases/03-pos-checkout-and-receipt-printing/03-01-PLAN.md
 - `260531-k2m` - riset dan desain ulang layout POS tiga kolom agar list produk dan keranjang tetap lega tanpa scrollbar halaman desktop
 - Plan: `.planning/quick/260531-k2m-riset-dan-desain-ulang-layout-pos-3-kolom/260531-k2m-PLAN.md`
 - Spec: `docs/superpowers/specs/2026-05-31-pos-three-column-layout-design.md`
+- Implementation plan: `docs/superpowers/plans/2026-05-31-pos-three-column-layout-implementation.md`
 
 ## Accumulated Context
 
