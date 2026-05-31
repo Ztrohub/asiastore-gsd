@@ -66,8 +66,38 @@ test("pos tablet landscape moves summary below the cart without changing keyboar
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await login(page);
+  await page.route("**/api/inventory/products**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        cursor: String(Date.now()),
+        products: [
+          {
+            id_produk: "seeded-product-1",
+            nama_produk: "Produk Contoh",
+            sku: "BRG-CONTOH-001",
+            harga_jual: 15000,
+            harga_jual_unit_besar: 165000,
+            stok_saat_ini: 25,
+            stok_unit_besar_saat_ini: 4,
+            is_active: true,
+            unit_small_name: "pcs",
+            unit_large_name: "dus",
+            unit_large_to_small: 12,
+            allow_buy_in_small: true,
+            allow_buy_in_large: true,
+            allow_sell_in_small: true,
+            allow_sell_in_large: true,
+            updatedAt: Date.now(),
+          },
+        ],
+      }),
+    });
+  });
   await page.goto("/app/pos");
   await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await expect(page.getByTestId("product-row-0")).toBeVisible();
 
   await page.locator("main").click();
   await page.keyboard.type("produk");
@@ -116,8 +146,38 @@ test("pos landscape workspace stays inside the viewport and keeps the product li
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await login(page);
+  await page.route("**/api/inventory/products**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        cursor: String(Date.now()),
+        products: [
+          {
+            id_produk: "seeded-product-1",
+            nama_produk: "Produk Contoh",
+            sku: "BRG-CONTOH-001",
+            harga_jual: 15000,
+            harga_jual_unit_besar: 165000,
+            stok_saat_ini: 25,
+            stok_unit_besar_saat_ini: 4,
+            is_active: true,
+            unit_small_name: "pcs",
+            unit_large_name: "dus",
+            unit_large_to_small: 12,
+            allow_buy_in_small: true,
+            allow_buy_in_large: true,
+            allow_sell_in_small: true,
+            allow_sell_in_large: true,
+            updatedAt: Date.now(),
+          },
+        ],
+      }),
+    });
+  });
   await page.goto("/app/pos");
   await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await expect(page.getByTestId("product-row-0")).toBeVisible();
 
   const metrics = await page.evaluate(() => {
     const workspace = document.querySelector("[data-testid='pos-workspace']");
