@@ -365,7 +365,7 @@ export function PosScreen() {
             results={filteredProductResults}
           />
         </div>
-        <div className="space-y-2 lg:col-start-2 lg:row-start-1 lg:flex lg:min-h-0 lg:flex-col lg:[&>[data-testid='cart-panel']]:flex-1 lg:[&>[data-testid='cart-panel']]:min-h-0 lg:[&>[data-testid='cart-panel']]:overflow-hidden lg:[&_[data-testid='cart-list']]:flex-1 lg:[&_[data-testid='cart-list']]:min-h-0 lg:[&_[data-testid='cart-list']]:max-h-none">
+        <div className="space-y-2 lg:col-start-2 lg:row-start-1 lg:flex lg:min-h-0 lg:flex-col">
           <PosCartPanel
             activeIndex={safeCartIndex}
             focusMode={focusMode}

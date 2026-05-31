@@ -20,7 +20,7 @@ export function PosCartPanel({
   return (
     <div
       className={cn(
-        "space-y-3 rounded-lg border p-3 xl:flex xl:min-h-0 xl:flex-1 xl:flex-col xl:overflow-hidden",
+        "space-y-3 rounded-lg border p-3 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden",
         focusMode === "cart" ? "border-white ring-2 ring-white/80" : "border-border",
       )}
       data-testid="cart-panel"
@@ -36,7 +36,7 @@ export function PosCartPanel({
         </p>
       ) : (
         <div
-          className="max-h-80 space-y-1 overflow-auto rounded-md border border-border/80 bg-background/40 p-1 xl:min-h-0 xl:flex-1 xl:max-h-none"
+          className="max-h-80 space-y-1 overflow-auto rounded-md border border-border/80 bg-background/40 p-1 lg:min-h-0 lg:flex-1 lg:max-h-none"
           data-testid="cart-list"
         >
           {lines.map((line, idx) => (

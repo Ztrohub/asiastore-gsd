@@ -147,31 +147,31 @@ test("pos landscape workspace stays inside the viewport and keeps the product li
   await page.setViewportSize({ width: 1024, height: 768 });
   await login(page);
   await page.route("**/api/inventory/products**", async (route) => {
+    const products = Array.from({ length: 14 }, (_, index) => ({
+      id_produk: `seeded-product-${index + 1}`,
+      nama_produk: `Produk Contoh ${String(index + 1).padStart(2, "0")}`,
+      sku: `BRG-CONTOH-${String(index + 1).padStart(3, "0")}`,
+      harga_jual: 15000 + index * 1000,
+      harga_jual_unit_besar: 165000 + index * 1000,
+      stok_saat_ini: 25,
+      stok_unit_besar_saat_ini: 4,
+      is_active: true,
+      unit_small_name: "pcs",
+      unit_large_name: "dus",
+      unit_large_to_small: 12,
+      allow_buy_in_small: true,
+      allow_buy_in_large: true,
+      allow_sell_in_small: true,
+      allow_sell_in_large: true,
+      updatedAt: Date.now() + index,
+    }));
+
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
         cursor: String(Date.now()),
-        products: [
-          {
-            id_produk: "seeded-product-1",
-            nama_produk: "Produk Contoh",
-            sku: "BRG-CONTOH-001",
-            harga_jual: 15000,
-            harga_jual_unit_besar: 165000,
-            stok_saat_ini: 25,
-            stok_unit_besar_saat_ini: 4,
-            is_active: true,
-            unit_small_name: "pcs",
-            unit_large_name: "dus",
-            unit_large_to_small: 12,
-            allow_buy_in_small: true,
-            allow_buy_in_large: true,
-            allow_sell_in_small: true,
-            allow_sell_in_large: true,
-            updatedAt: Date.now(),
-          },
-        ],
+        products,
       }),
     });
   });
@@ -179,9 +179,20 @@ test("pos landscape workspace stays inside the viewport and keeps the product li
   await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
   await expect(page.getByTestId("product-row-0")).toBeVisible();
 
+  await page.locator("main").click();
+  await page.keyboard.type("produk");
+  for (let index = 0; index < 14; index += 1) {
+    if (index > 0) {
+      await page.keyboard.press("ArrowDown");
+    }
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+  }
+
   const metrics = await page.evaluate(() => {
     const workspace = document.querySelector("[data-testid='pos-workspace']");
     const productTable = document.querySelector("[data-testid='product-table']");
+    const cartList = document.querySelector("[data-testid='cart-list']");
     const workspaceRect = workspace?.getBoundingClientRect();
 
     return {
@@ -189,12 +200,17 @@ test("pos landscape workspace stays inside the viewport and keeps the product li
       documentHeight: document.documentElement.scrollHeight,
       workspaceHeight: workspaceRect?.height ?? 0,
       productOverflowY: productTable ? getComputedStyle(productTable).overflowY : null,
+      cartOverflowY: cartList ? getComputedStyle(cartList).overflowY : null,
+      cartListScrolls:
+        cartList instanceof HTMLElement ? cartList.scrollHeight > cartList.clientHeight : false,
     };
   });
 
   expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight);
   expect(metrics.workspaceHeight).toBeGreaterThan(300);
   expect(metrics.productOverflowY).toBe("auto");
+  expect(metrics.cartOverflowY).toBe("auto");
+  expect(metrics.cartListScrolls).toBe(true);
 });
 
 test("pos keyboard + cart + payment flow", async ({ page }) => {
