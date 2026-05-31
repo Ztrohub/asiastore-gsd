@@ -10,6 +10,7 @@ import { PosProductTable } from "@/features/pos/components/pos-product-table";
 import { PosQtyDialog } from "@/features/pos/components/pos-qty-dialog";
 import { PosReceiptPrompt } from "@/features/pos/components/pos-receipt-prompt";
 import { PosRemoveDialog } from "@/features/pos/components/pos-remove-dialog";
+import { PosTransactionSummaryPanel } from "@/features/pos/components/pos-transaction-summary-panel";
 import { useProductCatalog } from "@/features/inventory/hooks/use-product-catalog";
 import { usePosCart } from "@/features/pos/hooks/use-pos-cart";
 import { usePosCheckout, type PosPaymentMethod, computeCheckoutTotals } from "@/features/pos/hooks/use-pos-checkout";
@@ -344,7 +345,10 @@ export function PosScreen() {
         </Link>
       </div>
 
-      <div className="grid gap-3 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,3fr)_minmax(420px,2fr)]">
+      <div
+        className="grid gap-3 xl:min-h-0 xl:flex-1 xl:grid-cols-[minmax(0,3fr)_minmax(320px,1.7fr)_minmax(320px,1.3fr)]"
+        data-testid="pos-workspace"
+      >
         <div className="space-y-2 xl:flex xl:min-h-0 xl:flex-col">
           {loading ? <p className="text-sm text-muted-foreground">Memuat produk...</p> : null}
           <PosProductTable
@@ -365,30 +369,26 @@ export function PosScreen() {
           <PosCartPanel
             activeIndex={safeCartIndex}
             focusMode={focusMode}
-            itemDiscountTotal={totals.itemDiscount}
             lines={lines}
-            onCashCheckout={() => openPayment("cash")}
-            onOrderDiscountChange={(value) => setOrderDiscountInput(Math.max(0, Math.trunc(value)))}
             onSelect={(idx) => {
               setCartIndex(idx);
               setFocusMode("cart");
             }}
-            onTransferCheckout={() => openPayment("bank_transfer")}
-            onVoidTransaction={requestVoidTransaction}
-            orderDiscount={totals.orderDiscount}
-            subtotal={totals.subtotal}
-            total={totals.total}
           />
-          <label className="space-y-1 text-sm">
-            <span>Catatan transaksi (opsional)</span>
-            <textarea
-              className="h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring xl:h-20 xl:flex-none"
-              data-testid="transaction-note"
-              onChange={(event) => setNote(event.target.value)}
-              value={note}
-            />
-          </label>
         </div>
+        <PosTransactionSummaryPanel
+          itemCount={lines.length}
+          itemDiscountTotal={totals.itemDiscount}
+          note={note}
+          onCashCheckout={() => openPayment("cash")}
+          onNoteChange={setNote}
+          onOrderDiscountChange={(value) => setOrderDiscountInput(Math.max(0, Math.trunc(value)))}
+          onTransferCheckout={() => openPayment("bank_transfer")}
+          onVoidTransaction={requestVoidTransaction}
+          orderDiscount={totals.orderDiscount}
+          subtotal={totals.subtotal}
+          total={totals.total}
+        />
       </div>
 
       <PosQtyDialog

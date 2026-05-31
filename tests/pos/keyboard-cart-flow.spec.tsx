@@ -80,10 +80,16 @@ describe("pos keyboard cart flow", () => {
 
     await user.keyboard("{Enter}");
     const cartPanel = screen.getByTestId("cart-panel");
+    const summaryPanel = screen.getByTestId("transaction-summary-panel");
     expect(within(cartPanel).getByText("Kopi Susu (pcs)")).toBeInTheDocument();
+    expect(within(cartPanel).queryByText("Diskon total transaksi (IDR)")).not.toBeInTheDocument();
+    expect(
+      within(cartPanel).queryByText("Tekan Enter untuk edit qty/subtotal item"),
+    ).not.toBeInTheDocument();
+    expect(within(summaryPanel).getByTestId("order-discount-input")).toHaveValue("0");
     expect(screen.getByTestId("cart-total")).toHaveTextContent(/12\.000/);
-    expect(screen.getByRole("button", { name: "Tunai (F8)" })).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Transfer (F9)" })).toBeEnabled();
+    expect(within(summaryPanel).getByRole("button", { name: "Tunai (F8)" })).toBeEnabled();
+    expect(within(summaryPanel).getByRole("button", { name: "Transfer (F9)" })).toBeEnabled();
   });
 
   it("selects default qty in add-to-cart dialog so typing replaces the default value", async () => {
@@ -235,11 +241,11 @@ describe("pos keyboard cart flow", () => {
     const user = userEvent.setup();
     render(<PosScreen />);
 
-    const cartPanel = screen.getByTestId("cart-panel");
+    const summaryPanel = screen.getByTestId("transaction-summary-panel");
     const search = screen.getByLabelText("Global Search");
-    const noteInput = screen.getByTestId("transaction-note");
-    const discountInput = within(cartPanel).getByRole("textbox");
-    const voidButton = screen.getByRole("button", { name: "Void (F10)" });
+    const noteInput = within(summaryPanel).getByTestId("transaction-note");
+    const discountInput = within(summaryPanel).getByTestId("order-discount-input");
+    const voidButton = within(summaryPanel).getByRole("button", { name: "Void (F10)" });
 
     expect(voidButton).toBeDisabled();
     expect(voidButton).toHaveClass("bg-destructive");

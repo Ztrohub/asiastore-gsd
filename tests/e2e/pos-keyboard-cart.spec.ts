@@ -8,22 +8,57 @@ async function login(page: Page) {
   await page.waitForURL("**/app");
 }
 
-test("pos desktop layout fits within one large-screen viewport without page scroll", async ({
+test("pos desktop third column layout fits within one large-screen viewport without page scroll", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
   await login(page);
   await page.goto("/app/pos");
   await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await page.locator("main").click();
+  await page.keyboard.type("produk");
+  await expect(page.getByLabel("Global Search")).toHaveValue("produk");
+  await expect(page.getByTestId("product-row-0")).toHaveAttribute("data-active", "true");
+  await page.keyboard.press("Enter");
+  const qtyDialog = page.getByRole("dialog", { name: "Qty Item" });
+  await expect(qtyDialog).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(qtyDialog).not.toBeVisible();
 
-  const pageMetrics = await page.evaluate(() => ({
-    bodyScrollHeight: document.body.scrollHeight,
-    documentScrollHeight: document.documentElement.scrollHeight,
-    viewportHeight: window.innerHeight,
-  }));
+  const pageMetrics = await page.evaluate(() => {
+    const productTable = document.querySelector("[data-testid='product-table']");
+    const cartList = document.querySelector("[data-testid='cart-list']");
+    const cartPanel = document.querySelector("[data-testid='cart-panel']");
+    const summaryPanel = document.querySelector("[data-testid='transaction-summary-panel']");
 
-  expect(pageMetrics.bodyScrollHeight).toBeLessThanOrEqual(pageMetrics.viewportHeight);
-  expect(pageMetrics.documentScrollHeight).toBeLessThanOrEqual(pageMetrics.viewportHeight);
+    if (!productTable || !cartList || !cartPanel || !summaryPanel) {
+      return null;
+    }
+
+    const productRect = productTable.getBoundingClientRect();
+    const cartRect = cartPanel.getBoundingClientRect();
+    const summaryRect = summaryPanel.getBoundingClientRect();
+
+    return {
+      bodyScrollHeight: document.body.scrollHeight,
+      documentScrollHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+      productOverflowY: window.getComputedStyle(productTable).overflowY,
+      cartOverflowY: window.getComputedStyle(cartList).overflowY,
+      summaryToRight: summaryRect.left >= cartRect.right,
+      productHeight: productRect.height,
+      cartHeight: cartRect.height,
+    };
+  });
+
+  expect(pageMetrics).not.toBeNull();
+  expect(pageMetrics!.bodyScrollHeight).toBeLessThanOrEqual(pageMetrics!.viewportHeight);
+  expect(pageMetrics!.documentScrollHeight).toBeLessThanOrEqual(pageMetrics!.viewportHeight);
+  expect(pageMetrics!.productOverflowY).toBe("auto");
+  expect(pageMetrics!.cartOverflowY).toBe("auto");
+  expect(pageMetrics!.summaryToRight).toBe(true);
+  expect(pageMetrics!.productHeight).toBeGreaterThan(240);
+  expect(pageMetrics!.cartHeight).toBeGreaterThan(240);
 });
 
 test("pos keyboard + cart + payment flow", async ({ page }) => {
