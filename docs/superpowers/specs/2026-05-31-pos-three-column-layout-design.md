@@ -25,6 +25,7 @@ When page scroll is removed at the desktop breakpoint, the static controls consu
 - Keep the main POS page free of browser-level vertical scrolling on desktop.
 - Give both the product list and cart list their own internal scroll containers on desktop and tablet landscape.
 - Preserve the existing keyboard flow and shortcut behavior.
+- Preserve the existing dialog cursor flow and fuzzy-search behavior exactly as they work today.
 - Keep the layout usable on tablet landscape and mobile without introducing cramped tap targets.
 
 ## Non-Goals
@@ -32,6 +33,7 @@ When page scroll is removed at the desktop breakpoint, the static controls consu
 - No behavior change to qty dialogs, cart edit dialogs, delete confirmation, void confirmation, payment dialogs, or receipt prompts.
 - No new keyboard stops for the summary/action panel.
 - No redesign of the underlying transaction model, pricing rules, or checkout logic.
+- No change to shortcut mappings, dialog action navigation model, fuzzy-search ranking rules, or search-result highlighting behavior.
 
 ## Research Summary
 
@@ -149,6 +151,34 @@ The following behaviors must remain unchanged:
 
 The summary/action pane is intentionally not added to the arrow-key navigation loop. This keeps cashier flow short and preserves muscle memory.
 
+## Frozen Behavior Contract
+
+The layout refactor is allowed to move surfaces, resize panes, and extract components. It is not allowed to change the interaction contract below.
+
+### Keyboard Flow
+
+- The cashier can still start typing immediately without clicking the search field first.
+- Search typing, `Enter`, qty confirmation, return-to-search focus, `ArrowRight` to cart, cart edit with `Enter`, and cart delete with `Delete` must remain identical to the current `PosScreen` behavior.
+- `ArrowLeft` and `ArrowRight` semantics must stay exactly the same as today. They are not repurposed for the new summary/action pane.
+
+### Cursor Flow
+
+- White-cursor dialog action navigation stays exactly as-is.
+- Left/right arrow movement across dialog footer actions must not change.
+- Focus-ring styling and focus ownership in existing dialogs must remain identical to the current behavior.
+
+### Shortcut Contract
+
+- The reserved shortcut set in `src/lib/shortcuts/pos-contract.ts` must not change.
+- `type-to-search`, `navigate-up`, `navigate-down`, `navigate-left`, `navigate-right`, `submit-item`, `void`, `cash-payment`, and `transfer-payment` remain mapped exactly as they are now.
+- The summary/action pane can be clicked or tapped, but it must not introduce a different keyboard shortcut path.
+
+### Fuzzy Search Flow
+
+- The search algorithm, typo tolerance, out-of-order token handling, and ranking behavior must not change as part of this task.
+- Search-result highlighting remains bold/strong in the same way it works today.
+- The layout refactor may resize the product pane, but it may not change product search ordering, discoverability, or empty-state behavior.
+
 ## Error Handling and Behavioral Safety
 
 - All existing validation and dialog error behavior remain where they are today.
@@ -160,11 +190,20 @@ The summary/action pane is intentionally not added to the arrow-key navigation l
 - Keep the existing desktop no-page-scroll Playwright regression for `/app/pos`.
 - Extend layout verification to confirm the desktop page still fits within `window.innerHeight` after the 3-column split.
 - Re-run POS keyboard flow tests to prove that `ArrowLeft/ArrowRight`, `Enter`, `Delete`, `F8`, `F9`, and `F10` behaviors do not change.
+- Re-run dialog cursor-flow tests to prove left/right dialog action movement and white-cursor focus styling do not change.
+- Re-run fuzzy-search tests to prove ranking, typo tolerance, out-of-order matching, and bold highlight behavior do not change.
 - Run responsive manual QA at:
   - desktop `1366x768`
   - tablet landscape `1024x768`
   - mobile `390x844`
 - Validate that product list and cart list each scroll internally on desktop and tablet landscape.
+
+Recommended automated verification set:
+
+- `tests/pos/keyboard-cart-flow.spec.tsx`
+- `tests/pos/dialog-action-navigation.spec.tsx`
+- `tests/search/product-fuzzy-search.spec.ts`
+- `tests/e2e/pos-keyboard-cart.spec.ts`
 
 ## Acceptance Criteria
 
@@ -174,3 +213,5 @@ The summary/action pane is intentionally not added to the arrow-key navigation l
 - Tablet landscape uses 2 columns with the summary/action block below the cart.
 - Mobile remains usable as a stacked flow with normal page scrolling.
 - Keyboard flow and shortcut behavior match the existing POS contract exactly.
+- Dialog cursor flow matches the current white-cursor navigation exactly.
+- Fuzzy search behavior, ordering, and highlight output match the current implementation exactly.
