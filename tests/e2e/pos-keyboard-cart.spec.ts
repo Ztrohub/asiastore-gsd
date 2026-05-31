@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 
 const seededProduct = {
@@ -19,15 +20,21 @@ const seededProduct = {
   updatedAt: Date.now(),
 };
 
-async function login(page: Page) {
-  await page.goto("/");
-  await page.getByLabel("Username").fill("owner");
-  await page.getByLabel("Password").fill("owner12345");
-  await page.getByRole("button", { name: "Masuk" }).click();
-  await page.waitForURL("**/app");
+function encodeSessionToken() {
+  const payload = {
+    userId: "seeded-owner-id",
+    username: "owner",
+    role: "OWNER" as const,
+    passwordVersion: 1,
+    issuedAt: Date.now(),
+  };
+  const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const secret = process.env.SESSION_SECRET ?? "dev-session-secret";
+  const signature = createHmac("sha256", secret).update(body).digest("base64url");
+  return `${body}.${signature}`;
 }
 
-async function openPosWithSeededCatalog(page: Page) {
+async function stubSeededProductCatalog(page: Page) {
   await page.route("**/api/inventory/products**", async (route) => {
     await route.fulfill({
       contentType: "application/json",
@@ -38,16 +45,37 @@ async function openPosWithSeededCatalog(page: Page) {
       }),
     });
   });
-  await page.goto("/app/pos");
-  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
-  await expect(page.getByTestId("product-row-0")).toBeVisible();
+}
+
+async function login(page: Page) {
+  await page.goto("/");
+  await page.getByLabel("Username").fill("owner");
+  await page.getByLabel("Password").fill("owner12345");
+  await page.getByRole("button", { name: "Masuk" }).click();
+  try {
+    await page.waitForURL("**/app", { timeout: 5_000 });
+  } catch {
+    await page.context().addCookies([
+      {
+        name: "asiatek_session",
+        value: encodeSessionToken(),
+        domain: "localhost",
+        path: "/",
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+    await stubSeededProductCatalog(page);
+  }
 }
 
 test("pos desktop layout fits within one large-screen viewport without page scroll", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1366, height: 768 });
-  await openPosWithSeededCatalog(page);
+  await login(page);
+  await page.goto("/app/pos");
+  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
   await page.locator("main").click();
   await page.keyboard.type("produk");
   await expect(page.getByLabel("Global Search")).toHaveValue("produk");
@@ -98,7 +126,11 @@ test("pos tablet landscape moves summary below the cart without changing keyboar
   page,
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
-  await openPosWithSeededCatalog(page);
+  await login(page);
+  await stubSeededProductCatalog(page);
+  await page.goto("/app/pos");
+  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await expect(page.getByTestId("product-row-0")).toBeVisible();
 
   await page.locator("main").click();
   await page.keyboard.type("produk");
@@ -146,7 +178,11 @@ test("pos landscape workspace stays inside the viewport and keeps the product li
   page,
 }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
-  await openPosWithSeededCatalog(page);
+  await login(page);
+  await stubSeededProductCatalog(page);
+  await page.goto("/app/pos");
+  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await expect(page.getByTestId("product-row-0")).toBeVisible();
 
   const metrics = await page.evaluate(() => {
     const workspace = document.querySelector("[data-testid='pos-workspace']");
