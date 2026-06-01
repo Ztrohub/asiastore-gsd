@@ -33,7 +33,7 @@ export function PosTransactionSummaryPanel({
 
   return (
     <div
-      className="space-y-3 rounded-lg border border-border p-3 xl:flex xl:min-h-0 xl:flex-col"
+      className="space-y-2 rounded-lg border border-border p-3 xl:flex xl:h-full xl:min-h-0 xl:flex-col xl:overflow-hidden"
       data-testid="transaction-summary-panel"
     >
       <div className="flex items-center justify-between">
@@ -74,14 +74,14 @@ export function PosTransactionSummaryPanel({
       <label className="space-y-1 text-sm xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
         <span>Catatan transaksi (opsional)</span>
         <textarea
-          className="h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring xl:min-h-[7rem] xl:flex-1"
+          className="h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring xl:min-h-[3.5rem] xl:flex-1 xl:resize-none"
           data-testid="transaction-note"
           onChange={(event) => onNoteChange(event.target.value)}
           value={note}
         />
       </label>
 
-      <div className="space-y-2">
+      <div className="space-y-2 xl:mt-auto">
         <div className="grid grid-cols-2 gap-2">
           <button
             className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"

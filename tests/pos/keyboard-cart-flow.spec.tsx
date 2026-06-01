@@ -77,6 +77,7 @@ describe("pos keyboard cart flow", () => {
 
     const qtyInput = await screen.findByLabelText("Qty");
     expect(qtyInput).toHaveValue("1");
+    expect(screen.queryByText(/Ketik langsung untuk cari produk/i)).not.toBeInTheDocument();
 
     await user.keyboard("{Enter}");
     const cartPanel = screen.getByTestId("cart-panel");

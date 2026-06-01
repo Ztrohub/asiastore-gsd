@@ -8,6 +8,183 @@ async function login(page: Page) {
   await page.waitForURL("**/app");
 }
 
+test("desktop sidebar collapse persists per browser and gives more room to POS", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await login(page);
+  await page.goto("/app/pos");
+  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await expect(page.getByTestId("product-table")).toBeVisible();
+  await expect(page.getByTestId("app-shell-sidebar-trigger")).toBeVisible();
+
+  const readWidths = async () =>
+    page.evaluate(() => ({
+      mainWidth:
+        document.querySelector("[data-testid='app-shell-main']")?.getBoundingClientRect().width ??
+        0,
+      workspaceWidth:
+        document.querySelector("[data-testid='pos-workspace']")?.getBoundingClientRect().width ?? 0,
+    }));
+
+  const beforeCollapse = await readWidths();
+
+  await page.getByTestId("app-shell-sidebar-trigger").click();
+
+  await expect
+    .poll(async () => (await readWidths()).mainWidth)
+    .toBeGreaterThan(beforeCollapse.mainWidth + 150);
+
+  const collapsed = await readWidths();
+  expect(collapsed.workspaceWidth).toBeGreaterThan(beforeCollapse.workspaceWidth + 150);
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await expect(page.getByTestId("product-table")).toBeVisible();
+
+  const afterReload = await readWidths();
+  expect(afterReload.mainWidth).toBeGreaterThan(beforeCollapse.mainWidth + 150);
+  expect(afterReload.workspaceWidth).toBeGreaterThan(beforeCollapse.workspaceWidth + 150);
+});
+
+test("wide screens expand the app shell and give more room to POS product and cart columns", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await login(page);
+  await expect(page.getByRole("heading", { name: /Selamat datang/i })).toBeVisible();
+
+  const dashboardMetrics = await page.evaluate(() => {
+    const headerShell = document.querySelector("[data-testid='app-shell-header']");
+    const bodyShell = document.querySelector("[data-testid='app-shell-body']");
+    const dashboardMain = document.querySelector("[data-testid='app-main-content']");
+
+    return {
+      viewportWidth: window.innerWidth,
+      headerWidth: headerShell?.getBoundingClientRect().width ?? 0,
+      bodyWidth: bodyShell?.getBoundingClientRect().width ?? 0,
+      mainWidth: dashboardMain?.getBoundingClientRect().width ?? 0,
+    };
+  });
+
+  expect(dashboardMetrics.headerWidth).toBeGreaterThan(1600);
+  expect(dashboardMetrics.bodyWidth).toBeGreaterThan(1500);
+  expect(dashboardMetrics.mainWidth).toBeGreaterThan(1300);
+  expect(dashboardMetrics.bodyWidth).toBeLessThanOrEqual(dashboardMetrics.viewportWidth);
+
+  await page.goto("/app/pos");
+  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await expect(page.getByTestId("product-table")).toBeVisible();
+
+  const posMetrics = await page.evaluate(() => {
+    const bodyShell = document.querySelector("[data-testid='app-shell-body']");
+    const workspace = document.querySelector("[data-testid='pos-workspace']");
+    const productTable = document.querySelector("[data-testid='product-table']");
+    const cartPanel = document.querySelector("[data-testid='cart-panel']");
+    const summaryPanel = document.querySelector("[data-testid='transaction-summary-panel']");
+
+    return {
+      bodyWidth: bodyShell?.getBoundingClientRect().width ?? 0,
+      workspaceWidth: workspace?.getBoundingClientRect().width ?? 0,
+      productWidth: productTable?.getBoundingClientRect().width ?? 0,
+      cartWidth: cartPanel?.getBoundingClientRect().width ?? 0,
+      summaryWidth: summaryPanel?.getBoundingClientRect().width ?? 0,
+    };
+  });
+
+  expect(posMetrics.bodyWidth).toBeGreaterThan(1500);
+  expect(posMetrics.workspaceWidth).toBeGreaterThan(1300);
+  expect(posMetrics.productWidth).toBeGreaterThan(580);
+  expect(posMetrics.cartWidth).toBeGreaterThan(420);
+  expect(posMetrics.summaryWidth).toBeGreaterThan(280);
+  expect(posMetrics.summaryWidth).toBeLessThan(420);
+});
+
+test("short wide POS view keeps summary actions visible, wraps cart names, and removes helper text", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1366, height: 620 });
+  await login(page);
+  await page.route("**/api/inventory/products**", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        cursor: String(Date.now()),
+        products: [
+          {
+            id_produk: "long-name-product",
+            nama_produk: "Produk Contoh Dengan Nama Sangat Panjang Sekali Untuk Menguji Keranjang POS Tanpa Pemotongan Teks",
+            sku: "BRG-LONG-001",
+            harga_jual: 25000,
+            harga_jual_unit_besar: 250000,
+            stok_saat_ini: 25,
+            stok_unit_besar_saat_ini: 4,
+            is_active: true,
+            unit_small_name: "pcs",
+            unit_large_name: "dus",
+            unit_large_to_small: 12,
+            allow_buy_in_small: true,
+            allow_buy_in_large: true,
+            allow_sell_in_small: true,
+            allow_sell_in_large: true,
+            updatedAt: Date.now(),
+          },
+        ],
+      }),
+    });
+  });
+  await page.goto("/app/pos");
+  await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
+  await expect(page.getByTestId("product-row-0")).toBeVisible();
+  await expect(page.getByText(/Ketik langsung untuk cari produk/i)).toHaveCount(0);
+
+  await page.getByLabel("Global Search").click();
+  await page.keyboard.type("produk");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowRight");
+
+  const layout = await page.evaluate(() => {
+    const cartPanel = document.querySelector("[data-testid='cart-panel']");
+    const summaryPanel = document.querySelector("[data-testid='transaction-summary-panel']");
+    const cashButton = document.querySelector("[data-testid='checkout-cash-button']");
+    const transferButton = document.querySelector("[data-testid='checkout-transfer-button']");
+    const voidButton = document.querySelector("[data-testid='void-button']");
+    const cartName = document.querySelector("[data-testid='cart-row-name-0']");
+    const cartRect = cartPanel?.getBoundingClientRect();
+    const summaryRect = summaryPanel?.getBoundingClientRect();
+    const cashRect = cashButton?.getBoundingClientRect();
+    const transferRect = transferButton?.getBoundingClientRect();
+    const voidRect = voidButton?.getBoundingClientRect();
+
+    return {
+      viewportHeight: window.innerHeight,
+      documentHeight: document.documentElement.scrollHeight,
+      summaryBelowCart: Boolean(
+        summaryRect &&
+          cartRect &&
+          summaryRect.top >= cartRect.bottom - 8 &&
+          Math.abs(summaryRect.left - cartRect.left) <= 8,
+      ),
+      summaryBottom: summaryRect?.bottom ?? 0,
+      cashBottom: cashRect?.bottom ?? 0,
+      transferBottom: transferRect?.bottom ?? 0,
+      voidBottom: voidRect?.bottom ?? 0,
+      cartNameWhiteSpace: cartName ? getComputedStyle(cartName).whiteSpace : null,
+      cartNameTextOverflow: cartName ? getComputedStyle(cartName).textOverflow : null,
+    };
+  });
+
+  expect(layout.documentHeight).toBeLessThanOrEqual(layout.viewportHeight);
+  expect(layout.summaryBottom).toBeLessThanOrEqual(layout.viewportHeight);
+  expect(layout.cashBottom).toBeLessThanOrEqual(layout.viewportHeight);
+  expect(layout.transferBottom).toBeLessThanOrEqual(layout.viewportHeight);
+  expect(layout.voidBottom).toBeLessThanOrEqual(layout.viewportHeight);
+  expect(layout.cartNameWhiteSpace).not.toBe("nowrap");
+  expect(layout.cartNameTextOverflow).not.toBe("ellipsis");
+});
+
 test("pos desktop layout fits within one large-screen viewport without page scroll", async ({
   page,
 }) => {
@@ -15,7 +192,7 @@ test("pos desktop layout fits within one large-screen viewport without page scro
   await login(page);
   await page.goto("/app/pos");
   await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
-  await page.locator("main").click();
+  await page.getByLabel("Global Search").click();
   await page.keyboard.type("produk");
   await expect(page.getByLabel("Global Search")).toHaveValue("produk");
   await expect(page.getByTestId("product-row-0")).toHaveAttribute("data-active", "true");
@@ -99,7 +276,7 @@ test("pos tablet landscape moves summary below the cart without changing keyboar
   await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
   await expect(page.getByTestId("product-row-0")).toBeVisible();
 
-  await page.locator("main").click();
+  await page.getByLabel("Global Search").click();
   await page.keyboard.type("produk");
   await page.keyboard.press("Enter");
   await page.getByRole("dialog", { name: "Qty Item" }).getByRole("button", { name: "Simpan" }).click();
@@ -179,7 +356,7 @@ test("pos landscape workspace stays inside the viewport and keeps the product li
   await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
   await expect(page.getByTestId("product-row-0")).toBeVisible();
 
-  await page.locator("main").click();
+  await page.getByLabel("Global Search").click();
   await page.keyboard.type("produk");
   for (let index = 0; index < 14; index += 1) {
     if (index > 0) {
@@ -218,7 +395,7 @@ test("pos keyboard + cart + payment flow", async ({ page }) => {
   await page.goto("/app/pos");
   await expect(page.getByRole("heading", { name: "POS" })).toBeVisible();
 
-  await page.locator("main").click();
+  await page.getByLabel("Global Search").click();
   await page.keyboard.type("produk");
   await expect(page.getByLabel("Global Search")).toHaveValue("produk");
   await expect(page.getByTestId("product-row-0")).toBeVisible();

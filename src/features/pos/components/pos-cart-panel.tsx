@@ -54,7 +54,12 @@ export function PosCartPanel({
               type="button"
             >
               <div className="min-w-0 space-y-1">
-                <p className="truncate font-medium">{line.nama_produk}</p>
+                <p
+                  className="break-words whitespace-normal font-medium leading-5"
+                  data-testid={`cart-row-name-${idx}`}
+                >
+                  {line.nama_produk}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {line.qty} x {formatCurrencyIdr(line.harga_jual)}
                 </p>

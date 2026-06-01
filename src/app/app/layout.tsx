@@ -1,55 +1,69 @@
 import type { ReactNode } from "react";
-import { Menu } from "lucide-react";
+import { cookies } from "next/headers";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { AppNav } from "@/components/app/app-nav";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Sidebar,
+  SidebarContent,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { InventorySyncBootstrap } from "@/features/inventory/components/inventory-sync-bootstrap";
 import { PosSyncBootstrap } from "@/features/pos/components/pos-sync-bootstrap";
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+const SIDEBAR_STATE_COOKIE = "sidebar_state";
+
+export default async function AppLayout({ children }: { children: ReactNode }) {
+  const sidebarCookieValue = (await cookies()).get(SIDEBAR_STATE_COOKIE)?.value;
+  const defaultSidebarOpen = sidebarCookieValue !== "false";
+
   return (
-    <div className="min-h-screen bg-background">
+    <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <InventorySyncBootstrap />
       <PosSyncBootstrap />
-      <header className="border-b border-border">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <Sheet>
-              <SheetTrigger
-                render={<Button className="md:hidden" size="icon" variant="outline" />}
-              >
-                <Menu className="size-4" />
-              </SheetTrigger>
-              <SheetContent side="left">
-                <SheetHeader>
-                  <SheetTitle>Asiatek POS</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6">
-                  <AppNav />
-                </div>
-              </SheetContent>
-            </Sheet>
-            <p className="text-sm font-semibold uppercase tracking-[0.15em]">Asiatek POS</p>
-            <Badge variant="secondary">Offline-ready</Badge>
-          </div>
-          <ThemeToggle />
+      <Sidebar
+        className="border-r border-border bg-card"
+        collapsible="offcanvas"
+        data-testid="app-shell-sidebar"
+      >
+        <div className="flex h-14 items-center border-b border-border px-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.15em]">Asiatek POS</p>
         </div>
-      </header>
-
-      <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-6 md:grid-cols-[240px_1fr] md:px-6 lg:px-8">
-        <aside className="hidden rounded-xl border border-border bg-card p-4 md:block">
+        <SidebarContent className="p-4">
           <AppNav />
-        </aside>
-        <div className="min-w-0">{children}</div>
-      </div>
-    </div>
+        </SidebarContent>
+      </Sidebar>
+
+      <SidebarInset className="min-h-screen bg-background">
+        <header className="border-b border-border">
+          <div
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 sm:px-6 xl:px-8 2xl:px-10"
+            data-testid="app-shell-header"
+          >
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <SidebarTrigger className="shrink-0" data-testid="app-shell-sidebar-trigger" />
+              <p className="truncate text-sm font-semibold uppercase tracking-[0.15em]">
+                Asiatek POS
+              </p>
+              <Badge className="hidden sm:inline-flex" variant="secondary">
+                Offline-ready
+              </Badge>
+            </div>
+            <ThemeToggle />
+          </div>
+        </header>
+
+        <div
+          className="flex w-full flex-1 px-4 py-4 md:px-6 xl:px-8 2xl:px-10"
+          data-testid="app-shell-body"
+        >
+          <div className="min-w-0 flex-1" data-testid="app-shell-main">
+            {children}
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

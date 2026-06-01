@@ -336,20 +336,16 @@ export function PosScreen() {
           ref={searchRef}
           value={query}
         />
-        <p className="mt-2 text-xs text-muted-foreground">
-          Ketik langsung untuk cari produk | Arrow atas/bawah navigasi | Enter pilih/edit |
-          Arrow kanan ke keranjang | Delete hapus item | F8 tunai | F9 transfer | F10 void
-        </p>
         <Link className="mt-2 inline-block text-xs text-primary underline underline-offset-2" href="/app/settings/printer">
           Ubah pengaturan QZ Tray
         </Link>
       </div>
 
       <div
-        className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1.5fr)_minmax(280px,1fr)] xl:grid-rows-[minmax(0,1fr)]"
+        className="grid gap-3 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,2.35fr)_minmax(0,1.55fr)_minmax(300px,360px)] xl:grid-rows-[minmax(0,1fr)] 2xl:grid-cols-[minmax(0,2.7fr)_minmax(0,1.8fr)_minmax(320px,380px)] [@media(min-width:1280px)_and_(max-height:560px)]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] [@media(min-width:1280px)_and_(max-height:560px)]:grid-rows-[minmax(0,1fr)_auto]"
         data-testid="pos-workspace"
       >
-        <div className="space-y-2 lg:col-start-1 lg:row-span-2 lg:flex lg:min-h-0 lg:flex-col xl:row-span-1">
+        <div className="space-y-2 lg:col-start-1 lg:row-span-2 lg:flex lg:min-h-0 lg:flex-col xl:row-span-1 [@media(min-width:1280px)_and_(max-height:560px)]:row-span-2">
           {loading ? <p className="text-sm text-muted-foreground">Memuat produk...</p> : null}
           <PosProductTable
             activeIndex={safeProductIndex}
@@ -376,7 +372,7 @@ export function PosScreen() {
             }}
           />
         </div>
-        <div className="lg:col-start-2 lg:row-start-2 lg:mt-3 xl:col-start-3 xl:row-start-1 xl:mt-0">
+        <div className="lg:col-start-2 lg:row-start-2 lg:mt-3 xl:col-start-3 xl:row-start-1 xl:mt-0 [@media(min-width:1280px)_and_(max-height:560px)]:col-start-2 [@media(min-width:1280px)_and_(max-height:560px)]:row-start-2 [@media(min-width:1280px)_and_(max-height:560px)]:mt-3">
           <PosTransactionSummaryPanel
             itemCount={lines.length}
             itemDiscountTotal={totals.itemDiscount}
