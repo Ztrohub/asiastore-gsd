@@ -2,7 +2,15 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { decodeSession, SESSION_COOKIE_NAME } from "@/lib/auth/server-session";
 import { prisma } from "@/lib/db/prisma";
-import { createPosTransactionBatch } from "@/lib/db/pos-transactions";
+import {
+  createPosTransactionBatch,
+  getPosTransactionSyncTime,
+  listPosTransactionsForSync,
+} from "@/lib/db/pos-transactions";
+import {
+  parsePosTransactionSyncCursor,
+  serializePosTransactionSyncCursor,
+} from "@/lib/sync/pos-transaction-sync-cursor";
 
 type Body = {
   transactions?: Array<{
@@ -32,14 +40,14 @@ type Body = {
   }>;
 };
 
-export async function POST(request: NextRequest) {
+async function authorizeSession() {
   const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
   if (!token) {
-    return NextResponse.json({ ok: false, results: [] }, { status: 401 });
+    return null;
   }
   const session = decodeSession(token);
   if (!session) {
-    return NextResponse.json({ ok: false, results: [] }, { status: 401 });
+    return null;
   }
 
   const user = await prisma.user.findUnique({
@@ -47,6 +55,57 @@ export async function POST(request: NextRequest) {
     select: { id: true, isActive: true, role: true, passwordVersion: true },
   });
   if (!user || !user.isActive || user.role !== session.role || user.passwordVersion !== session.passwordVersion) {
+    return null;
+  }
+
+  return session;
+}
+
+function parseCursor(request: NextRequest) {
+  const rawCursor = request.nextUrl.searchParams.get("cursor");
+  if (rawCursor === null) {
+    return undefined;
+  }
+  return parsePosTransactionSyncCursor(rawCursor) ? rawCursor : null;
+}
+
+export async function GET(request: NextRequest) {
+  const session = await authorizeSession();
+  if (!session) {
+    return NextResponse.json({ ok: false, transactions: [] }, { status: 401 });
+  }
+
+  const cursor = parseCursor(request);
+  if (cursor === null) {
+    return NextResponse.json(
+      { ok: false, message: "Parameter cursor tidak valid.", transactions: [] },
+      { status: 400 },
+    );
+  }
+
+  const transactions = await listPosTransactionsForSync({ cursor });
+  const nextCursor =
+    transactions.length > 0
+      ? serializePosTransactionSyncCursor({
+          timestamp: getPosTransactionSyncTime(transactions[transactions.length - 1]),
+          id_transaksi: transactions[transactions.length - 1].id_transaksi,
+        })
+      : (cursor ?? "0");
+
+  return NextResponse.json({
+    ok: true,
+    cursor: nextCursor,
+    transactions: transactions.map((transaction) => ({
+      ...transaction,
+      client_timestamp: transaction.client_timestamp.toISOString(),
+      createdAt: transaction.createdAt.toISOString(),
+    })),
+  });
+}
+
+export async function POST(request: NextRequest) {
+  const session = await authorizeSession();
+  if (!session) {
     return NextResponse.json({ ok: false, results: [] }, { status: 401 });
   }
 

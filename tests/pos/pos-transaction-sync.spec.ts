@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getSession = vi.fn();
 const putTx = vi.fn();
 const addQueue = vi.fn();
+const appMetaGet = vi.fn();
+const appMetaPut = vi.fn();
 const transaction = vi.fn(async (...args: unknown[]) => {
   const callback = args.at(-1);
   if (typeof callback === "function") return callback();
@@ -21,6 +23,7 @@ vi.mock("@/lib/offline/db", () => ({
     localSessions: { get: getSession },
     posTransactions: { put: putTx },
     syncQueue: { add: addQueue },
+    appMeta: { get: appMetaGet, put: appMetaPut },
     transaction,
   },
 }));
@@ -45,6 +48,16 @@ describe("pos transaction sync contract", () => {
     vi.clearAllMocks();
     getSession.mockResolvedValue({ userId: "u-1", username: "kasir" });
     persistStockOutMutation.mockResolvedValue({});
+    appMetaGet.mockResolvedValue(undefined);
+    appMetaPut.mockResolvedValue(undefined);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, cursor: "0", transactions: [] }),
+    }));
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
   });
 
   it("stores bank transfer as non-cash and enqueues pos_transaction entity type", async () => {
@@ -76,4 +89,3 @@ describe("pos transaction sync contract", () => {
     expect(markAcked).toHaveBeenCalledWith(10);
   });
 });
-

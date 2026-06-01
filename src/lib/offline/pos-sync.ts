@@ -1,8 +1,11 @@
 "use client";
 
 import { getRetryableQueueByEntity, markAcked, markFailed, markSendFailed, reviveFailedQueue } from "@/lib/offline/sync-queue";
+import { syncPosTransactionsFromServer } from "@/lib/offline/pos-transaction-history";
 import { postPosTransactions } from "@/lib/offline/pos-sync-transport";
 import { InventorySyncTransportError } from "@/lib/offline/inventory-sync-transport";
+
+let activePass: Promise<void> | null = null;
 
 function buildPosFailureMeta(error: unknown) {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -41,27 +44,38 @@ function buildPosFailureMeta(error: unknown) {
 }
 
 export async function runPosSyncPass() {
-  const rows = await getRetryableQueueByEntity("pos_transaction");
-  for (const row of rows) {
-    if (!row.id) continue;
-    try {
-      const payload = JSON.parse(row.deltaPayload);
-      const result = await postPosTransactions([payload]);
-      const ack = result.results.find((item) => item.id_transaksi === payload.id_transaksi);
-      if (ack?.status === "acked") {
-        await markAcked(row.id);
-      } else {
-        const meta = {
-          reason: "Server tidak mengonfirmasi transaksi POS.",
-          code: "ACK_MISSING",
-        };
-        await markSendFailed(row.id, meta);
-        await markFailed(row.id, meta);
-      }
-    } catch (error) {
-      await markSendFailed(row.id, buildPosFailureMeta(error));
-    }
+  if (activePass) {
+    return activePass;
   }
+
+  activePass = (async () => {
+    const rows = await getRetryableQueueByEntity("pos_transaction");
+    for (const row of rows) {
+      if (!row.id) continue;
+      try {
+        const payload = JSON.parse(row.deltaPayload);
+        const result = await postPosTransactions([payload]);
+        const ack = result.results.find((item) => item.id_transaksi === payload.id_transaksi);
+        if (ack?.status === "acked") {
+          await markAcked(row.id);
+        } else {
+          const meta = {
+            reason: "Server tidak mengonfirmasi transaksi POS.",
+            code: "ACK_MISSING",
+          };
+          await markSendFailed(row.id, meta);
+          await markFailed(row.id, meta);
+        }
+      } catch (error) {
+        await markSendFailed(row.id, buildPosFailureMeta(error));
+      }
+    }
+    await syncPosTransactionsFromServer();
+  })().finally(() => {
+    activePass = null;
+  });
+
+  return activePass;
 }
 
 export async function retryPosSyncNow() {

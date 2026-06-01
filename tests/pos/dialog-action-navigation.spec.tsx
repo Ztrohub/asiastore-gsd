@@ -96,6 +96,7 @@ describe("dialog action navigation", () => {
         line={{
           id_produk: "p-1",
           nama_produk: "Kopi Susu",
+          nama_produk_dasar: "Kopi Susu",
           qty: 1,
           harga_jual: 12000,
           unit_label: "pcs",

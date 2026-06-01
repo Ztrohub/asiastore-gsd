@@ -1,8 +1,11 @@
 import { PosPaymentMethod } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "@/lib/db/prisma";
+import { parsePosTransactionSyncCursor } from "@/lib/sync/pos-transaction-sync-cursor";
 
-type PosTransactionBatchInput = {
+export const POS_TRANSACTION_SYNC_BATCH_SIZE = 100;
+
+export type PosTransactionBatchInput = {
   id_transaksi: string;
   short_id: string;
   kasir_user_id: string;
@@ -30,6 +33,14 @@ type PosTransactionBatchInput = {
 
 function mapPaymentMethod(value: "cash" | "bank_transfer") {
   return value === "cash" ? PosPaymentMethod.CASH : PosPaymentMethod.BANK_TRANSFER;
+}
+
+function mapPaymentMethodFromDb(value: PosPaymentMethod) {
+  return value === PosPaymentMethod.CASH ? "cash" : "bank_transfer";
+}
+
+export function getPosTransactionSyncTime(transaction: { createdAt: Date }) {
+  return transaction.createdAt.getTime();
 }
 
 export async function createPosTransactionBatch(transactions: PosTransactionBatchInput[]) {
@@ -106,4 +117,64 @@ export async function listPosTransactions() {
     include: { lines: true },
     orderBy: { client_timestamp: "desc" },
   });
+}
+
+export async function listPosTransactionsForSync(params?: { cursor?: string; limit?: number }) {
+  const cursor = parsePosTransactionSyncCursor(params?.cursor);
+  const limit = Math.max(1, Math.min(params?.limit ?? POS_TRANSACTION_SYNC_BATCH_SIZE, 250));
+
+  const rows = await prisma.posTransaction.findMany({
+    where: cursor
+      ? {
+          OR: [
+            {
+              createdAt: {
+                gt: new Date(cursor.timestamp),
+              },
+            },
+            {
+              AND: [
+                {
+                  createdAt: new Date(cursor.timestamp),
+                },
+                {
+                  id_transaksi: {
+                    gt: cursor.id_transaksi,
+                  },
+                },
+              ],
+            },
+          ],
+        }
+      : undefined,
+    include: { lines: true },
+    orderBy: [{ createdAt: "asc" }, { id_transaksi: "asc" }],
+    take: limit,
+  });
+
+  return rows.map((row) => ({
+    id_transaksi: row.id_transaksi,
+    short_id: row.short_id,
+    kasir_user_id: row.kasir_user_id,
+    kasir_username: row.kasir_username,
+    payment_method: mapPaymentMethodFromDb(row.payment_method),
+    subtotal_amount: row.subtotal_amount,
+    item_discount: row.item_discount,
+    order_discount: row.order_discount,
+    total_amount: row.total_amount,
+    amount_received: row.amount_received ?? undefined,
+    change_amount: row.change_amount ?? undefined,
+    counts_for_cash: row.counts_for_cash,
+    note: row.note ?? undefined,
+    client_timestamp: row.client_timestamp,
+    createdAt: row.createdAt,
+    lines: row.lines.map((line) => ({
+      id_produk: line.id_produk,
+      nama_produk: line.nama_produk,
+      unit_price: line.unit_price,
+      qty: line.qty,
+      line_discount: line.line_discount,
+      line_total: line.line_total,
+    })),
+  }));
 }
