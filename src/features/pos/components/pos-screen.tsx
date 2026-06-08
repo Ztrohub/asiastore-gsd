@@ -89,6 +89,7 @@ export function PosScreen() {
   const { submitCheckout, error: checkoutError } = usePosCheckout();
   const {
     pendingTransaction,
+    receiptPromptVariant,
     promptReceipt,
     closePrompt,
     printOnceAndClose,
@@ -301,6 +302,12 @@ export function PosScreen() {
   }, []);
 
   useEffect(() => {
+    if (!pendingTransaction) {
+      searchRef.current?.focus();
+    }
+  }, [pendingTransaction]);
+
+  useEffect(() => {
     const listener = (event: KeyboardEvent) => handlePosKeydown(event);
     window.addEventListener("keydown", listener);
     return () => {
@@ -481,16 +488,15 @@ export function PosScreen() {
         key={pendingTransaction?.id_transaksi ?? "receipt-prompt"}
         onPrint={async () => {
           await printOnceAndClose(printerSettings);
-          searchRef.current?.focus();
         }}
         onSkip={() => {
           closePrompt();
-          searchRef.current?.focus();
         }}
         open={Boolean(pendingTransaction)}
         printError={printError ?? checkoutError}
         printing={printing}
         transaction={pendingTransaction}
+        variant={receiptPromptVariant}
       />
     </section>
   );

@@ -1,0 +1,12 @@
+{
+  "SessionStart": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "\"C:/WKWK/asiatekoracle/projects/asiastore-gsd/.codex/hooks/gsd-check-update.cmd\""
+        }
+      ]
+    }
+  ]
+}

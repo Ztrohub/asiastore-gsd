@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatCurrencyIdr } from "@/features/format/currency";
+import type { ReceiptPromptVariant } from "@/features/pos/hooks/use-receipt-printing";
 import type { PosTransactionRecord } from "@/lib/offline/db";
 
 type PosReceiptPromptProps = {
@@ -24,6 +25,7 @@ type PosReceiptPromptProps = {
   onSkip: () => void;
   onPrint: () => Promise<void> | void;
   transaction?: Pick<PosTransactionRecord, "payment_method" | "change_amount"> | null;
+  variant?: ReceiptPromptVariant;
 };
 
 export function PosReceiptPrompt({
@@ -33,14 +35,22 @@ export function PosReceiptPrompt({
   onSkip,
   onPrint,
   transaction,
+  variant = "initial",
 }: PosReceiptPromptProps) {
   const { moveSelectedAction, registerActionRef, selectedAction, setSelectedAction } =
     useDialogActionNavigation({
       actions: ["skip", "print"] as const,
       defaultAction: "print",
     });
-  const showChangeAmount = transaction?.payment_method === "cash";
+  const isCopyConfirm = variant === "copy-confirm";
+  const showChangeAmount = variant === "initial" && transaction?.payment_method === "cash";
   const changeAmount = Math.max(0, transaction?.change_amount ?? 0);
+  const title = isCopyConfirm ? "Print copy nota?" : "Cetak receipt?";
+  const description = isCopyConfirm
+    ? "Nota transfer pertama sudah tercetak. Print copy kedua?"
+    : "Transaksi sudah tersimpan. Cetak sekarang atau lewati.";
+  const skipLabel = isCopyConfirm ? "Tidak" : "Lewati";
+  const printLabel = isCopyConfirm ? "Ya, print copy" : "Print";
 
   const submit = async () => {
     if (selectedAction === "print") {
@@ -72,8 +82,8 @@ export function PosReceiptPrompt({
         showCloseButton={false}
       >
         <DialogHeader>
-          <DialogTitle>Cetak receipt?</DialogTitle>
-          <DialogDescription>Transaksi sudah tersimpan. Cetak sekarang atau lewati.</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {showChangeAmount ? (
           <div className="rounded-lg border border-white bg-primary/10 px-4 py-5 text-center">
@@ -99,7 +109,7 @@ export function PosReceiptPrompt({
             type="button"
             variant="outline"
           >
-            Lewati
+            {skipLabel}
           </Button>
           <Button
             autoFocus
@@ -116,7 +126,7 @@ export function PosReceiptPrompt({
             }}
             type="button"
           >
-            Print
+            {printLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

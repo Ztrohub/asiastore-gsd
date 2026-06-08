@@ -132,4 +132,27 @@ describe("receipt prompt flow", () => {
     expect(screen.queryByText("Kembalian customer")).not.toBeInTheDocument();
     expect(screen.queryByTestId("receipt-change-amount")).not.toBeInTheDocument();
   });
+
+  it("shows a transfer copy confirmation prompt after the first print", () => {
+    render(
+      <PosReceiptPrompt
+        onPrint={vi.fn()}
+        onSkip={vi.fn()}
+        open
+        printError={null}
+        printing={false}
+        transaction={{
+          change_amount: undefined,
+          payment_method: "bank_transfer",
+        }}
+        variant="copy-confirm"
+      />,
+    );
+
+    expect(screen.getByText("Print copy nota?")).toBeInTheDocument();
+    expect(screen.getByText("Nota transfer pertama sudah tercetak. Print copy kedua?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tidak" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ya, print copy" })).toBeInTheDocument();
+    expect(screen.queryByTestId("receipt-change-amount")).not.toBeInTheDocument();
+  });
 });
