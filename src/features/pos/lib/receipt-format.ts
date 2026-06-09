@@ -62,65 +62,53 @@ function lineWithValue(label: string, value: string, width = WIDTH) {
   return `${label}${" ".repeat(gap)}${value}`;
 }
 
-function centeredWrappedLines(input: string, width = WIDTH) {
-  return wrapLine(input, width).map((line) => centerLine(line, width));
-}
-
-function wrapLabelValue(label: string, value: string, width = WIDTH) {
-  if (label.length + 1 + value.length <= width) {
-    return [lineWithValue(label, value, width)];
+function formatItemSubtotalLine(lineTotal: number, lineDiscount: number) {
+  const subtotalValue = formatReceiptCurrencyIdr(lineTotal);
+  if (lineDiscount <= 0) {
+    return `Subtotal: ${subtotalValue}`;
   }
 
-  return [...wrapLine(label, width), ...wrapLine(value, width).map((line) => line.padStart(width))];
-}
-
-function buildItemAmountLines(qty: number, unitPrice: number, lineTotal: number, width = WIDTH) {
-  const compactLine = `${qty} x ${formatReceiptCurrencyIdr(unitPrice)} = ${formatReceiptCurrencyIdr(lineTotal)}`;
-  if (compactLine.length <= width) {
-    return [compactLine];
-  }
-
-  return [
-    `${qty} x ${formatReceiptCurrencyIdr(unitPrice)}`,
-    ...wrapLabelValue("Subtotal", formatReceiptCurrencyIdr(lineTotal), width),
-  ];
+  return `Subtotal: ${subtotalValue} (${formatReceiptCurrencyIdr(-lineDiscount)})`;
 }
 
 export function buildReceiptText(settings: PrinterBridgeSettings, tx: PosTransactionRecord) {
   const lines: string[] = [];
-  lines.push(...centeredWrappedLines(settings.storeName.toUpperCase()));
-  lines.push(...centeredWrappedLines(settings.storeDescription));
+  lines.push("=".repeat(WIDTH));
+  lines.push(centerLine(settings.storeName.toUpperCase()));
+  lines.push(centerLine(settings.storeDescription));
+  lines.push("=".repeat(WIDTH));
   lines.push(`Waktu : ${formatJakartaDateTime(tx.client_timestamp)}`);
   lines.push(`Kasir : ${tx.kasir_username}`);
+  lines.push("-".repeat(WIDTH));
 
   for (const item of tx.lines) {
     lines.push(...wrapLine(item.nama_produk));
-    lines.push(...buildItemAmountLines(item.qty, item.unit_price, item.line_total));
-    if (item.line_discount > 0) {
-      lines.push(...wrapLabelValue("Diskon item", formatReceiptCurrencyIdr(-item.line_discount)));
-    }
+    lines.push(`${item.qty} x ${formatReceiptCurrencyIdr(item.unit_price)}`);
+    lines.push(formatItemSubtotalLine(item.line_total, item.line_discount));
+    lines.push("-".repeat(WIDTH));
   }
 
-  lines.push("-".repeat(WIDTH));
-  lines.push(...wrapLabelValue("Subtotal", formatReceiptCurrencyIdr(tx.subtotal_amount)));
+  lines.push(lineWithValue("Subtotal", formatReceiptCurrencyIdr(tx.subtotal_amount)));
   lines.push(
-    ...wrapLabelValue(
+    lineWithValue(
       "Diskon Subtotal",
       formatReceiptCurrencyIdr(-(tx.item_discount + tx.order_discount)),
     ),
   );
-  lines.push(...wrapLabelValue("TOTAL", formatReceiptCurrencyIdr(tx.total_amount)));
-  lines.push(...wrapLabelValue("Pembayaran", tx.payment_method === "cash" ? "Tunai" : "Transfer"));
+  lines.push(lineWithValue("TOTAL", formatReceiptCurrencyIdr(tx.total_amount)));
+  lines.push(lineWithValue("Pembayaran", tx.payment_method === "cash" ? "Tunai" : "Transfer"));
   if (tx.payment_method === "cash") {
     lines.push(
-      ...wrapLabelValue(
+      lineWithValue(
         "Uang Diterima",
         formatReceiptCurrencyIdr(tx.amount_received ?? tx.total_amount),
       ),
     );
-    lines.push(...wrapLabelValue("Kembalian", formatReceiptCurrencyIdr(tx.change_amount ?? 0)));
+    lines.push(lineWithValue("Kembalian", formatReceiptCurrencyIdr(tx.change_amount ?? 0)));
   }
+  lines.push("-".repeat(WIDTH));
   lines.push(`ID: ${tx.short_id}`);
-  lines.push(...centeredWrappedLines(settings.footerMessage));
+  lines.push(centerLine(settings.footerMessage));
+  lines.push("=".repeat(WIDTH));
   return lines.join("\n");
 }

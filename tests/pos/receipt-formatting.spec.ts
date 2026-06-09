@@ -117,10 +117,6 @@ function buildLegacyReceiptText() {
   return lines.join("\n");
 }
 
-function normalizeText(value: string) {
-  return value.replace(/\s+/g, " ").trim();
-}
-
 describe("receipt formatting", () => {
   it("includes required receipt fields and excludes internal note", () => {
     const text = buildReceiptText(settings, cashTransaction);
@@ -137,25 +133,21 @@ describe("receipt formatting", () => {
     expect(text).not.toContain("internal note");
   });
 
-  it("keeps all receipt fields while making the printed output much shorter", () => {
+  it("keeps the legacy receipt layout and only compacts the item block", () => {
     const legacyText = buildLegacyReceiptText();
     const compactText = buildReceiptText(settings, cashTransaction);
-
-    expect(normalizeText(compactText)).toContain(cashTransaction.lines[0].nama_produk);
-    expect(normalizeText(compactText)).toContain(settings.footerMessage);
-    expect(compactText).toContain("Waktu");
-    expect(compactText).toContain("Kasir");
-    expect(compactText).toContain("Diskon");
-    expect(compactText).toContain("TOTAL");
-    expect(compactText).toContain("Pembayaran");
-    expect(compactText).toContain("Uang Diterima");
-    expect(compactText).toContain("Kembalian");
-    expect(compactText).toContain(cashTransaction.short_id);
-
     const legacyLines = legacyText.split("\n");
     const compactLines = compactText.split("\n");
 
-    expect(compactLines.length).toBeLessThanOrEqual(legacyLines.length - 4);
-    expect(compactLines.every((line) => line.length <= WIDTH)).toBe(true);
+    expect(compactLines.slice(0, 7)).toEqual(legacyLines.slice(0, 7));
+    expect(compactLines.slice(-8)).toEqual(legacyLines.slice(-8));
+    expect(compactText).toContain("Subtotal: Rp 19.000");
+    expect(compactText).toContain("-Rp 1.000");
+    expect(compactText).not.toContain("Diskon item");
+
+    expect(compactLines.length).toBe(legacyLines.length - 1);
+    expect(compactLines[7]?.length).toBeLessThanOrEqual(WIDTH);
+    expect(compactLines[8]?.length).toBeLessThanOrEqual(WIDTH);
+    expect(compactLines[9]?.length).toBeLessThanOrEqual(WIDTH);
   });
 });
