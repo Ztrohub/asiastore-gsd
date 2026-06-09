@@ -3,6 +3,8 @@ import type { PosTransactionRecord } from "@/lib/offline/db";
 import type { PrinterBridgeSettings } from "@/features/pos/lib/printer-bridge-settings";
 
 const WIDTH = 32;
+const ITEM_NAME_WIDTH = 18;
+const ITEM_DETAIL_WIDTH = 13;
 
 function wrapLine(input: string, width = WIDTH) {
   const out: string[] = [];
@@ -20,9 +22,13 @@ function wrapLine(input: string, width = WIDTH) {
         current = "";
       }
 
-      for (let index = 0; index < word.length; index += width) {
+      let index = 0;
+      while (index + width < word.length) {
         out.push(word.slice(index, index + width));
+        index += width;
       }
+
+      current = word.slice(index);
       continue;
     }
 
@@ -62,13 +68,44 @@ function lineWithValue(label: string, value: string, width = WIDTH) {
   return `${label}${" ".repeat(gap)}${value}`;
 }
 
-function formatItemSubtotalLine(lineTotal: number, lineDiscount: number) {
-  const subtotalValue = formatReceiptCurrencyIdr(lineTotal);
-  if (lineDiscount <= 0) {
-    return `Subtotal: ${subtotalValue}`;
+function padEndReceipt(value: string, width: number) {
+  if (value.length >= width) {
+    return value;
   }
 
-  return `Subtotal: ${subtotalValue} (${formatReceiptCurrencyIdr(-lineDiscount)})`;
+  return `${value}${" ".repeat(width - value.length)}`;
+}
+
+function formatCompactReceiptNumber(value: number) {
+  const rounded = Math.round(value);
+  const abs = Math.abs(rounded);
+  const grouped = abs.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${rounded < 0 ? "-" : ""}${grouped}`;
+}
+
+function buildItemDetailLines(qty: number, unitPrice: number, lineTotal: number, lineDiscount: number) {
+  const detailLines = [`${qty} x ${formatCompactReceiptNumber(unitPrice)}`];
+
+  if (lineDiscount > 0) {
+    detailLines.push(`Disc ${formatCompactReceiptNumber(-lineDiscount)}`);
+  }
+
+  detailLines.push(`Sub ${formatCompactReceiptNumber(lineTotal)}`);
+
+  return detailLines;
+}
+
+function combineReceiptColumns(leftLines: string[], rightLines: string[]) {
+  const rowCount = Math.max(leftLines.length, rightLines.length);
+  const rows: string[] = [];
+
+  for (let index = 0; index < rowCount; index += 1) {
+    const left = padEndReceipt(leftLines[index] ?? "", ITEM_NAME_WIDTH);
+    const right = (rightLines[index] ?? "").padStart(ITEM_DETAIL_WIDTH);
+    rows.push(`${left} ${right}`);
+  }
+
+  return rows;
 }
 
 export function buildReceiptText(settings: PrinterBridgeSettings, tx: PosTransactionRecord) {
@@ -82,9 +119,12 @@ export function buildReceiptText(settings: PrinterBridgeSettings, tx: PosTransac
   lines.push("-".repeat(WIDTH));
 
   for (const item of tx.lines) {
-    lines.push(...wrapLine(item.nama_produk));
-    lines.push(`${item.qty} x ${formatReceiptCurrencyIdr(item.unit_price)}`);
-    lines.push(formatItemSubtotalLine(item.line_total, item.line_discount));
+    lines.push(
+      ...combineReceiptColumns(
+        wrapLine(item.nama_produk, ITEM_NAME_WIDTH),
+        buildItemDetailLines(item.qty, item.unit_price, item.line_total, item.line_discount),
+      ),
+    );
     lines.push("-".repeat(WIDTH));
   }
 

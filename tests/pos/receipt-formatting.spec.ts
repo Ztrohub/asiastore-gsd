@@ -47,6 +47,20 @@ const cashTransaction = {
   ],
 };
 
+const compactNameTransaction = {
+  ...cashTransaction,
+  lines: [
+    {
+      id_produk: "p-sync",
+      nama_produk: "SYNC-DEVICE-1779863157370 pcs",
+      unit_price: 50000,
+      qty: 3,
+      line_discount: 10000,
+      line_total: 140000,
+    },
+  ],
+};
+
 function wrapLineLegacy(input: string, width = WIDTH) {
   const out: string[] = [];
   let remain = input.trim();
@@ -117,6 +131,14 @@ function buildLegacyReceiptText() {
   return lines.join("\n");
 }
 
+function padEnd(value: string, width: number) {
+  if (value.length >= width) {
+    return value;
+  }
+
+  return `${value}${" ".repeat(width - value.length)}`;
+}
+
 describe("receipt formatting", () => {
   it("includes required receipt fields and excludes internal note", () => {
     const text = buildReceiptText(settings, cashTransaction);
@@ -133,21 +155,36 @@ describe("receipt formatting", () => {
     expect(text).not.toContain("internal note");
   });
 
-  it("keeps the legacy receipt layout and only compacts the item block", () => {
+  it("keeps the legacy receipt layout and renders each item as two columns", () => {
     const legacyText = buildLegacyReceiptText();
     const compactText = buildReceiptText(settings, cashTransaction);
     const legacyLines = legacyText.split("\n");
     const compactLines = compactText.split("\n");
+    const expectedItemLines = [
+      `${padEnd("Nama Produk Sangat", 18)} ${"2 x 10.000".padStart(13)}`,
+      `${padEnd("Panjang Sekali", 18)} ${"Disc -1.000".padStart(13)}`,
+      `${padEnd("Sampai Wrap", 18)} ${"Sub 19.000".padStart(13)}`,
+      "-".repeat(WIDTH),
+    ];
 
     expect(compactLines.slice(0, 7)).toEqual(legacyLines.slice(0, 7));
     expect(compactLines.slice(-8)).toEqual(legacyLines.slice(-8));
-    expect(compactText).toContain("Subtotal: Rp 19.000");
-    expect(compactText).toContain("-Rp 1.000");
-    expect(compactText).not.toContain("Diskon item");
-
-    expect(compactLines.length).toBe(legacyLines.length - 1);
+    expect(compactLines.slice(7, 11)).toEqual(expectedItemLines);
+    expect(compactLines.length).toBe(legacyLines.length - 2);
     expect(compactLines[7]?.length).toBeLessThanOrEqual(WIDTH);
     expect(compactLines[8]?.length).toBeLessThanOrEqual(WIDTH);
     expect(compactLines[9]?.length).toBeLessThanOrEqual(WIDTH);
+  });
+
+  it("uses full remaining width for wrapped product names after detail lines are exhausted", () => {
+    const text = buildReceiptText(settings, compactNameTransaction);
+    const lines = text.split("\n");
+    const itemBlock = lines.slice(7, 10);
+
+    expect(itemBlock).toEqual([
+      `${padEnd("SYNC-DEVICE-177986", 18)} ${"3 x 50.000".padStart(13)}`,
+      `${padEnd("3157370 pcs", 18)} ${"Disc -10.000".padStart(13)}`,
+      `${"Sub 140.000".padStart(WIDTH)}`,
+    ]);
   });
 });
