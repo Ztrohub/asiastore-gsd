@@ -62,7 +62,7 @@ model InventoryMutationEvent {
   id_user          String
   jenis_mutasi     InventoryMutationType
   unit_mutasi      InventoryMutationUnit @default(SMALL)
-  delta_qty        Int
+  delta_qty        Float
   logical_clock    Int
   client_timestamp DateTime
   createdAt        DateTime              @default(now())
@@ -77,8 +77,8 @@ model Product {
   sku             String?  @unique
   harga_jual      Int
   harga_jual_unit_besar Int?
-  stok_saat_ini   Int      @default(0)
-  stok_unit_besar_saat_ini Int @default(0)
+  stok_saat_ini   Float    @default(0)
+  stok_unit_besar_saat_ini Float @default(0)
   is_active       Boolean  @default(true)
   unit_small_name String   @default("pcs")
   unit_large_name String?

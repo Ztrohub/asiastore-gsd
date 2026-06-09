@@ -62,6 +62,11 @@ function orderEvents(events: InventoryDeltaEvent[]) {
   });
 }
 
+function normalizePersistedStock(value: number | null | undefined) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, value);
+}
+
 export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): Promise<ReplayResult> {
   const ordered = orderEvents(events);
   const finalStockByProduct: Record<string, number> = {};
@@ -115,10 +120,9 @@ export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): P
           }
 
           const mutationUnit = event.unit_mutasi ?? "SMALL";
-          const currentSmallStock = Math.max(0, Math.trunc(currentProduct.stok_saat_ini));
-          const currentLargeStock = Math.max(
-            0,
-            Math.trunc(currentProduct.stok_unit_besar_saat_ini ?? 0),
+          const currentSmallStock = normalizePersistedStock(currentProduct.stok_saat_ini);
+          const currentLargeStock = normalizePersistedStock(
+            currentProduct.stok_unit_besar_saat_ini ?? 0,
           );
           let nextSmallStock = currentSmallStock;
           let nextLargeStock = currentLargeStock;

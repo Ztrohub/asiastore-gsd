@@ -3,12 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { decodeSession, SESSION_COOKIE_NAME } from "@/lib/auth/server-session";
 import { prisma } from "@/lib/db/prisma";
 import { applyInventoryDeltaBatch, type InventoryDeltaEvent } from "@/lib/db/inventory-replay";
+import { isValidInventoryDeltaEvent } from "@/lib/sync/inventory-delta-validation";
 
 type SyncDeltaBody = {
   events?: InventoryDeltaEvent[];
 };
-const ALLOWED_MUTATION_TYPES = new Set(["SALES_OUT", "STOCK_IN", "STOCK_ADJUSTMENT"]);
-const ALLOWED_MUTATION_UNITS = new Set(["SMALL", "LARGE"]);
 const MAX_SYNC_EVENTS_PER_BATCH = 200;
 
 export async function POST(request: NextRequest) {
@@ -53,22 +52,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const invalid = body.events.find(
-    (event) =>
-      !event.id_queue ||
-      !event.id_produk ||
-      !event.id_transaksi ||
-      !event.id_user ||
-      !ALLOWED_MUTATION_TYPES.has(event.jenis_mutasi) ||
-      (event.unit_mutasi !== undefined && !ALLOWED_MUTATION_UNITS.has(event.unit_mutasi)) ||
-      !Number.isInteger(event.delta_qty) ||
-      !Number.isInteger(event.logical_clock) ||
-      event.logical_clock < 0 ||
-      !Number.isInteger(event.client_timestamp) ||
-      event.client_timestamp <= 0 ||
-      !Number.isInteger(event.received_seq) ||
-      event.received_seq < 0,
-  );
+  const invalid = body.events.find((event) => !isValidInventoryDeltaEvent(event));
 
   if (invalid) {
     return NextResponse.json({ ok: false, results: [], message: "Payload event tidak valid." }, { status: 400 });
