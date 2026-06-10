@@ -147,6 +147,17 @@ describe("pos keyboard cart flow", () => {
     expect(firstRow.querySelector("strong")).not.toBeNull();
   });
 
+  it("shows current stock metadata in POS product rows", () => {
+    render(<PosScreen />);
+
+    const firstRow = screen.getByTestId("product-row-0");
+    const secondRow = screen.getByTestId("product-row-1");
+
+    expect(firstRow).toHaveTextContent("Stok: 10 pcs");
+    expect(firstRow).toHaveTextContent("0 dus");
+    expect(secondRow).toHaveTextContent("Stok: 5 pcs");
+  });
+
   it("supports cart edit via arrow right + enter and delete confirmation", async () => {
     const user = userEvent.setup();
     render(<PosScreen />);

@@ -1,6 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { formatQuantityForDisplay } from "@/lib/inventory/quantity";
+import { getLargeUnitName, getSmallUnitName } from "@/lib/inventory/uom";
 import type { ProductRecord } from "@/lib/offline/db";
 import {
   getProductMatchIndices,
@@ -45,17 +47,34 @@ export function PosProductTable({ results, activeIndex, focusMode, onSelect, onS
           onDoubleClick={() => onSubmit(result.product)}
           type="button"
         >
-          <span>
-            {highlightMatchedText(
-              result.product.nama_produk,
-              getProductMatchIndices(result.matches, "nama_produk"),
-            )}
+          <span className="min-w-0 flex-1">
+            <span className="block">
+              {highlightMatchedText(
+                result.product.nama_produk,
+                getProductMatchIndices(result.matches, "nama_produk"),
+              )}
+            </span>
+            <span className="block text-xs text-muted-foreground">
+              {getStockLabel(result.product)}
+            </span>
           </span>
-          <span className="text-muted-foreground">
+          <span className="pl-3 text-right text-muted-foreground">
             Rp{result.product.harga_jual.toLocaleString("id-ID")}
           </span>
         </button>
       ))}
     </div>
   );
+}
+
+function getStockLabel(product: ProductRecord) {
+  const smallStock = `${formatQuantityForDisplay(product.stok_saat_ini)} ${getSmallUnitName(product)}`;
+  const largeUnitName = getLargeUnitName(product);
+
+  if (!largeUnitName) {
+    return `Stok: ${smallStock}`;
+  }
+
+  const largeStock = formatQuantityForDisplay(product.stok_unit_besar_saat_ini ?? 0);
+  return `Stok: ${smallStock} | ${largeStock} ${largeUnitName}`;
 }
