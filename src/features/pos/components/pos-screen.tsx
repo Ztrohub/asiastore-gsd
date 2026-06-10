@@ -52,7 +52,7 @@ function getEffectiveUnitOptions(product: ProductRecord) {
 }
 
 export function PosScreen() {
-  const { products, loading } = useProductCatalog();
+  const { products, loading, refreshLocal } = useProductCatalog();
   const {
     lines,
     cartIndex,
@@ -86,7 +86,7 @@ export function PosScreen() {
   const [orderDiscountInput, setOrderDiscountInput] = useState(0);
 
   const searchRef = useRef<HTMLInputElement>(null);
-  const { submitCheckout, error: checkoutError } = usePosCheckout();
+  const { submitCheckout, error: checkoutError } = usePosCheckout({ onCommitted: refreshLocal });
   const {
     pendingTransaction,
     receiptPromptVariant,

@@ -1,3 +1,4 @@
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getSession = vi.fn();
@@ -60,5 +61,19 @@ describe("pos checkout payment rules", () => {
     expect(saved.amount_received).toBe(10000);
     expect(saved.change_amount).toBe(0);
   });
-});
 
+  it("calls onCommitted after successful checkout so POS can refresh local stock rows", async () => {
+    const onCommitted = vi.fn().mockResolvedValue(undefined);
+    const { usePosCheckout } = await import("@/features/pos/hooks/use-pos-checkout");
+    const { result } = renderHook(() => usePosCheckout({ onCommitted }));
+
+    await act(async () => {
+      await result.current.submitCheckout({
+        lines: [{ id_produk: "p1", nama_produk: "A", unit_price: 10000, qty: 1 }],
+        payment_method: "cash",
+      });
+    });
+
+    expect(onCommitted).toHaveBeenCalledTimes(1);
+  });
+});

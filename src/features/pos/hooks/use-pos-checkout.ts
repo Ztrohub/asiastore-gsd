@@ -30,6 +30,10 @@ export type CheckoutInput = {
   note?: string;
 };
 
+type UsePosCheckoutOptions = {
+  onCommitted?: () => Promise<void> | void;
+};
+
 export function computeCheckoutTotals(lines: CheckoutLineInput[], orderDiscount = 0) {
   const subtotal = lines.reduce((sum, line) => sum + line.unit_price * line.qty, 0);
   const itemDiscount = lines.reduce((sum, line) => {
@@ -128,7 +132,7 @@ export async function persistPosTransaction(input: CheckoutInput) {
   return payload;
 }
 
-export function usePosCheckout() {
+export function usePosCheckout(options?: UsePosCheckoutOptions) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -136,7 +140,9 @@ export function usePosCheckout() {
     setSubmitting(true);
     setError(null);
     try {
-      return await persistPosTransaction(input);
+      const payload = await persistPosTransaction(input);
+      await options?.onCommitted?.();
+      return payload;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Checkout gagal";
       setError(message);
