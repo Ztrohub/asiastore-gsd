@@ -109,11 +109,19 @@ model PosTransaction {
   change_amount     Int?
   counts_for_cash   Boolean          @default(true)
   note              String?
+  is_deleted        Boolean          @default(false)
+  editedAt          DateTime?
+  editedByUserId    String?
+  editedByUsername  String?
+  deletedAt         DateTime?
+  deletedByUserId   String?
+  deletedByUsername String?
   client_timestamp  DateTime
   createdAt         DateTime         @default(now())
   lines             PosTransactionLine[]
 
   @@index([client_timestamp])
+  @@index([is_deleted, client_timestamp])
   @@index([payment_method, client_timestamp])
 }
 
@@ -124,6 +132,8 @@ model PosTransactionLine {
   nama_produk        String
   unit_price         Int
   qty                Float
+  unit_mutasi        InventoryMutationUnit?
+  unit_label         String?
   line_discount      Int @default(0)
   line_total         Int
   createdAt          DateTime @default(now())

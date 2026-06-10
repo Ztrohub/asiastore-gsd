@@ -118,12 +118,38 @@ function normalizeTimestamp(value: string | number) {
   return Date.now();
 }
 
-function normalizeServerTransaction(record: PosTransactionServerRecord): PosTransactionRecord {
+function normalizeLocalTransaction(record: PosTransactionRecord): PosTransactionRecord {
   return {
+    ...record,
+    note: record.note?.trim() || undefined,
+    is_deleted: record.is_deleted ?? false,
+    editedAt: record.editedAt ?? undefined,
+    editedByUserId: record.editedByUserId ?? undefined,
+    editedByUsername: record.editedByUsername ?? undefined,
+    deletedAt: record.deletedAt ?? undefined,
+    deletedByUserId: record.deletedByUserId ?? undefined,
+    deletedByUsername: record.deletedByUsername ?? undefined,
+    lines: record.lines.map((line) => ({
+      ...line,
+      unit_mutasi: line.unit_mutasi ?? undefined,
+      unit_label: line.unit_label?.trim() || undefined,
+    })),
+  };
+}
+
+function normalizeServerTransaction(record: PosTransactionServerRecord): PosTransactionRecord {
+  return normalizeLocalTransaction({
     ...record,
     amount_received: record.amount_received ?? undefined,
     change_amount: record.change_amount ?? undefined,
     note: record.note?.trim() || undefined,
+    is_deleted: record.is_deleted ?? false,
+    editedAt: record.editedAt ? normalizeTimestamp(record.editedAt) : undefined,
+    editedByUserId: record.editedByUserId ?? undefined,
+    editedByUsername: record.editedByUsername ?? undefined,
+    deletedAt: record.deletedAt ? normalizeTimestamp(record.deletedAt) : undefined,
+    deletedByUserId: record.deletedByUserId ?? undefined,
+    deletedByUsername: record.deletedByUsername ?? undefined,
     client_timestamp: normalizeTimestamp(record.client_timestamp),
     createdAt: normalizeTimestamp(record.createdAt),
     lines: record.lines.map((line) => ({
@@ -131,7 +157,7 @@ function normalizeServerTransaction(record: PosTransactionServerRecord): PosTran
       unit_mutasi: line.unit_mutasi ?? undefined,
       unit_label: line.unit_label?.trim() || undefined,
     })),
-  };
+  });
 }
 
 async function getPosTransactionSyncCursor() {
@@ -220,7 +246,7 @@ export async function listLocalPosTransactionsPage(params: {
     .toArray();
 
   return {
-    rows: rows.slice(0, pageSize),
+    rows: rows.slice(0, pageSize).map(normalizeLocalTransaction),
     hasPreviousPage: page > 1,
     hasNextPage: rows.length > pageSize,
     page,

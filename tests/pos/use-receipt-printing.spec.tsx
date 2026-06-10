@@ -134,4 +134,21 @@ describe("useReceiptPrinting", () => {
     expect(result.current.pendingTransaction).toBeNull();
     expect(result.current.receiptPromptVariant).toBe("initial");
   });
+
+  it("can reprint an existing history transaction without opening the receipt prompt state", async () => {
+    const { result } = renderHook(() => useReceiptPrinting());
+    const cashTransaction = buildTransaction("cash");
+
+    await act(async () => {
+      await result.current.printTransaction(printerSettings, cashTransaction);
+    });
+
+    expect(buildReceiptTextMock).toHaveBeenCalledWith(printerSettings, cashTransaction);
+    expect(printReceiptThroughBridgeMock).toHaveBeenCalledWith({
+      receiptText: "RECEIPT TEXT",
+      settings: printerSettings,
+    });
+    expect(result.current.pendingTransaction).toBeNull();
+    expect(result.current.printStatusType).toBe("success");
+  });
 });

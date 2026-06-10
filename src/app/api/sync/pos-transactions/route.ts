@@ -27,12 +27,20 @@ type Body = {
     change_amount?: number;
     counts_for_cash: boolean;
     note?: string;
+    is_deleted?: boolean;
+    editedAt?: number;
+    editedByUserId?: string;
+    editedByUsername?: string;
+    deletedAt?: number;
+    deletedByUserId?: string;
+    deletedByUsername?: string;
     client_timestamp: number;
     lines: Array<{
       id_produk: string;
       nama_produk: string;
       unit_price: number;
       qty: number;
+      unit_mutasi?: "SMALL" | "LARGE";
       unit_label?: string;
       line_discount: number;
       line_total: number;
@@ -97,6 +105,8 @@ export async function GET(request: NextRequest) {
     cursor: nextCursor,
     transactions: transactions.map((transaction) => ({
       ...transaction,
+      editedAt: transaction.editedAt?.toISOString(),
+      deletedAt: transaction.deletedAt?.toISOString(),
       client_timestamp: transaction.client_timestamp.toISOString(),
       createdAt: transaction.createdAt.toISOString(),
     })),

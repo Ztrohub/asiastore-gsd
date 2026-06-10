@@ -63,4 +63,39 @@ describe("local pos transaction history pagination contract", () => {
     expect(page.hasPreviousPage).toBe(true);
     expect(page.hasNextPage).toBe(true);
   });
+
+  it("keeps legacy transaction rows compatible when soft-delete audit fields are missing", async () => {
+    toArray.mockResolvedValueOnce([
+      {
+        id_transaksi: "tx-legacy-1",
+        short_id: "TRX-LEGACY",
+        kasir_user_id: "user-1",
+        kasir_username: "kasir",
+        payment_method: "cash",
+        subtotal_amount: 10000,
+        item_discount: 0,
+        order_discount: 0,
+        total_amount: 10000,
+        counts_for_cash: true,
+        client_timestamp: 1717200000000,
+        createdAt: 1717200000000,
+        lines: [],
+      },
+    ]);
+
+    const { listLocalPosTransactionsPage } = await import("@/lib/offline/pos-transaction-history");
+    const page = await listLocalPosTransactionsPage({
+      dateFrom: "2026-06-01",
+      dateTo: "2026-06-01",
+      page: 1,
+      pageSize: 10,
+    });
+
+    expect(page.rows[0]).toMatchObject({
+      id_transaksi: "tx-legacy-1",
+      is_deleted: false,
+      editedAt: undefined,
+      deletedAt: undefined,
+    });
+  });
 });

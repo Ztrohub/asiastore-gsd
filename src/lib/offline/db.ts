@@ -105,6 +105,13 @@ export type PosTransactionRecord = {
   change_amount?: number;
   counts_for_cash: boolean;
   note?: string;
+  is_deleted?: boolean;
+  editedAt?: number;
+  editedByUserId?: string;
+  editedByUsername?: string;
+  deletedAt?: number;
+  deletedByUserId?: string;
+  deletedByUsername?: string;
   lines: PosTransactionLineRecord[];
   client_timestamp: number;
   createdAt: number;
@@ -176,6 +183,19 @@ class LocalPosDatabase extends Dexie {
       products:
         "id_produk, nama_produk, sku, harga_jual, harga_jual_unit_besar, stok_saat_ini, stok_unit_besar_saat_ini, is_active, updatedAt",
       posTransactions: "id_transaksi, short_id, payment_method, counts_for_cash, client_timestamp, createdAt",
+    });
+    this.version(7).stores({
+      credentialCache: "username, userId, updatedAt, passwordVersion, role",
+      localSessions: "key, username, lastActivityAt, mustReloginAt",
+      syncQueue:
+        "++id, status, attemptCount, nextRetryAt, entityType, entityId, createdAt",
+      appMeta: "key",
+      inventoryMutationEvents:
+        "id_queue, id_transaksi, id_produk, id_user, jenis_mutasi, unit_mutasi, client_timestamp, logical_clock",
+      products:
+        "id_produk, nama_produk, sku, harga_jual, harga_jual_unit_besar, stok_saat_ini, stok_unit_besar_saat_ini, is_active, updatedAt",
+      posTransactions:
+        "id_transaksi, short_id, payment_method, counts_for_cash, is_deleted, client_timestamp, createdAt",
     });
   }
 }

@@ -14,14 +14,32 @@ import {
 } from "@/components/ui/table";
 import { formatCurrencyIdr } from "@/features/format/currency";
 import { formatJakartaDateTime } from "@/features/format/datetime";
+import { PosRemoveDialog } from "@/features/pos/components/pos-remove-dialog";
+import { TransactionEditDialog } from "@/features/pos/components/transaction-edit-dialog";
+import { usePrinterBridgeSettings } from "@/features/pos/hooks/use-printer-bridge-settings";
+import { useReceiptPrinting } from "@/features/pos/hooks/use-receipt-printing";
 import { usePosTransactions } from "@/features/pos/hooks/use-pos-transactions";
+import type { PosTransactionRecord } from "@/lib/offline/db";
 
 function resolvePaymentLabel(paymentMethod: "cash" | "bank_transfer") {
   return paymentMethod === "cash" ? "Tunai" : "Transfer";
 }
 
+type ActionStatus = {
+  message: string;
+  type: "success" | "error";
+};
+
 export function PosTransactionsScreen() {
   const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<PosTransactionRecord | null>(null);
+  const [printTarget, setPrintTarget] = useState<PosTransactionRecord | null>(null);
+  const [actionStatus, setActionStatus] = useState<ActionStatus | null>(null);
+  const [transactionOverrides, setTransactionOverrides] = useState<
+    Record<string, PosTransactionRecord>
+  >({});
+  const { settings: printerSettings } = usePrinterBridgeSettings();
+  const { printStatusMessage, printStatusType, printTransaction } = useReceiptPrinting();
   const {
     rows,
     loading,
@@ -36,10 +54,46 @@ export function PosTransactionsScreen() {
     goToPreviousPage,
     goToNextPage,
     reload,
+    updateTransaction,
+    softDeleteTransaction,
+    restoreTransaction,
   } = usePosTransactions();
+  const displayRows = rows.map((row) => transactionOverrides[row.id_transaksi] ?? row);
+
+  const upsertTransactionState = (transaction: PosTransactionRecord) => {
+    setEditingTransaction(transaction);
+    setTransactionOverrides((current) => ({
+      ...current,
+      [transaction.id_transaksi]: transaction,
+    }));
+  };
 
   return (
     <section className="space-y-4">
+      {actionStatus ? (
+        <div
+          className={`rounded-md border px-3 py-2 text-sm ${
+            actionStatus.type === "success"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              : "border-destructive/40 bg-destructive/10 text-destructive"
+          }`}
+        >
+          {actionStatus.message}
+        </div>
+      ) : null}
+
+      {printStatusMessage ? (
+        <div
+          className={`rounded-md border px-3 py-2 text-sm ${
+            printStatusType === "success"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              : "border-destructive/40 bg-destructive/10 text-destructive"
+          }`}
+        >
+          {printStatusMessage}
+        </div>
+      ) : null}
+
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -117,7 +171,7 @@ export function PosTransactionsScreen() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((row) => {
+              {displayRows.map((row) => {
                 const expanded = expandedTransactionId === row.id_transaksi;
                 return (
                   <Fragment key={row.id_transaksi}>
@@ -127,7 +181,10 @@ export function PosTransactionsScreen() {
                       <TableCell>{formatJakartaDateTime(row.client_timestamp)}</TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <p className="font-medium text-foreground">{row.short_id}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-foreground">{row.short_id}</p>
+                            {row.is_deleted ? <Badge variant="destructive">Terhapus</Badge> : null}
+                          </div>
                           <p className="text-xs text-muted-foreground">{row.id_transaksi}</p>
                         </div>
                       </TableCell>
@@ -135,17 +192,37 @@ export function PosTransactionsScreen() {
                       <TableCell>{resolvePaymentLabel(row.payment_method)}</TableCell>
                       <TableCell>{formatCurrencyIdr(row.total_amount)}</TableCell>
                       <TableCell>
-                        <Button
-                          aria-label={`Detail transaksi ${row.short_id}`}
-                          onClick={() =>
-                            setExpandedTransactionId(expanded ? null : row.id_transaksi)
-                          }
-                          size="sm"
-                          type="button"
-                          variant="outline"
-                        >
-                          {expanded ? "Tutup" : "Detail"}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            aria-label={`Detail transaksi ${row.short_id}`}
+                            onClick={() =>
+                              setExpandedTransactionId(expanded ? null : row.id_transaksi)
+                            }
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                          >
+                            {expanded ? "Tutup" : "Detail"}
+                          </Button>
+                          <Button
+                            aria-label={`Print ulang transaksi ${row.short_id}`}
+                            onClick={() => setPrintTarget(row)}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                          >
+                            Print ulang
+                          </Button>
+                          <Button
+                            aria-label={`Edit transaksi ${row.short_id}`}
+                            onClick={() => setEditingTransaction(row)}
+                            size="sm"
+                            type="button"
+                            variant="outline"
+                          >
+                            Edit transaksi
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                     {expanded ? (
@@ -205,6 +282,73 @@ export function PosTransactionsScreen() {
           </Table>
         ) : null}
       </section>
+
+      <TransactionEditDialog
+        onClose={() => setEditingTransaction(null)}
+        onDelete={async (id_transaksi) => {
+          try {
+            const nextTransaction = await softDeleteTransaction(id_transaksi);
+            upsertTransactionState(nextTransaction);
+            setActionStatus({
+              type: "success",
+              message: "Transaksi berhasil dinonaktifkan.",
+            });
+          } catch {
+            setActionStatus({
+              type: "error",
+              message: "Delete transaksi gagal. Coba lagi.",
+            });
+          }
+        }}
+        onRestore={async (id_transaksi) => {
+          try {
+            const nextTransaction = await restoreTransaction(id_transaksi);
+            upsertTransactionState(nextTransaction);
+            setActionStatus({
+              type: "success",
+              message: "Transaksi berhasil diaktifkan kembali.",
+            });
+          } catch {
+            setActionStatus({
+              type: "error",
+              message: "Aktivasi ulang transaksi gagal. Coba lagi.",
+            });
+          }
+        }}
+        onSave={async (input) => {
+          try {
+            const nextTransaction = await updateTransaction(input);
+            upsertTransactionState(nextTransaction);
+            setActionStatus({
+              type: "success",
+              message: "Perubahan transaksi berhasil disimpan.",
+            });
+          } catch {
+            setActionStatus({
+              type: "error",
+              message: "Perubahan transaksi gagal disimpan. Coba lagi.",
+            });
+          }
+        }}
+        open={Boolean(editingTransaction)}
+        saving={false}
+        transaction={editingTransaction}
+      />
+
+      <PosRemoveDialog
+        confirmLabel="Print ulang"
+        confirmVariant="default"
+        description="Receipt transaksi ini akan dikirim ulang ke printer thermal."
+        onClose={() => setPrintTarget(null)}
+        onConfirm={() => {
+          if (!printTarget) return;
+          printTransaction(printerSettings, printTarget)
+            .catch(() => undefined)
+            .finally(() => setPrintTarget(null));
+        }}
+        open={Boolean(printTarget)}
+        title="Print ulang transaksi?"
+      />
     </section>
   );
 }

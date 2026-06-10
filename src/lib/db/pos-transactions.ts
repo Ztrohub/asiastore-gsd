@@ -19,12 +19,20 @@ export type PosTransactionBatchInput = {
   change_amount?: number;
   counts_for_cash: boolean;
   note?: string;
+  is_deleted?: boolean;
+  editedAt?: number;
+  editedByUserId?: string;
+  editedByUsername?: string;
+  deletedAt?: number;
+  deletedByUserId?: string;
+  deletedByUsername?: string;
   client_timestamp: number;
   lines: Array<{
     id_produk: string;
     nama_produk: string;
     unit_price: number;
     qty: number;
+    unit_mutasi?: "SMALL" | "LARGE";
     unit_label?: string;
     line_discount: number;
     line_total: number;
@@ -64,6 +72,13 @@ export async function createPosTransactionBatch(transactions: PosTransactionBatc
             change_amount: tx.change_amount ? Math.trunc(tx.change_amount) : null,
             counts_for_cash: tx.counts_for_cash,
             note: tx.note ?? null,
+            is_deleted: tx.is_deleted ?? false,
+            editedAt: tx.editedAt ? new Date(tx.editedAt) : null,
+            editedByUserId: tx.editedByUserId ?? null,
+            editedByUsername: tx.editedByUsername ?? null,
+            deletedAt: tx.deletedAt ? new Date(tx.deletedAt) : null,
+            deletedByUserId: tx.deletedByUserId ?? null,
+            deletedByUsername: tx.deletedByUsername ?? null,
             client_timestamp: new Date(tx.client_timestamp),
           },
           create: {
@@ -80,6 +95,13 @@ export async function createPosTransactionBatch(transactions: PosTransactionBatc
             change_amount: tx.change_amount ? Math.trunc(tx.change_amount) : null,
             counts_for_cash: tx.counts_for_cash,
             note: tx.note ?? null,
+            is_deleted: tx.is_deleted ?? false,
+            editedAt: tx.editedAt ? new Date(tx.editedAt) : null,
+            editedByUserId: tx.editedByUserId ?? null,
+            editedByUsername: tx.editedByUsername ?? null,
+            deletedAt: tx.deletedAt ? new Date(tx.deletedAt) : null,
+            deletedByUserId: tx.deletedByUserId ?? null,
+            deletedByUsername: tx.deletedByUsername ?? null,
             client_timestamp: new Date(tx.client_timestamp),
           },
         });
@@ -94,6 +116,8 @@ export async function createPosTransactionBatch(transactions: PosTransactionBatc
             nama_produk: line.nama_produk,
             unit_price: Math.trunc(line.unit_price),
             qty: line.qty,
+            unit_mutasi: line.unit_mutasi ?? null,
+            unit_label: line.unit_label ?? null,
             line_discount: Math.trunc(line.line_discount),
             line_total: Math.trunc(line.line_total),
           })),
@@ -166,6 +190,13 @@ export async function listPosTransactionsForSync(params?: { cursor?: string; lim
     change_amount: row.change_amount ?? undefined,
     counts_for_cash: row.counts_for_cash,
     note: row.note ?? undefined,
+    is_deleted: row.is_deleted,
+    editedAt: row.editedAt ?? undefined,
+    editedByUserId: row.editedByUserId ?? undefined,
+    editedByUsername: row.editedByUsername ?? undefined,
+    deletedAt: row.deletedAt ?? undefined,
+    deletedByUserId: row.deletedByUserId ?? undefined,
+    deletedByUsername: row.deletedByUsername ?? undefined,
     client_timestamp: row.client_timestamp,
     createdAt: row.createdAt,
     lines: row.lines.map((line) => ({
@@ -173,6 +204,8 @@ export async function listPosTransactionsForSync(params?: { cursor?: string; lim
       nama_produk: line.nama_produk,
       unit_price: line.unit_price,
       qty: line.qty,
+      unit_mutasi: line.unit_mutasi ?? undefined,
+      unit_label: line.unit_label ?? undefined,
       line_discount: line.line_discount,
       line_total: line.line_total,
     })),

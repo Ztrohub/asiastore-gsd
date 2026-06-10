@@ -61,6 +61,24 @@ export function useReceiptPrinting() {
     setPrintStatusMessage(null);
   }
 
+  async function printTransaction(settings: PrinterBridgeSettings, transaction: PosTransactionRecord) {
+    setPrinting(true);
+    setPrintError(null);
+    try {
+      const receiptText = buildReceiptText(settings, transaction);
+      await printReceiptThroughBridge({ receiptText, settings });
+      setPrintStatusType("success");
+      setPrintStatusMessage("Perintah print berhasil dikirim.");
+    } catch {
+      setPrintError("Print gagal. Silakan cek printer.");
+      setPrintStatusType("error");
+      setPrintStatusMessage("Print gagal. Cek printer atau print bridge.");
+      throw new Error("Print gagal. Silakan cek printer.");
+    } finally {
+      setPrinting(false);
+    }
+  }
+
   return {
     pendingTransaction,
     receiptPromptVariant,
@@ -72,5 +90,6 @@ export function useReceiptPrinting() {
     printStatusMessage,
     printStatusType,
     clearPrintStatus,
+    printTransaction,
   };
 }

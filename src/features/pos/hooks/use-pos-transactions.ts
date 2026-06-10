@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  restoreTransactionHistory,
+  softDeleteTransactionHistory,
+  updateTransactionHistory,
+  type TransactionHistoryEditableInput,
+} from "@/features/pos/lib/transaction-history-update";
+import {
   getDefaultPosTransactionFilters,
   listLocalPosTransactionsPage,
   syncPosTransactionsFromServer,
@@ -107,6 +113,33 @@ export function usePosTransactions() {
     setPage((current) => current + 1);
   }, []);
 
+  const updateTransaction = useCallback(
+    async (input: TransactionHistoryEditableInput) => {
+      const result = await updateTransactionHistory(input);
+      await loadLocalPage();
+      return result;
+    },
+    [loadLocalPage],
+  );
+
+  const softDeleteTransaction = useCallback(
+    async (id_transaksi: string) => {
+      const result = await softDeleteTransactionHistory(id_transaksi);
+      await loadLocalPage();
+      return result;
+    },
+    [loadLocalPage],
+  );
+
+  const restoreTransaction = useCallback(
+    async (id_transaksi: string) => {
+      const result = await restoreTransactionHistory(id_transaksi);
+      await loadLocalPage();
+      return result;
+    },
+    [loadLocalPage],
+  );
+
   return {
     rows,
     loading,
@@ -122,5 +155,8 @@ export function usePosTransactions() {
     goToPreviousPage,
     goToNextPage,
     reload,
+    updateTransaction,
+    softDeleteTransaction,
+    restoreTransaction,
   };
 }

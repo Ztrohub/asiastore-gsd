@@ -21,6 +21,7 @@ type Props = {
   title?: string;
   description?: string;
   confirmLabel?: string;
+  confirmVariant?: "destructive" | "default" | "outline";
   onClose: () => void;
   onConfirm: () => void;
 };
@@ -31,6 +32,7 @@ export function PosRemoveDialog({
   title,
   description,
   confirmLabel,
+  confirmVariant = "destructive",
   onClose,
   onConfirm,
 }: Props) {
@@ -111,7 +113,7 @@ export function PosRemoveDialog({
               onConfirm();
             }}
             type="button"
-            variant="destructive"
+            variant={confirmVariant}
           >
             {confirmLabel ?? "Hapus"}
           </Button>
