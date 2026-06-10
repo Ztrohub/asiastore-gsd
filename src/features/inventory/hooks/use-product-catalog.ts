@@ -295,9 +295,7 @@ export function useProductCatalog() {
       try {
         await refreshLocal();
         if (mounted) setLoading(false);
-        if (navigator.onLine) {
-          await syncFromServer();
-        }
+        await syncFromServer();
       } catch (err) {
         if (!mounted) return;
         const message = err instanceof Error ? err.message : "Gagal memuat katalog produk.";
@@ -323,9 +321,6 @@ export function useProductCatalog() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      if (!navigator.onLine) {
-        return;
-      }
       syncFromServer().catch(() => undefined);
     }, PRODUCT_CATALOG_POLL_MS);
 

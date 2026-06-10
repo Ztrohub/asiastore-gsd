@@ -173,6 +173,75 @@ describe("product catalog offline-first sync contract", () => {
     );
   });
 
+  it("still imports server stock when browser online flag is stale-false", async () => {
+    let productState: Array<{
+      id_produk: string;
+      nama_produk: string;
+      sku?: string;
+      harga_jual: number;
+      stok_saat_ini: number;
+      stok_unit_besar_saat_ini?: number;
+      is_active: boolean;
+      updatedAt: number;
+      unit_small_name?: string;
+      unit_large_name?: string;
+      unit_large_to_small?: number;
+      allow_buy_in_small?: boolean;
+      allow_buy_in_large?: boolean;
+      allow_sell_in_small?: boolean;
+      allow_sell_in_large?: boolean;
+    }> = [];
+
+    productsToArray.mockImplementation(async () => [...productState]);
+    putProduct.mockImplementation(async (product: (typeof productState)[number]) => {
+      productState = productState.filter((item) => item.id_produk !== product.id_produk).concat(product);
+    });
+
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: false,
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        cursor: "1779947000000:prod-remote",
+        products: [
+          {
+            id_produk: "prod-remote",
+            nama_produk: "Produk Remote",
+            sku: "SKU-REMOTE",
+            harga_jual: 21000,
+            stok_saat_ini: 9,
+            stok_unit_besar_saat_ini: 0,
+            is_active: true,
+            unit_small_name: "pcs",
+            updatedAt: "2026-06-10T05:58:38.018Z",
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { useProductCatalog } = await import("@/features/inventory/hooks/use-product-catalog");
+    const { result } = renderHook(() => useProductCatalog());
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/inventory/products", { cache: "no-store" });
+    });
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.products).toHaveLength(1);
+    });
+
+    expect(result.current.products[0]).toEqual(
+      expect.objectContaining({
+        id_produk: "prod-remote",
+        stok_saat_ini: 9,
+      }),
+    );
+  });
+
   it("keeps local products when incremental sync returns an empty page", async () => {
     const localProducts = [
       {

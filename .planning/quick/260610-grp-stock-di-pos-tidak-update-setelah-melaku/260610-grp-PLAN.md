@@ -1,4 +1,4 @@
-# Quick Task 260610-grp: stock di PoS tidak update setelah melakukan transaksi, harus ke menu lain dan kembali ke PoS baru update
+/# Quick Task 260610-grp: stock di PoS tidak update setelah melakukan transaksi, harus ke menu lain dan kembali ke PoS baru update
 
 ## Goal
 
