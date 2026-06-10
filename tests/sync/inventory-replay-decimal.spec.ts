@@ -64,4 +64,76 @@ describe("inventory replay decimal quantities", () => {
     expect(result.acks).toEqual([{ id_queue: "q-decimal-stock", status: "acked" }]);
     expect(result.finalStockByProduct["prod-1"]).toBe(10);
   });
+
+  it("acks stock-out that drives synced server stock below zero so clean devices receive the same stock", async () => {
+    findProduct.mockResolvedValueOnce({
+      stok_saat_ini: 0,
+      stok_unit_besar_saat_ini: 0,
+    });
+
+    const { applyInventoryDeltaBatch } = await import("@/lib/db/inventory-replay");
+
+    const result = await applyInventoryDeltaBatch([
+      {
+        id_queue: "q-negative-stock",
+        id_produk: "prod-neg",
+        id_transaksi: "tx-neg",
+        id_user: "user-1",
+        jenis_mutasi: "SALES_OUT",
+        unit_mutasi: "SMALL",
+        delta_qty: -4,
+        logical_clock: 1,
+        received_seq: 1,
+        client_timestamp: 1781070000000,
+      },
+    ]);
+
+    expect(updateProduct).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id_produk: "prod-neg" },
+        data: expect.objectContaining({
+          stok_saat_ini: -4,
+          stok_unit_besar_saat_ini: 0,
+        }),
+      }),
+    );
+    expect(result.acks).toEqual([{ id_queue: "q-negative-stock", status: "acked" }]);
+    expect(result.finalStockByProduct["prod-neg"]).toBe(-4);
+  });
+
+  it("keeps existing negative server stock when applying another stock-out", async () => {
+    findProduct.mockResolvedValueOnce({
+      stok_saat_ini: -4,
+      stok_unit_besar_saat_ini: 0,
+    });
+
+    const { applyInventoryDeltaBatch } = await import("@/lib/db/inventory-replay");
+
+    const result = await applyInventoryDeltaBatch([
+      {
+        id_queue: "q-negative-follow-up",
+        id_produk: "prod-neg",
+        id_transaksi: "tx-neg-2",
+        id_user: "user-1",
+        jenis_mutasi: "SALES_OUT",
+        unit_mutasi: "SMALL",
+        delta_qty: -3,
+        logical_clock: 2,
+        received_seq: 2,
+        client_timestamp: 1781070001000,
+      },
+    ]);
+
+    expect(updateProduct).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id_produk: "prod-neg" },
+        data: expect.objectContaining({
+          stok_saat_ini: -7,
+          stok_unit_besar_saat_ini: 0,
+        }),
+      }),
+    );
+    expect(result.acks).toEqual([{ id_queue: "q-negative-follow-up", status: "acked" }]);
+    expect(result.finalStockByProduct["prod-neg"]).toBe(-7);
+  });
 });

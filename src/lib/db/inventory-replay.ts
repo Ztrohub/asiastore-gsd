@@ -26,8 +26,6 @@ type ReplayResult = {
 const KNOWN_REPLAY_FAILURE_REASONS = new Set([
   "MISSING_USER_ID",
   "PRODUCT_NOT_FOUND",
-  "OUT_OF_STOCK_SMALL",
-  "OUT_OF_STOCK_LARGE",
 ]);
 
 function mapReplayFailureReason(error: unknown): string {
@@ -64,7 +62,7 @@ function orderEvents(events: InventoryDeltaEvent[]) {
 
 function normalizePersistedStock(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
-  return Math.max(0, value);
+  return value;
 }
 
 export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): Promise<ReplayResult> {
@@ -129,14 +127,8 @@ export async function applyInventoryDeltaBatch(events: InventoryDeltaEvent[]): P
 
           if (mutationUnit === "SMALL") {
             nextSmallStock = currentSmallStock + event.delta_qty;
-            if (nextSmallStock < 0) {
-              throw new Error("OUT_OF_STOCK_SMALL");
-            }
           } else {
             nextLargeStock = currentLargeStock + event.delta_qty;
-            if (nextLargeStock < 0) {
-              throw new Error("OUT_OF_STOCK_LARGE");
-            }
           }
 
           await tx.product.update({

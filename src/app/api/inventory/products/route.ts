@@ -74,7 +74,7 @@ function isValidProductPayload(product: ProductPayload) {
   const stokUnitBesarSaatIni = optionalNumber(product.stok_unit_besar_saat_ini);
   if (
     product.stok_unit_besar_saat_ini != null &&
-    (stokUnitBesarSaatIni === undefined || stokUnitBesarSaatIni < 0)
+    stokUnitBesarSaatIni === undefined
   ) {
     return false;
   }
