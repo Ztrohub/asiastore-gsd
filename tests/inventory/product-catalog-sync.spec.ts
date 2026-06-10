@@ -136,6 +136,43 @@ describe("product catalog offline-first sync contract", () => {
     expect(queuedPayload).not.toHaveProperty("unit_large_to_small");
   });
 
+  it("preserves negative local stock on refresh so POS stockout stays visible", async () => {
+    productsToArray.mockResolvedValueOnce([
+      {
+        id_produk: "prod-neg",
+        nama_produk: "Produk Minus",
+        sku: "NEG-001",
+        harga_jual: 12000,
+        stok_saat_ini: -3,
+        stok_unit_besar_saat_ini: -1,
+        is_active: true,
+        unit_small_name: "pcs",
+        unit_large_name: "dus",
+        unit_large_to_small: 12,
+        allow_buy_in_small: true,
+        allow_buy_in_large: true,
+        allow_sell_in_small: true,
+        allow_sell_in_large: true,
+        updatedAt: 1779946036531,
+      },
+    ]);
+
+    const { useProductCatalog } = await import("@/features/inventory/hooks/use-product-catalog");
+    const { result } = renderHook(() => useProductCatalog());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.products).toHaveLength(1);
+    expect(result.current.products[0]).toEqual(
+      expect.objectContaining({
+        stok_saat_ini: -3,
+        stok_unit_besar_saat_ini: -1,
+      }),
+    );
+  });
+
   it("keeps local products when incremental sync returns an empty page", async () => {
     const localProducts = [
       {

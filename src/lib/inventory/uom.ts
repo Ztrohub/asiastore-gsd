@@ -30,6 +30,11 @@ function normalizeOptionalInteger(value: number | null | undefined) {
   return value;
 }
 
+function normalizeStockValue(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return value;
+}
+
 export function normalizeProductUom(product: ProductRecord): ProductRecord {
   const smallUnit = normalizeUnitName(product.unit_small_name, DEFAULT_SMALL_UNIT);
   const largeUnit = normalizeLargeUnitName(product.unit_large_name);
@@ -54,8 +59,8 @@ export function normalizeProductUom(product: ProductRecord): ProductRecord {
 
   return {
     ...product,
-    stok_saat_ini: Math.max(0, Math.trunc(product.stok_saat_ini)),
-    stok_unit_besar_saat_ini: Math.max(0, Math.trunc(product.stok_unit_besar_saat_ini ?? 0)),
+    stok_saat_ini: normalizeStockValue(product.stok_saat_ini),
+    stok_unit_besar_saat_ini: normalizeStockValue(product.stok_unit_besar_saat_ini ?? 0),
     harga_jual_unit_besar: largeSalePrice,
     unit_small_name: smallUnit,
     unit_large_name: largeUnit,

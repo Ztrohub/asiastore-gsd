@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { ProductRecord } from "@/lib/offline/db";
+import { formatQuantityForDisplay } from "@/lib/inventory/quantity";
 import { getLargeUnitName, getSmallUnitName } from "@/lib/inventory/uom";
 import {
   createProductSearch,
@@ -96,12 +97,13 @@ function PriceCell({ product }: { product: ProductRecord }) {
 function StockCell({ product }: { product: ProductRecord }) {
   const smallUnit = getSmallUnitName(product);
   const largeUnit = getLargeUnitName(product);
-  const largeStock = Math.max(0, Math.trunc(product.stok_unit_besar_saat_ini ?? 0));
+  const smallStock = formatQuantityForDisplay(product.stok_saat_ini);
+  const largeStock = formatQuantityForDisplay(product.stok_unit_besar_saat_ini ?? 0);
 
   return (
     <div>
       <p>
-        {product.stok_saat_ini} {smallUnit}
+        {smallStock} {smallUnit}
       </p>
       {largeUnit ? (
         <p className="text-xs text-muted-foreground">
