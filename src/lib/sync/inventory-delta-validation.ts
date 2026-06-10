@@ -15,6 +15,11 @@ const ALLOWED_MUTATION_TYPES = new Set(["SALES_OUT", "STOCK_IN", "STOCK_ADJUSTME
 const ALLOWED_MUTATION_UNITS = new Set(["SMALL", "LARGE"]);
 
 export function isValidInventoryDeltaEvent(event: InventoryDeltaLike) {
+  const deltaQty = event.delta_qty;
+  const logicalClock = event.logical_clock;
+  const clientTimestamp = event.client_timestamp;
+  const receivedSeq = event.received_seq;
+
   return Boolean(
     event.id_queue &&
       event.id_produk &&
@@ -22,13 +27,17 @@ export function isValidInventoryDeltaEvent(event: InventoryDeltaLike) {
       event.id_user &&
       ALLOWED_MUTATION_TYPES.has(event.jenis_mutasi ?? "") &&
       (event.unit_mutasi === undefined || ALLOWED_MUTATION_UNITS.has(event.unit_mutasi)) &&
-      Number.isFinite(event.delta_qty) &&
-      event.delta_qty !== 0 &&
-      Number.isInteger(event.logical_clock) &&
-      event.logical_clock >= 0 &&
-      Number.isInteger(event.client_timestamp) &&
-      event.client_timestamp > 0 &&
-      Number.isInteger(event.received_seq) &&
-      event.received_seq >= 0,
+      typeof deltaQty === "number" &&
+      Number.isFinite(deltaQty) &&
+      deltaQty !== 0 &&
+      typeof logicalClock === "number" &&
+      Number.isInteger(logicalClock) &&
+      logicalClock >= 0 &&
+      typeof clientTimestamp === "number" &&
+      Number.isInteger(clientTimestamp) &&
+      clientTimestamp > 0 &&
+      typeof receivedSeq === "number" &&
+      Number.isInteger(receivedSeq) &&
+      receivedSeq >= 0,
   );
 }

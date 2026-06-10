@@ -63,7 +63,7 @@ function orderEvents(events: InventoryDeltaEvent[]) {
 }
 
 function normalizePersistedStock(value: number | null | undefined) {
-  if (!Number.isFinite(value)) return 0;
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
   return Math.max(0, value);
 }
 
