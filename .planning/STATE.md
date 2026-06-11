@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 02.1
 status: unknown
 stopped_at: Phase 3 planned
-last_updated: "2026-06-11T12:17:21+07:00"
+last_updated: "2026-06-11T12:44:16+07:00"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -18,7 +18,7 @@ progress:
 
 **Initialized:** 2026-05-17
 **Current Phase:** 02.1
-**Current Command:** `$gsd-quick tambahkan icon di sebelah nama produk untuk produk yang terdaftar di marketplace`
+**Current Command:** `$gsd-quick hapus tulisan marketplace hanya icon saja di sebelah kanan badge produk inventory`
 
 ## Project Reference
 
@@ -97,5 +97,6 @@ Resume file: .planning/phases/03-pos-checkout-and-receipt-printing/03-01-PLAN.md
 | 260611-f78 | tambahkan flag pada produk di inventory, pada setiap produk dapat dicentang untuk menandakan produk dijual di marketplace, untuk produk yang dicentang dijual di marketplace user perlu menambahkan nama produk di marketplace, id produk, dan id sku. Field-field ini berbeda dengan field yang sudah ada sekarang dan hanya diisi jika produk marketplace dicentang. Pastikan perubahan dapat berjalan dengan lancar dengan data di production, jika perubahan mengubah struktur database maka pastikan gunakan prisma migration | 2026-06-11 | 7899919 | [260611-f78-tambahkan-flag-pada-produk-di-inventory-](./quick/260611-f78-tambahkan-flag-pada-produk-di-inventory-/) |
 | 260611-gfb | tambahkan tombol filter di sebelah kiri searchbar pada menu inventory, membuka drawer dari kanan dengan satu field dropdown filter tipe produk berisi semua dan marketplace, tombol simpan di bawah menutup drawer dan mengupdate daftar inventory, tombol filter menampilkan badge jumlah filter aktif | 2026-06-11 | 048f475 | [260611-gfb-tambahkan-tombol-filter-di-sebelah-kiri-](./quick/260611-gfb-tambahkan-tombol-filter-di-sebelah-kiri-/) |
 | 260611-guk | tambahkan icon di sebelah nama produk untuk produk yang terdaftar di marketplace | 2026-06-11 | 2def0cb | [260611-guk-tambahkan-icon-di-sebelah-nama-produk-un](./quick/260611-guk-tambahkan-icon-di-sebelah-nama-produk-un/) |
+| 260611-h6w | hapus tulisan marketplace hanya icon saja di sebelah kanan badge produk inventory | 2026-06-11 | 7588b59 | [260611-h6w-hapus-tulisan-marketplace-hanya-icon-saj](./quick/260611-h6w-hapus-tulisan-marketplace-hanya-icon-saj/) |
 
-Last activity: 2026-06-11 - Completed quick task 260611-guk: tambahkan icon di sebelah nama produk untuk produk yang terdaftar di marketplace
+Last activity: 2026-06-11 - Completed quick task 260611-h6w: hapus tulisan marketplace hanya icon saja di sebelah kanan badge produk inventory
