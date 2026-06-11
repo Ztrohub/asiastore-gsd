@@ -95,6 +95,20 @@ Menambahkan harga khusus per qty pada master produk yang otomatis dipakai saat t
 - Form master produk mendapat area baru untuk mengelola harga khusus per qty.
 - Cashier tidak perlu memilih rule secara manual di POS; perhitungan berjalan otomatis dari qty yang diinput.
 - Dialog edit item keranjang tetap menjadi tempat override subtotal manual, bukan tempat mengubah master rule harga khusus.
+- Di POS, line item yang memakai harga campuran harus menampilkan breakdown harga sebagai baris terpisah per komponen yang dipakai resolver.
+- Contoh untuk `qty 1.6` dengan dasar `10000` dan rule `0.5 => 6000`, tampilan item menjadi:
+  - `1.1 x 10.000`
+  - `0.5 x 6.000`
+  - subtotal item tetap `17.000`
+
+## Receipt Scope
+
+- Receipt mengikuti breakdown harga yang sama seperti POS bila line memakai harga campuran.
+- Untuk contoh `qty 1.6`, detail item pada receipt ditampilkan sebagai:
+  - `1.1 x 10.000`
+  - `0.5 x 6.000`
+  - `Sub 17.000`
+- Receipt tidak perlu mencetak seluruh rule master produk; hanya breakdown yang benar-benar dipakai transaksi itu.
 
 ## Data Model Scope
 
