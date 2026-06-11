@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 02.1
 status: unknown
 stopped_at: Phase 3 planned
-last_updated: "2026-06-10T12:51:53+07:00"
+last_updated: "2026-06-11T11:13:41+07:00"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -18,7 +18,7 @@ progress:
 
 **Initialized:** 2026-05-17
 **Current Phase:** 02.1
-**Current Command:** `$gsd-quick syncronisasi stock gagal, jumlah stok di inventory device 1 dan device 2 berbeda. Contoh di device 1 stock barang dijual sehingga -4, di device 2 yang baru membuka web bersih, stock barang masih 0`
+**Current Command:** `$gsd-quick tambahkan flag pada produk di inventory, pada setiap produk dapat dicentang untuk menandakan produk dijual di marketplace, untuk produk yang dicentang dijual di marketplace user perlu menambahkan nama produk di marketplace, id produk, dan id sku. Field-field ini berbeda dengan field yang sudah ada sekarang dan hanya diisi jika produk marketplace dicentang. Pastikan perubahan dapat berjalan dengan lancar dengan data di production, jika perubahan mengubah struktur database maka pastikan gunakan prisma migration`
 
 ## Project Reference
 
@@ -94,5 +94,6 @@ Resume file: .planning/phases/03-pos-checkout-and-receipt-printing/03-01-PLAN.md
 | 260610-g86 | jumlah stock saat ini tidak bisa minus (berakhir di 0), buat supaya jumlah dapat tampil mines jika stockout dari PoS | 2026-06-10 | d130577 | [260610-g86-jumlah-stock-saat-ini-tidak-bisa-minus-b](./quick/260610-g86-jumlah-stock-saat-ini-tidak-bisa-minus-b/) |
 | 260610-grp | stock di PoS tidak update setelah melakukan transaksi, harus ke menu lain dan kembali ke PoS baru update | 2026-06-10 | 09bb200 | [260610-grp-stock-di-pos-tidak-update-setelah-melaku](./quick/260610-grp-stock-di-pos-tidak-update-setelah-melaku/) |
 | 260610-hfg | syncronisasi stock gagal, jumlah stok di inventory device 1 dan device 2 berbeda. Contoh di device 1 stock barang dijual sehingga -4, di device 2 yang baru membuka web bersih, stock barang masih 0 | 2026-06-10 | uncommitted | [260610-hfg-syncronisasi-stock-gagal-jumlah-stok-di-](./quick/260610-hfg-syncronisasi-stock-gagal-jumlah-stok-di-/) |
+| 260611-f78 | tambahkan flag pada produk di inventory, pada setiap produk dapat dicentang untuk menandakan produk dijual di marketplace, untuk produk yang dicentang dijual di marketplace user perlu menambahkan nama produk di marketplace, id produk, dan id sku. Field-field ini berbeda dengan field yang sudah ada sekarang dan hanya diisi jika produk marketplace dicentang. Pastikan perubahan dapat berjalan dengan lancar dengan data di production, jika perubahan mengubah struktur database maka pastikan gunakan prisma migration | 2026-06-11 | 7899919 | [260611-f78-tambahkan-flag-pada-produk-di-inventory-](./quick/260611-f78-tambahkan-flag-pada-produk-di-inventory-/) |
 
-Last activity: 2026-06-10 - Completed quick task 260610-hfg: syncronisasi stock gagal, jumlah stok di inventory device 1 dan device 2 berbeda. Contoh di device 1 stock barang dijual sehingga -4, di device 2 yang baru membuka web bersih, stock barang masih 0
+Last activity: 2026-06-11 - Completed quick task 260611-f78: tambahkan flag pada produk di inventory, pada setiap produk dapat dicentang untuk menandakan produk dijual di marketplace, untuk produk yang dicentang dijual di marketplace user perlu menambahkan nama produk di marketplace, id produk, dan id sku. Field-field ini berbeda dengan field yang sudah ada sekarang dan hanya diisi jika produk marketplace dicentang. Pastikan perubahan dapat berjalan dengan lancar dengan data di production, jika perubahan mengubah struktur database maka pastikan gunakan prisma migration
