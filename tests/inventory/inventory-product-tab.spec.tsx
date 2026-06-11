@@ -150,6 +150,15 @@ describe("inventory product tab contract", () => {
     expect(firstNameCell.querySelector("strong")).not.toBeNull();
   });
 
+  it("shows a marketplace badge only for marketplace products", () => {
+    render(<InventoryTabs />);
+
+    expect(screen.getAllByText("Marketplace")).toHaveLength(2);
+    expect(screen.getByText("Teh Tarik").closest("td")).toHaveTextContent("Marketplace");
+    expect(screen.getByText("Kopi Susu").closest("td")).toHaveTextContent("Marketplace");
+    expect(screen.getByText("Kopi Tubruk").closest("td")).not.toHaveTextContent("Marketplace");
+  });
+
   it("applies marketplace filter only after saving from the right drawer and shows active badge", async () => {
     render(<InventoryTabs />);
 

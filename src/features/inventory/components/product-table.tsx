@@ -1,6 +1,8 @@
 "use client";
 
 import { useDeferredValue, useMemo } from "react";
+import { Store } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { formatCurrencyIdr } from "@/features/format/currency";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,10 +65,20 @@ export function ProductTable({ products, query, onEdit, emptyTitle, emptyDescrip
         {filtered.map((result) => (
           <TableRow key={result.product.id_produk}>
             <TableCell>
-              {highlightMatchedText(
-                result.product.nama_produk,
-                getProductMatchIndices(result.matches, "nama_produk"),
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {result.product.is_marketplace ? (
+                  <Badge variant="outline">
+                    <Store aria-hidden="true" />
+                    <span>Marketplace</span>
+                  </Badge>
+                ) : null}
+                <span>
+                  {highlightMatchedText(
+                    result.product.nama_produk,
+                    getProductMatchIndices(result.matches, "nama_produk"),
+                  )}
+                </span>
+              </div>
             </TableCell>
             <TableCell>
               <PriceCell product={result.product} />
