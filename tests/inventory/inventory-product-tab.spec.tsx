@@ -22,6 +22,7 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         harga_jual: 15000,
         stok_saat_ini: 8,
         is_active: true,
+        is_marketplace: false,
         updatedAt: Date.now(),
       },
       {
@@ -31,6 +32,7 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         harga_jual: 12000,
         stok_saat_ini: 4,
         is_active: true,
+        is_marketplace: true,
         updatedAt: Date.now(),
       },
       {
@@ -40,6 +42,7 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         harga_jual: 17000,
         stok_saat_ini: 3,
         is_active: true,
+        is_marketplace: true,
         updatedAt: Date.now(),
       },
     ],
@@ -145,5 +148,35 @@ describe("inventory product tab contract", () => {
     expect(rows[1]).toHaveTextContent("Kopi Tubruk");
     const firstNameCell = within(rows[1]).getAllByRole("cell")[0];
     expect(firstNameCell.querySelector("strong")).not.toBeNull();
+  });
+
+  it("applies marketplace filter only after saving from the right drawer and shows active badge", async () => {
+    render(<InventoryTabs />);
+
+    fireEvent.click(screen.getByRole("button", { name: /filter/i }));
+
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getByRole("heading", { name: "Filter Produk" })).toBeInTheDocument();
+    expect(screen.getByText("Kopi Tubruk")).toBeInTheDocument();
+    expect(screen.getByText("Teh Tarik")).toBeInTheDocument();
+    expect(screen.getByText("Kopi Susu")).toBeInTheDocument();
+
+    fireEvent.change(within(drawer).getByLabelText("Tipe produk"), {
+      target: { value: "marketplace" },
+    });
+
+    expect(screen.getByText("Kopi Tubruk")).toBeInTheDocument();
+    expect(screen.getByText("Teh Tarik")).toBeInTheDocument();
+    expect(screen.getByText("Kopi Susu")).toBeInTheDocument();
+
+    fireEvent.click(within(drawer).getByRole("button", { name: "Simpan" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Kopi Tubruk")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("Teh Tarik")).toBeInTheDocument();
+    expect(screen.getByText("Kopi Susu")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /filter/i })).toHaveTextContent("1");
+    expect(screen.queryByRole("dialog", { name: "Filter Produk" })).not.toBeInTheDocument();
   });
 });

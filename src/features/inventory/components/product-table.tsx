@@ -24,18 +24,27 @@ type Props = {
   products: ProductRecord[];
   query: string;
   onEdit: (product: ProductRecord) => void;
+  emptyTitle?: string;
+  emptyDescription?: string;
 };
 
-export function ProductTable({ products, query, onEdit }: Props) {
+export function ProductTable({ products, query, onEdit, emptyTitle, emptyDescription }: Props) {
   const deferredQuery = useDeferredValue(query);
   const searchProducts = useMemo(() => createProductSearch(products), [products]);
   const filtered = useMemo(() => searchProducts(deferredQuery), [deferredQuery, searchProducts]);
+  const hasQuery = deferredQuery.trim().length > 0;
 
   if (filtered.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">Belum ada produk</p>
-        <p className="mt-1">Tambah produk pertama untuk mulai transaksi inventory.</p>
+        <p className="font-medium text-foreground">
+          {hasQuery ? "Produk tidak ditemukan" : (emptyTitle ?? "Belum ada produk")}
+        </p>
+        <p className="mt-1">
+          {hasQuery
+            ? "Coba kata kunci lain atau ubah filter yang aktif."
+            : (emptyDescription ?? "Tambah produk pertama untuk mulai transaksi inventory.")}
+        </p>
       </div>
     );
   }
