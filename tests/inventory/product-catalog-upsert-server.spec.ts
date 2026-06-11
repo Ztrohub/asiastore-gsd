@@ -88,6 +88,71 @@ describe("server product upsert conflict handling", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("preserves existing marketplace metadata when legacy payload omits marketplace fields", async () => {
+    findUnique.mockResolvedValueOnce({
+      id_produk: "prod-marketplace",
+      last_synced_at: null,
+      is_marketplace: true,
+      marketplace_product_name: "Produk Marketplace Existing",
+      marketplace_product_id: "MP-EXISTING",
+      marketplace_sku_id: "SKU-MP-EXISTING",
+    });
+    upsert.mockResolvedValue({ id_produk: "prod-marketplace" });
+
+    const { upsertProduct } = await import("@/lib/db/product-catalog");
+    await upsertProduct({
+      id_produk: "prod-marketplace",
+      nama_produk: "Produk Marketplace",
+      harga_jual: 22000,
+      stok_saat_ini: 6,
+      is_active: true,
+    });
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          is_marketplace: true,
+          marketplace_product_name: "Produk Marketplace Existing",
+          marketplace_product_id: "MP-EXISTING",
+          marketplace_sku_id: "SKU-MP-EXISTING",
+        }),
+      }),
+    );
+  });
+
+  it("clears marketplace metadata when payload explicitly disables marketplace sale", async () => {
+    findUnique.mockResolvedValueOnce({
+      id_produk: "prod-marketplace",
+      last_synced_at: null,
+      is_marketplace: true,
+      marketplace_product_name: "Produk Marketplace Existing",
+      marketplace_product_id: "MP-EXISTING",
+      marketplace_sku_id: "SKU-MP-EXISTING",
+    });
+    upsert.mockResolvedValue({ id_produk: "prod-marketplace" });
+
+    const { upsertProduct } = await import("@/lib/db/product-catalog");
+    await upsertProduct({
+      id_produk: "prod-marketplace",
+      nama_produk: "Produk Marketplace",
+      harga_jual: 22000,
+      stok_saat_ini: 6,
+      is_active: true,
+      is_marketplace: false,
+    });
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          is_marketplace: false,
+          marketplace_product_name: null,
+          marketplace_product_id: null,
+          marketplace_sku_id: null,
+        }),
+      }),
+    );
+  });
+
   it("lists products incrementally by updatedAfterMs when cursor is provided", async () => {
     findMany.mockResolvedValue([]);
 

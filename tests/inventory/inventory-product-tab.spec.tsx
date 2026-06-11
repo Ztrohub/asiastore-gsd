@@ -78,6 +78,42 @@ describe("inventory product tab contract", () => {
     expect(screen.getByRole("tab", { name: "Produk" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("submits marketplace metadata when marketplace checkbox is enabled", async () => {
+    render(<InventoryTabs />);
+    fireEvent.click(screen.getByRole("button", { name: "Tambah Produk" }));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Nama produk"), {
+      target: { value: "Kopi Marketplace" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Harga jual unit kecil"), {
+      target: { value: "15000" },
+    });
+    fireEvent.click(within(dialog).getByLabelText("Jual di marketplace"));
+    fireEvent.change(within(dialog).getByLabelText("Nama produk marketplace"), {
+      target: { value: "Kopi Marketplace Official" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("ID produk marketplace"), {
+      target: { value: "MP-001" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("ID SKU marketplace"), {
+      target: { value: "SKU-MP-001" },
+    });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Simpan Produk" }));
+
+    await waitFor(() => {
+      expect(saveProduct).toHaveBeenCalledTimes(1);
+    });
+    expect(saveProduct.mock.calls[0][0]).toMatchObject({
+      nama_produk: "Kopi Marketplace",
+      is_marketplace: true,
+      marketplace_product_name: "Kopi Marketplace Official",
+      marketplace_product_id: "MP-001",
+      marketplace_sku_id: "SKU-MP-001",
+    });
+  });
+
   it("supports aktif/nonaktif toggle when editing product", async () => {
     render(<InventoryTabs />);
     fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);

@@ -1,4 +1,5 @@
 import type { ProductRecord } from "@/lib/offline/db";
+import { normalizeProductMarketplace } from "@/lib/inventory/marketplace";
 
 export type UomMutationUnit = "small" | "large";
 export type UomFlow = "purchase" | "sale";
@@ -36,6 +37,7 @@ function normalizeStockValue(value: number | null | undefined) {
 }
 
 export function normalizeProductUom(product: ProductRecord): ProductRecord {
+  const normalizedMarketplace = normalizeProductMarketplace(product);
   const smallUnit = normalizeUnitName(product.unit_small_name, DEFAULT_SMALL_UNIT);
   const largeUnit = normalizeLargeUnitName(product.unit_large_name);
   const factor = largeUnit ? normalizeLargeFactor(product.unit_large_to_small) : null;
@@ -59,6 +61,7 @@ export function normalizeProductUom(product: ProductRecord): ProductRecord {
 
   return {
     ...product,
+    ...normalizedMarketplace,
     stok_saat_ini: normalizeStockValue(product.stok_saat_ini),
     stok_unit_besar_saat_ini: normalizeStockValue(product.stok_unit_besar_saat_ini ?? 0),
     harga_jual_unit_besar: largeSalePrice,

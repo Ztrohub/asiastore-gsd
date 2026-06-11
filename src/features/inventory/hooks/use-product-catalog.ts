@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { offlineDb, type ProductRecord, type SyncQueueRecord } from "@/lib/offline/db";
+import { normalizeProductMarketplace } from "@/lib/inventory/marketplace";
 import { enqueueDelta, markAcked } from "@/lib/offline/sync-queue";
 import { normalizeProductUom } from "@/lib/inventory/uom";
 import { postProductUpserts } from "@/lib/offline/inventory-sync-transport";
@@ -21,6 +22,10 @@ type ProductInput = {
   stok_saat_ini?: number;
   stok_unit_besar_saat_ini?: number;
   is_active?: boolean;
+  is_marketplace?: boolean;
+  marketplace_product_name?: string;
+  marketplace_product_id?: string;
+  marketplace_sku_id?: string;
   unit_small_name?: string;
   unit_large_name?: string;
   unit_large_to_small?: number;
@@ -163,6 +168,7 @@ export async function persistProductCatalog(input: ProductInput) {
   const now = Date.now();
   const existing =
     input.id_produk ? await offlineDb.products.get(input.id_produk) : undefined;
+  const marketplaceState = normalizeProductMarketplace(input, existing);
   const product: ProductRecord = normalizeProductUom({
     ...(existing ?? {
       id_produk: input.id_produk ?? crypto.randomUUID(),
@@ -175,6 +181,7 @@ export async function persistProductCatalog(input: ProductInput) {
     nama_produk: input.nama_produk.trim(),
     sku:
       input.sku === undefined ? existing?.sku : input.sku.trim() || undefined,
+    ...marketplaceState,
     harga_jual: input.harga_jual,
     harga_jual_unit_besar:
       input.harga_jual_unit_besar ?? optionalNumber(existing?.harga_jual_unit_besar),

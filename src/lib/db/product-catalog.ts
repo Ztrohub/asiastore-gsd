@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { toDatabaseProductMarketplace } from "@/lib/inventory/marketplace";
 import {
   isProductAfterCursor,
   parseProductSyncCursor,
@@ -13,6 +14,10 @@ export type ProductUpsertInput = {
   stok_saat_ini: number;
   stok_unit_besar_saat_ini?: number;
   is_active: boolean;
+  is_marketplace?: boolean;
+  marketplace_product_name?: string;
+  marketplace_product_id?: string;
+  marketplace_sku_id?: string;
   unit_small_name?: string;
   unit_large_name?: string;
   unit_large_to_small?: number;
@@ -104,6 +109,15 @@ function isStaleUpdate(updatedAt: number | undefined, lastSyncedAt: Date | null)
   return Boolean(lastSyncedAt && updatedAt && updatedAt < lastSyncedAt.getTime());
 }
 
+const existingMarketplaceSelect = {
+  id_produk: true,
+  last_synced_at: true,
+  is_marketplace: true,
+  marketplace_product_name: true,
+  marketplace_product_id: true,
+  marketplace_sku_id: true,
+} as const;
+
 export function getProductChangeTime(product: ProductChangeTimestamps) {
   return Math.max(
     product.createdAt.getTime(),
@@ -153,7 +167,7 @@ export async function upsertProduct(input: ProductUpsertInput) {
       ? input.harga_jual
       : input.harga_jual_unit_besar;
 
-  const payload = {
+  const basePayload = {
     nama_produk: input.nama_produk,
     sku: normalizedSku ?? null,
     harga_jual: input.harga_jual,
@@ -162,16 +176,16 @@ export async function upsertProduct(input: ProductUpsertInput) {
     stok_unit_besar_saat_ini: input.stok_unit_besar_saat_ini ?? 0,
     is_active: input.is_active,
     ...normalizedUom,
-    last_synced_at: incomingSyncedAt,
   };
 
   if (idProduk) {
     const existingById = await prisma.product.findUnique({
       where: { id_produk: idProduk },
-      select: { id_produk: true, last_synced_at: true },
+      select: existingMarketplaceSelect,
     });
 
     let targetId = idProduk;
+    let marketplaceFallback = existingById;
     if (isStaleUpdate(input.updatedAt, existingById?.last_synced_at ?? null)) {
       return prisma.product.findUnique({ where: { id_produk: idProduk } });
     }
@@ -179,7 +193,7 @@ export async function upsertProduct(input: ProductUpsertInput) {
     if (normalizedSku) {
       const existingBySku = await prisma.product.findUnique({
         where: { sku: normalizedSku },
-        select: { id_produk: true, last_synced_at: true },
+        select: existingMarketplaceSelect,
       });
 
       if (existingBySku) {
@@ -192,12 +206,19 @@ export async function upsertProduct(input: ProductUpsertInput) {
 
         if (!existingById) {
           targetId = existingBySku.id_produk;
+          marketplaceFallback = existingBySku;
           if (isStaleUpdate(input.updatedAt, existingBySku.last_synced_at)) {
             return prisma.product.findUnique({ where: { id_produk: targetId } });
           }
         }
       }
     }
+
+    const payload = {
+      ...basePayload,
+      ...toDatabaseProductMarketplace(input, marketplaceFallback),
+      last_synced_at: incomingSyncedAt,
+    };
 
     return prisma.product.upsert({
       where: { id_produk: targetId },
@@ -212,19 +233,30 @@ export async function upsertProduct(input: ProductUpsertInput) {
   if (normalizedSku) {
     const existingBySku = await prisma.product.findUnique({
       where: { sku: normalizedSku },
-      select: { id_produk: true, last_synced_at: true },
+      select: existingMarketplaceSelect,
     });
 
     if (existingBySku) {
       if (isStaleUpdate(input.updatedAt, existingBySku.last_synced_at)) {
         return prisma.product.findUnique({ where: { id_produk: existingBySku.id_produk } });
       }
+      const payload = {
+        ...basePayload,
+        ...toDatabaseProductMarketplace(input, existingBySku),
+        last_synced_at: incomingSyncedAt,
+      };
       return prisma.product.update({
         where: { id_produk: existingBySku.id_produk },
         data: payload,
       });
     }
   }
+
+  const payload = {
+    ...basePayload,
+    ...toDatabaseProductMarketplace(input),
+    last_synced_at: incomingSyncedAt,
+  };
 
   return prisma.product.create({
     data: payload,

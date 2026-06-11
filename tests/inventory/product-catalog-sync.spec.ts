@@ -136,6 +136,53 @@ describe("product catalog offline-first sync contract", () => {
     expect(queuedPayload).not.toHaveProperty("unit_large_to_small");
   });
 
+  it("clears marketplace metadata from local cache and sync payload when marketplace flag is disabled", async () => {
+    getProduct.mockResolvedValueOnce({
+      id_produk: "prod-marketplace",
+      nama_produk: "Produk Marketplace",
+      harga_jual: 50000,
+      harga_jual_unit_besar: null,
+      stok_saat_ini: 8,
+      stok_unit_besar_saat_ini: 0,
+      is_active: true,
+      unit_small_name: "pcs",
+      unit_large_name: null,
+      unit_large_to_small: null,
+      allow_buy_in_small: true,
+      allow_buy_in_large: false,
+      allow_sell_in_small: true,
+      allow_sell_in_large: false,
+      is_marketplace: true,
+      marketplace_product_name: "Produk Marketplace Official",
+      marketplace_product_id: "MP-001",
+      marketplace_sku_id: "SKU-MP-001",
+      updatedAt: 1779864118447,
+    });
+
+    const { persistProductCatalog } = await import("@/features/inventory/hooks/use-product-catalog");
+    await persistProductCatalog({
+      id_produk: "prod-marketplace",
+      nama_produk: "Produk Marketplace",
+      harga_jual: 50000,
+      stok_saat_ini: 8,
+      is_active: true,
+      is_marketplace: false,
+    } as never);
+
+    const product = putProduct.mock.calls[0][0];
+    const queueRow = addQueue.mock.calls[0][0];
+    const queuedPayload = JSON.parse(queueRow.deltaPayload);
+
+    expect(product.is_marketplace).toBe(false);
+    expect(product.marketplace_product_name).toBeUndefined();
+    expect(product.marketplace_product_id).toBeUndefined();
+    expect(product.marketplace_sku_id).toBeUndefined();
+    expect(queuedPayload.is_marketplace).toBe(false);
+    expect(queuedPayload).not.toHaveProperty("marketplace_product_name");
+    expect(queuedPayload).not.toHaveProperty("marketplace_product_id");
+    expect(queuedPayload).not.toHaveProperty("marketplace_sku_id");
+  });
+
   it("preserves negative local stock on refresh so POS stockout stays visible", async () => {
     productsToArray.mockResolvedValueOnce([
       {

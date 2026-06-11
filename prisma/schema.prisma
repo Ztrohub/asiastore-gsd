@@ -80,6 +80,10 @@ model Product {
   stok_saat_ini   Float    @default(0)
   stok_unit_besar_saat_ini Float @default(0)
   is_active       Boolean  @default(true)
+  is_marketplace  Boolean  @default(false)
+  marketplace_product_name String?
+  marketplace_product_id   String?
+  marketplace_sku_id       String?
   unit_small_name String   @default("pcs")
   unit_large_name String?
   unit_large_to_small Int?

@@ -9,6 +9,7 @@ import {
   ProductCatalogConflictError,
   upsertProduct,
 } from "@/lib/db/product-catalog";
+import { isValidProductMarketplace, normalizeProductMarketplace } from "@/lib/inventory/marketplace";
 import {
   parseProductSyncCursor,
   serializeProductSyncCursor,
@@ -23,6 +24,10 @@ type ProductPayload = {
   stok_saat_ini?: number;
   stok_unit_besar_saat_ini?: number | null;
   is_active?: boolean;
+  is_marketplace?: boolean;
+  marketplace_product_name?: string | null;
+  marketplace_product_id?: string | null;
+  marketplace_sku_id?: string | null;
   unit_small_name?: string;
   unit_large_name?: string | null;
   unit_large_to_small?: number | null;
@@ -79,7 +84,9 @@ function isValidProductPayload(product: ProductPayload) {
     return false;
   }
   if (typeof product.is_active !== "boolean") return false;
+  if (product.is_marketplace !== undefined && typeof product.is_marketplace !== "boolean") return false;
   if (product.sku && product.sku.length > 64) return false;
+  if (!isValidProductMarketplace(product)) return false;
 
   const smallUnitName = optionalString(product.unit_small_name);
   if (product.unit_small_name !== undefined && !smallUnitName) return false;
@@ -203,6 +210,7 @@ export async function POST(request: NextRequest) {
 
   try {
     for (const item of products) {
+      const marketplaceState = normalizeProductMarketplace(item);
       await upsertProduct({
         id_produk: item.id_produk,
         nama_produk: item.nama_produk!.trim(),
@@ -212,6 +220,10 @@ export async function POST(request: NextRequest) {
         stok_saat_ini: item.stok_saat_ini!,
         stok_unit_besar_saat_ini: optionalNumber(item.stok_unit_besar_saat_ini) ?? 0,
         is_active: item.is_active!,
+        is_marketplace: marketplaceState.is_marketplace,
+        marketplace_product_name: marketplaceState.marketplace_product_name,
+        marketplace_product_id: marketplaceState.marketplace_product_id,
+        marketplace_sku_id: marketplaceState.marketplace_sku_id,
         unit_small_name: item.unit_small_name?.trim() || undefined,
         unit_large_name: optionalString(item.unit_large_name),
         unit_large_to_small: optionalNumber(item.unit_large_to_small),

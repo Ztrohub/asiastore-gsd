@@ -28,6 +28,10 @@ type SubmitPayload = {
   stok_saat_ini: number;
   stok_unit_besar_saat_ini: number;
   is_active: boolean;
+  is_marketplace: boolean;
+  marketplace_product_name?: string;
+  marketplace_product_id?: string;
+  marketplace_sku_id?: string;
   unit_small_name: string;
   unit_large_name?: string;
   unit_large_to_small?: number;
@@ -48,6 +52,16 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
   const formRef = useRef<HTMLFormElement>(null);
   const [namaProduk, setNamaProduk] = useState(editingProduct?.nama_produk ?? "");
   const [sku, setSku] = useState(editingProduct?.sku ?? "");
+  const [isMarketplace, setIsMarketplace] = useState(editingProduct?.is_marketplace ?? false);
+  const [marketplaceProductName, setMarketplaceProductName] = useState(
+    editingProduct?.marketplace_product_name ?? "",
+  );
+  const [marketplaceProductId, setMarketplaceProductId] = useState(
+    editingProduct?.marketplace_product_id ?? "",
+  );
+  const [marketplaceSkuId, setMarketplaceSkuId] = useState(
+    editingProduct?.marketplace_sku_id ?? "",
+  );
   const [stokAwalUnitKecil, setStokAwalUnitKecil] = useState(
     String(editingProduct?.stok_saat_ini ?? 0),
   );
@@ -88,6 +102,9 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
     const finalAllowSellInLarge = hasLargeUnit ? allowSellInLarge : false;
     const finalAllowBuyInSmall = allowBuyInSmall || !finalAllowBuyInLarge;
     const finalAllowSellInSmall = allowSellInSmall || !finalAllowSellInLarge;
+    const normalizedMarketplaceProductName = marketplaceProductName.trim();
+    const normalizedMarketplaceProductId = marketplaceProductId.trim();
+    const normalizedMarketplaceSkuId = marketplaceSkuId.trim();
 
     if (!namaProduk.trim()) {
       setError("Data belum valid. Periksa field yang ditandai lalu coba lagi.");
@@ -111,6 +128,15 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
     }
     if (!finalAllowSellInSmall && !finalAllowSellInLarge) {
       setError("Data belum valid. Periksa field yang ditandai lalu coba lagi.");
+      return;
+    }
+    if (
+      isMarketplace &&
+      (!normalizedMarketplaceProductName ||
+        !normalizedMarketplaceProductId ||
+        !normalizedMarketplaceSkuId)
+    ) {
+      setError("Lengkapi data marketplace untuk produk yang dijual di marketplace.");
       return;
     }
 
@@ -144,6 +170,10 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
         stok_saat_ini: stokUnitKecil,
         stok_unit_besar_saat_ini: hasLargeUnit ? stokUnitBesar : 0,
         is_active: isActive,
+        is_marketplace: isMarketplace,
+        marketplace_product_name: isMarketplace ? normalizedMarketplaceProductName : undefined,
+        marketplace_product_id: isMarketplace ? normalizedMarketplaceProductId : undefined,
+        marketplace_sku_id: isMarketplace ? normalizedMarketplaceSkuId : undefined,
         unit_small_name: normalizedSmallUnit,
         unit_large_name: normalizedLargeUnit || undefined,
         unit_large_to_small: hasLargeUnit ? parsedLargeFactor : undefined,
@@ -154,6 +184,10 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
       });
       setNamaProduk("");
       setSku("");
+      setIsMarketplace(false);
+      setMarketplaceProductName("");
+      setMarketplaceProductId("");
+      setMarketplaceSkuId("");
       setStokAwalUnitKecil("0");
       setStokAwalUnitBesar("0");
       setUnitSmallName("pcs");
@@ -230,6 +264,63 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
                   SKU (opsional)
                 </label>
                 <Input id="sku-produk" onChange={(event) => setSku(event.target.value)} value={sku} />
+              </div>
+              <div className="space-y-3 rounded-md border border-border p-3">
+                <label className="flex items-center gap-2 text-sm font-medium" htmlFor="is-marketplace">
+                  <input
+                    aria-label="Jual di marketplace"
+                    checked={isMarketplace}
+                    id="is-marketplace"
+                    onChange={(event) => {
+                      const nextValue = event.target.checked;
+                      setIsMarketplace(nextValue);
+                      if (!nextValue) {
+                        setMarketplaceProductName("");
+                        setMarketplaceProductId("");
+                        setMarketplaceSkuId("");
+                      }
+                    }}
+                    type="checkbox"
+                  />
+                  <span>Jual di marketplace</span>
+                </label>
+                <p className="text-[11px] text-muted-foreground">
+                  Aktifkan jika produk ini dijual di marketplace dengan identitas yang berbeda dari SKU internal.
+                </p>
+                {isMarketplace ? (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium" htmlFor="marketplace-product-name">
+                        Nama produk marketplace
+                      </label>
+                      <Input
+                        id="marketplace-product-name"
+                        onChange={(event) => setMarketplaceProductName(event.target.value)}
+                        value={marketplaceProductName}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium" htmlFor="marketplace-product-id">
+                        ID produk marketplace
+                      </label>
+                      <Input
+                        id="marketplace-product-id"
+                        onChange={(event) => setMarketplaceProductId(event.target.value)}
+                        value={marketplaceProductId}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium" htmlFor="marketplace-sku-id">
+                        ID SKU marketplace
+                      </label>
+                      <Input
+                        id="marketplace-sku-id"
+                        onChange={(event) => setMarketplaceSkuId(event.target.value)}
+                        value={marketplaceSkuId}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium" htmlFor="unit-small">
