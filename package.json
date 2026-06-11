@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postinstall": "prisma generate",
+    "pretest": "prisma generate",
     "start": "next start",
     "test": "vitest run",
     "test:e2e": "playwright test",
