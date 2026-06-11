@@ -66,18 +66,22 @@ export function ProductTable({ products, query, onEdit, emptyTitle, emptyDescrip
           <TableRow key={result.product.id_produk}>
             <TableCell>
               <div className="flex flex-wrap items-center gap-2">
-                {result.product.is_marketplace ? (
-                  <Badge variant="outline">
-                    <Store aria-hidden="true" />
-                    <span>Marketplace</span>
-                  </Badge>
-                ) : null}
                 <span>
                   {highlightMatchedText(
                     result.product.nama_produk,
                     getProductMatchIndices(result.matches, "nama_produk"),
                   )}
                 </span>
+                {result.product.is_marketplace ? (
+                  <Badge
+                    aria-label="Produk marketplace"
+                    className="shrink-0 px-1.5"
+                    title="Produk marketplace"
+                    variant="outline"
+                  >
+                    <Store aria-hidden="true" />
+                  </Badge>
+                ) : null}
               </div>
             </TableCell>
             <TableCell>

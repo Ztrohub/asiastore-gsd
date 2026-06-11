@@ -150,13 +150,21 @@ describe("inventory product tab contract", () => {
     expect(firstNameCell.querySelector("strong")).not.toBeNull();
   });
 
-  it("shows a marketplace badge only for marketplace products", () => {
+  it("shows an icon-only marketplace badge on the right side for marketplace products", () => {
     render(<InventoryTabs />);
 
-    expect(screen.getAllByText("Marketplace")).toHaveLength(2);
-    expect(screen.getByText("Teh Tarik").closest("td")).toHaveTextContent("Marketplace");
-    expect(screen.getByText("Kopi Susu").closest("td")).toHaveTextContent("Marketplace");
-    expect(screen.getByText("Kopi Tubruk").closest("td")).not.toHaveTextContent("Marketplace");
+    const tehCell = screen.getByText("Teh Tarik").closest("td");
+    const susuCell = screen.getByText("Kopi Susu").closest("td");
+    const tubrukCell = screen.getByText("Kopi Tubruk").closest("td");
+
+    expect(screen.queryAllByText("Marketplace")).toHaveLength(0);
+    expect(within(tehCell!).getByLabelText("Produk marketplace")).toBeInTheDocument();
+    expect(within(susuCell!).getByLabelText("Produk marketplace")).toBeInTheDocument();
+    expect(within(tubrukCell!).queryByLabelText("Produk marketplace")).not.toBeInTheDocument();
+    expect((tehCell!.firstElementChild as HTMLElement).lastElementChild).toHaveAttribute(
+      "aria-label",
+      "Produk marketplace",
+    );
   });
 
   it("applies marketplace filter only after saving from the right drawer and shows active badge", async () => {
