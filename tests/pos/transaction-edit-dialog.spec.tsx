@@ -1,6 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TransactionEditDialog } from "@/features/pos/components/transaction-edit-dialog";
+import type { PosCartLine } from "@/features/pos/hooks/use-pos-cart";
+import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
+
+type CartLineRequiresPricingSnapshot = PosCartLine extends {
+  pricing_snapshot: PosLinePricingSnapshot;
+}
+  ? true
+  : false;
+
+const cartLineRequiresPricingSnapshot: CartLineRequiresPricingSnapshot = true;
+void cartLineRequiresPricingSnapshot;
 
 vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
   useProductCatalog: () => ({

@@ -21,7 +21,7 @@ export type PosCartLine = {
   line_discount: number;
   unit_mutasi: InventoryMutationUnit;
   unit_label: string;
-  pricing_snapshot?: PosLinePricingSnapshot;
+  pricing_snapshot: PosLinePricingSnapshot;
 };
 
 function createPricingSnapshot(params: {
@@ -39,7 +39,7 @@ function createPricingSnapshot(params: {
 }
 
 function getAutomaticSubtotal(line: Pick<PosCartLine, "harga_jual" | "qty" | "pricing_snapshot">) {
-  return line.pricing_snapshot?.automatic_subtotal ?? line.harga_jual * line.qty;
+  return line.pricing_snapshot.automatic_subtotal;
 }
 
 function clampLineDiscount(value: number, automaticSubtotal: number) {
@@ -122,8 +122,8 @@ export function usePosCart() {
       const pricingSnapshot = createPricingSnapshot({
         qty: normalizedQty,
         unit_mutasi: line.unit_mutasi,
-        unit_price: line.pricing_snapshot?.base_unit_price ?? line.harga_jual,
-        rules: line.pricing_snapshot?.rules ?? [],
+        unit_price: line.pricing_snapshot.base_unit_price,
+        rules: line.pricing_snapshot.rules,
       });
       const automaticSubtotal = pricingSnapshot.automatic_subtotal;
       const cappedSubtotal = Math.max(0, Math.min(nextFinalSubtotal, automaticSubtotal));

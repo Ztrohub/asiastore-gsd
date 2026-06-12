@@ -18,10 +18,12 @@ import { PosQtyDialog } from "@/features/pos/components/pos-qty-dialog";
 import { PosRemoveDialog } from "@/features/pos/components/pos-remove-dialog";
 import { computeCheckoutTotals, type PosPaymentMethod } from "@/features/pos/hooks/use-pos-checkout";
 import type { PosCartLine, PosCartUnitOption } from "@/features/pos/hooks/use-pos-cart";
+import { resolveLinePricing } from "@/features/pos/lib/special-pricing";
 import { getSellUnitOptions } from "@/features/pos/lib/product-units";
 import type { TransactionHistoryEditableInput } from "@/features/pos/lib/transaction-history-update";
 import { normalizeQuantityInput } from "@/lib/inventory/quantity";
 import type { InventoryMutationUnit, PosTransactionRecord, ProductRecord } from "@/lib/offline/db";
+import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 import { createProductSearch } from "@/lib/search/product-fuzzy-search";
 
 type Props = {
@@ -35,6 +37,10 @@ type Props = {
 };
 
 type ConfirmAction = "save" | "delete" | "restore" | null;
+
+type StoredTransactionLine = PosTransactionRecord["lines"][number] & {
+  pricing_snapshot?: PosLinePricingSnapshot;
+};
 
 function getEffectiveUnitOptions(product: ProductRecord): PosCartUnitOption[] {
   const options = getSellUnitOptions(product);
@@ -51,9 +57,38 @@ function getEffectiveUnitOptions(product: ProductRecord): PosCartUnitOption[] {
   ];
 }
 
+function createPricingSnapshot(params: {
+  qty: number;
+  unit_mutasi: InventoryMutationUnit;
+  unit_price: number;
+  rules: ProductRecord["special_prices"];
+}) {
+  return resolveLinePricing({
+    qty: params.qty,
+    unit_mutasi: params.unit_mutasi,
+    baseUnitPrice: params.unit_price,
+    rules: params.rules ?? [],
+  });
+}
+
+function getStoredLinePricingSnapshot(line: PosTransactionRecord["lines"][number]) {
+  const snapshot = (line as StoredTransactionLine).pricing_snapshot;
+  if (snapshot) {
+    return snapshot;
+  }
+
+  return createPricingSnapshot({
+    qty: line.qty,
+    unit_mutasi: line.unit_mutasi ?? "SMALL",
+    unit_price: line.unit_price,
+    rules: [],
+  });
+}
+
 function toDraftLine(
   line: PosTransactionRecord["lines"][number],
 ): PosCartLine {
+  const pricingSnapshot = getStoredLinePricingSnapshot(line);
   return {
     id_produk: line.id_produk,
     nama_produk: line.nama_produk,
@@ -63,11 +98,12 @@ function toDraftLine(
     line_discount: line.line_discount,
     unit_mutasi: line.unit_mutasi ?? "SMALL",
     unit_label: line.unit_label ?? "pcs",
+    pricing_snapshot: pricingSnapshot,
   };
 }
 
-function toStoredLine(line: PosCartLine): PosTransactionRecord["lines"][number] {
-  return {
+function toStoredLine(line: PosCartLine): StoredTransactionLine {
+  const storedLine = {
     id_produk: line.id_produk,
     nama_produk: line.nama_produk,
     unit_price: line.harga_jual,
@@ -75,8 +111,11 @@ function toStoredLine(line: PosCartLine): PosTransactionRecord["lines"][number] 
     unit_mutasi: line.unit_mutasi,
     unit_label: line.unit_label,
     line_discount: line.line_discount,
-    line_total: Math.max(0, line.harga_jual * line.qty - line.line_discount),
+    line_total: Math.max(0, line.pricing_snapshot.automatic_subtotal - line.line_discount),
+    pricing_snapshot: line.pricing_snapshot,
   };
+
+  return storedLine;
 }
 
 export function TransactionEditDialog({
@@ -118,6 +157,7 @@ export function TransactionEditDialog({
           unit_mutasi: line.unit_mutasi,
           unit_label: line.unit_label,
           line_discount: line.line_discount,
+          pricing_snapshot: line.pricing_snapshot,
         })),
         orderDiscount,
       ),
@@ -246,7 +286,9 @@ export function TransactionEditDialog({
                         </div>
                         <div className="text-left sm:text-right">
                           <p className="font-medium">
-                            {formatCurrencyIdr(Math.max(0, line.harga_jual * line.qty - line.line_discount))}
+                            {formatCurrencyIdr(
+                              Math.max(0, line.pricing_snapshot.automatic_subtotal - line.line_discount),
+                            )}
                           </p>
                           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:justify-end">
                             <Button
@@ -411,6 +453,12 @@ export function TransactionEditDialog({
           const options = getEffectiveUnitOptions(selectedProduct);
           const chosen = options.find((item) => item.unit_mutasi === payload.unit_mutasi) ?? options[0];
           const qty = normalizeQuantityInput(payload.qty);
+          const pricingSnapshot = createPricingSnapshot({
+            qty,
+            unit_mutasi: chosen.unit_mutasi,
+            unit_price: chosen.unit_price,
+            rules: selectedProduct.special_prices,
+          });
           const nextLine: PosCartLine = {
             id_produk: selectedProduct.id_produk,
             nama_produk: `${selectedProduct.nama_produk} (${chosen.unit_label})`,
@@ -420,6 +468,7 @@ export function TransactionEditDialog({
             line_discount: 0,
             unit_mutasi: chosen.unit_mutasi,
             unit_label: chosen.unit_label,
+            pricing_snapshot: pricingSnapshot,
           };
 
           setLines((current) => {
@@ -450,13 +499,20 @@ export function TransactionEditDialog({
           setLines((current) => {
             const line = current[editingIndex];
             if (!line) return current;
-            const baseTotal = line.harga_jual * qty;
-            const cappedSubtotal = Math.max(0, Math.min(finalSubtotal, baseTotal));
+            const pricingSnapshot = createPricingSnapshot({
+              qty,
+              unit_mutasi: line.unit_mutasi,
+              unit_price: line.pricing_snapshot.base_unit_price,
+              rules: line.pricing_snapshot.rules,
+            });
+            const automaticSubtotal = pricingSnapshot.automatic_subtotal;
+            const cappedSubtotal = Math.max(0, Math.min(finalSubtotal, automaticSubtotal));
             const next = [...current];
             next[editingIndex] = {
               ...line,
               qty,
-              line_discount: Math.max(0, baseTotal - cappedSubtotal),
+              line_discount: Math.max(0, automaticSubtotal - cappedSubtotal),
+              pricing_snapshot: pricingSnapshot,
             };
             return next;
           });

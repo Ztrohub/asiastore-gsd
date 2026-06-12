@@ -102,6 +102,12 @@ describe("dialog action navigation", () => {
           unit_label: "pcs",
           unit_mutasi: "SMALL",
           line_discount: 0,
+          pricing_snapshot: {
+            base_unit_price: 12000,
+            automatic_subtotal: 12000,
+            rules: [],
+            breakdown: [{ qty: 1, unit_price: 12000, total: 12000, source: "base" }],
+          },
         }}
         onClose={() => undefined}
         onConfirm={() => undefined}
