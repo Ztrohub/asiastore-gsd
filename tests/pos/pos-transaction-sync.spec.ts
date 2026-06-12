@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getSession = vi.fn();
@@ -137,6 +138,7 @@ describe("pos transaction sync contract", () => {
     const upsert = vi.fn().mockResolvedValue(undefined);
     const deleteMany = vi.fn().mockResolvedValue(undefined);
     const createMany = vi.fn().mockResolvedValue(undefined);
+    const queryRaw = vi.fn().mockResolvedValue([{ id_transaksi: "tx-remote-1", sync_at: new Date("2026-06-01T01:00:00.000Z") }]);
     const findMany = vi.fn().mockResolvedValue([
       {
         id_transaksi: "tx-remote-1",
@@ -179,6 +181,7 @@ describe("pos transaction sync contract", () => {
 
     vi.doMock("@/lib/db/prisma", () => ({
       prisma: {
+        $queryRaw: queryRaw,
         $transaction: vi.fn(async (callback: (trx: unknown) => Promise<unknown>) =>
           callback({
             posTransaction: { upsert },
@@ -241,5 +244,201 @@ describe("pos transaction sync contract", () => {
     expect(rows[0]?.lines[0]).toMatchObject({
       pricing_snapshot: pricingSnapshot,
     });
+  });
+
+  it("includes edited transactions in sync reads based on the latest change timestamp", async () => {
+    vi.resetModules();
+
+    const editedAt = new Date("2026-06-01T03:00:00.000Z");
+    const queryRaw = vi.fn().mockResolvedValue([{ id_transaksi: "tx-remote-1", sync_at: editedAt }]);
+    const findMany = vi.fn(async (args?: { where?: { id_transaksi?: { in?: string[] } } }) => {
+      if (args?.where?.id_transaksi?.in) {
+        return [
+          {
+            id_transaksi: "tx-remote-1",
+            short_id: "TRX-001",
+            kasir_user_id: "user-1",
+            kasir_username: "kasir",
+            payment_method: "CASH",
+            subtotal_amount: 17000,
+            item_discount: 0,
+            order_discount: 0,
+            total_amount: 17000,
+            amount_received: 20000,
+            change_amount: 3000,
+            counts_for_cash: true,
+            note: "catatan edit",
+            is_deleted: false,
+            editedAt,
+            editedByUserId: "user-2",
+            editedByUsername: "editor",
+            deletedAt: null,
+            deletedByUserId: null,
+            deletedByUsername: null,
+            client_timestamp: new Date("2026-06-01T00:00:00.000Z"),
+            createdAt: new Date("2026-06-01T01:00:00.000Z"),
+            lines: [
+              {
+                id_produk: "p1",
+                nama_produk: "A",
+                unit_price: 10000,
+                qty: 1.6,
+                unit_mutasi: "SMALL",
+                unit_label: "pcs",
+                line_discount: 0,
+                line_total: 17000,
+                pricing_snapshot: pricingSnapshot,
+              },
+            ],
+          },
+        ];
+      }
+
+      return [];
+    });
+
+    vi.doMock("@/lib/db/prisma", () => ({
+      prisma: {
+        $queryRaw: queryRaw,
+        posTransaction: { findMany },
+      },
+    }));
+    vi.doMock("@/lib/sync/pos-transaction-sync-cursor", () => ({
+      parsePosTransactionSyncCursor: vi.fn().mockReturnValue({
+        timestamp: Date.parse("2026-06-01T02:00:00.000Z"),
+        id_transaksi: "tx-remote-0",
+      }),
+    }));
+
+    const { getPosTransactionSyncTime, listPosTransactionsForSync } = await import(
+      "@/lib/db/pos-transactions"
+    );
+
+    const rows = await listPosTransactionsForSync({ cursor: "1717207200000:tx-remote-0" });
+
+    expect(queryRaw).toHaveBeenCalledTimes(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.editedAt?.getTime()).toBe(editedAt.getTime());
+    expect(getPosTransactionSyncTime(rows[0] as { createdAt: Date; editedAt?: Date; deletedAt?: Date })).toBe(
+      editedAt.getTime(),
+    );
+  });
+
+  it("drops malformed pricing snapshots on write and read", async () => {
+    vi.resetModules();
+
+    const malformedSnapshot = { base_unit_price: "oops" };
+    const upsert = vi.fn().mockResolvedValue(undefined);
+    const deleteMany = vi.fn().mockResolvedValue(undefined);
+    const createMany = vi.fn().mockResolvedValue(undefined);
+    const queryRaw = vi.fn().mockResolvedValue([{ id_transaksi: "tx-remote-1", sync_at: new Date("2026-06-01T01:00:00.000Z") }]);
+    const findMany = vi.fn(async (args?: { where?: { id_transaksi?: { in?: string[] } } }) => {
+      if (args?.where?.id_transaksi?.in) {
+        return [
+          {
+            id_transaksi: "tx-remote-1",
+            short_id: "TRX-001",
+            kasir_user_id: "user-1",
+            kasir_username: "kasir",
+            payment_method: "CASH",
+            subtotal_amount: 17000,
+            item_discount: 0,
+            order_discount: 0,
+            total_amount: 17000,
+            amount_received: 20000,
+            change_amount: 3000,
+            counts_for_cash: true,
+            note: "catatan",
+            is_deleted: false,
+            editedAt: null,
+            editedByUserId: null,
+            editedByUsername: null,
+            deletedAt: null,
+            deletedByUserId: null,
+            deletedByUsername: null,
+            client_timestamp: new Date("2026-06-01T00:00:00.000Z"),
+            createdAt: new Date("2026-06-01T01:00:00.000Z"),
+            lines: [
+              {
+                id_produk: "p1",
+                nama_produk: "A",
+                unit_price: 10000,
+                qty: 1.6,
+                unit_mutasi: "SMALL",
+                unit_label: "pcs",
+                line_discount: 0,
+                line_total: 17000,
+                pricing_snapshot: malformedSnapshot,
+              },
+            ],
+          },
+        ];
+      }
+
+      return [];
+    });
+
+    vi.doMock("@/lib/db/prisma", () => ({
+      prisma: {
+        $queryRaw: queryRaw,
+        $transaction: vi.fn(async (callback: (trx: unknown) => Promise<unknown>) =>
+          callback({
+            posTransaction: { upsert },
+            posTransactionLine: { deleteMany, createMany },
+          }),
+        ),
+        posTransaction: { findMany },
+      },
+    }));
+    vi.doMock("@/lib/sync/pos-transaction-sync-cursor", () => ({
+      parsePosTransactionSyncCursor: vi.fn().mockReturnValue(undefined),
+    }));
+
+    const { createPosTransactionBatch, listPosTransactionsForSync } = await import(
+      "@/lib/db/pos-transactions"
+    );
+
+    await createPosTransactionBatch([
+      {
+        id_transaksi: "tx-remote-1",
+        short_id: "TRX-001",
+        kasir_user_id: "user-1",
+        kasir_username: "kasir",
+        payment_method: "cash",
+        subtotal_amount: 17000,
+        item_discount: 0,
+        order_discount: 0,
+        total_amount: 17000,
+        amount_received: 20000,
+        change_amount: 3000,
+        counts_for_cash: true,
+        note: "catatan",
+        client_timestamp: Date.parse("2026-06-01T00:00:00.000Z"),
+        lines: [
+          {
+            id_produk: "p1",
+            nama_produk: "A",
+            unit_price: 10000,
+            qty: 1.6,
+            unit_mutasi: "SMALL",
+            unit_label: "pcs",
+            line_discount: 0,
+            line_total: 17000,
+            pricing_snapshot: malformedSnapshot as never,
+          },
+        ],
+      },
+    ]);
+
+    expect(createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          pricing_snapshot: Prisma.DbNull,
+        }),
+      ],
+    });
+
+    const rows = await listPosTransactionsForSync();
+    expect(rows[0]?.lines[0]?.pricing_snapshot).toBeUndefined();
   });
 });

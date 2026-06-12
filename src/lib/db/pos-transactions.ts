@@ -1,7 +1,7 @@
 import { PosPaymentMethod, Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "@/lib/db/prisma";
-import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
+import { normalizePricingSnapshot, type PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 import { parsePosTransactionSyncCursor } from "@/lib/sync/pos-transaction-sync-cursor";
 
 export const POS_TRANSACTION_SYNC_BATCH_SIZE = 100;
@@ -49,16 +49,33 @@ function mapPaymentMethodFromDb(value: PosPaymentMethod) {
   return value === PosPaymentMethod.CASH ? "cash" : "bank_transfer";
 }
 
-function serializePricingSnapshot(snapshot?: PosLinePricingSnapshot) {
-  return snapshot ? (snapshot as Prisma.InputJsonValue) : Prisma.DbNull;
+function serializePricingSnapshot(snapshot: unknown) {
+  const normalized = normalizePricingSnapshot(snapshot);
+  return normalized ? (normalized as Prisma.InputJsonValue) : Prisma.DbNull;
 }
 
 function deserializePricingSnapshot(value: Prisma.JsonValue | null | undefined) {
-  return (value ?? undefined) as PosLinePricingSnapshot | undefined;
+  return normalizePricingSnapshot(value);
 }
 
-export function getPosTransactionSyncTime(transaction: { createdAt: Date }) {
-  return transaction.createdAt.getTime();
+function getEffectiveSyncDate(transaction: {
+  createdAt: Date;
+  editedAt?: Date | null;
+  deletedAt?: Date | null;
+}) {
+  const candidates = [transaction.createdAt, transaction.editedAt, transaction.deletedAt].filter(
+    (value): value is Date => value instanceof Date,
+  );
+
+  return candidates.reduce((latest, current) => (current.getTime() > latest.getTime() ? current : latest));
+}
+
+export function getPosTransactionSyncTime(transaction: {
+  createdAt: Date;
+  editedAt?: Date | null;
+  deletedAt?: Date | null;
+}) {
+  return getEffectiveSyncDate(transaction).getTime();
 }
 
 export async function createPosTransactionBatch(transactions: PosTransactionBatchInput[]) {
@@ -157,37 +174,38 @@ export async function listPosTransactions() {
 export async function listPosTransactionsForSync(params?: { cursor?: string; limit?: number }) {
   const cursor = parsePosTransactionSyncCursor(params?.cursor);
   const limit = Math.max(1, Math.min(params?.limit ?? POS_TRANSACTION_SYNC_BATCH_SIZE, 250));
+  const syncTimestampSql = Prisma.sql`GREATEST("createdAt", COALESCE("editedAt", "createdAt"), COALESCE("deletedAt", "createdAt"))`;
+  const syncRows = await prisma.$queryRaw<Array<{ id_transaksi: string }>>(Prisma.sql`
+    SELECT "id_transaksi"
+    FROM "PosTransaction"
+    ${cursor
+      ? Prisma.sql`
+        WHERE ${syncTimestampSql} > ${new Date(cursor.timestamp)}
+           OR (${syncTimestampSql} = ${new Date(cursor.timestamp)} AND "id_transaksi" > ${cursor.id_transaksi})
+      `
+      : Prisma.empty}
+    ORDER BY ${syncTimestampSql} ASC, "id_transaksi" ASC
+    LIMIT ${limit}
+  `);
+  const orderedIds = syncRows.map((row) => row.id_transaksi);
+  if (orderedIds.length === 0) {
+    return [];
+  }
 
   const rows = await prisma.posTransaction.findMany({
-    where: cursor
-      ? {
-          OR: [
-            {
-              createdAt: {
-                gt: new Date(cursor.timestamp),
-              },
-            },
-            {
-              AND: [
-                {
-                  createdAt: new Date(cursor.timestamp),
-                },
-                {
-                  id_transaksi: {
-                    gt: cursor.id_transaksi,
-                  },
-                },
-              ],
-            },
-          ],
-        }
-      : undefined,
+    where: {
+      id_transaksi: {
+        in: orderedIds,
+      },
+    },
     include: { lines: true },
-    orderBy: [{ createdAt: "asc" }, { id_transaksi: "asc" }],
-    take: limit,
   });
+  const rowsById = new Map(rows.map((row) => [row.id_transaksi, row]));
 
-  return rows.map((row) => ({
+  return orderedIds
+    .map((id_transaksi) => rowsById.get(id_transaksi))
+    .filter((row): row is (typeof rows)[number] => Boolean(row))
+    .map((row) => ({
     id_transaksi: row.id_transaksi,
     short_id: row.short_id,
     kasir_user_id: row.kasir_user_id,

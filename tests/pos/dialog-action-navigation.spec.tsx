@@ -132,6 +132,77 @@ describe("dialog action navigation", () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
+  it("resets cart edit state when switching to a different line", async () => {
+    const user = userEvent.setup();
+
+    const firstLine = {
+      id_produk: "p-1",
+      nama_produk: "Kopi Susu",
+      nama_produk_dasar: "Kopi Susu",
+      qty: 1.6,
+      harga_jual: 10000,
+      unit_label: "pcs",
+      unit_mutasi: "SMALL" as const,
+      line_discount: 0,
+      pricing_snapshot: {
+        base_unit_price: 10000,
+        automatic_subtotal: 17000,
+        rules: [{ unit_mutasi: "SMALL" as const, qty_tenths: 5, harga: 6000 }],
+        breakdown: [
+          { qty: 1.1, unit_price: 10000, total: 11000, source: "base" as const },
+          { qty: 0.5, unit_price: 6000, total: 6000, source: "special" as const },
+        ],
+      },
+    };
+    const secondLine = {
+      id_produk: "p-2",
+      nama_produk: "Roti Bakar",
+      nama_produk_dasar: "Roti Bakar",
+      qty: 0.5,
+      harga_jual: 12000,
+      unit_label: "pcs",
+      unit_mutasi: "SMALL" as const,
+      line_discount: 0,
+      pricing_snapshot: {
+        base_unit_price: 12000,
+        automatic_subtotal: 6000,
+        rules: [],
+        breakdown: [{ qty: 0.5, unit_price: 12000, total: 6000, source: "base" as const }],
+      },
+    };
+
+    const { rerender } = render(
+      <PosCartItemDialog
+        line={firstLine}
+        onClose={() => undefined}
+        onConfirm={() => undefined}
+        onDelete={() => undefined}
+        open
+      />,
+    );
+
+    const qtyInput = screen.getByLabelText("Qty Item Keranjang");
+    const subtotalInput = screen.getByLabelText("Subtotal Akhir Item");
+    await user.clear(qtyInput);
+    await user.type(qtyInput, "1.7");
+    await user.clear(subtotalInput);
+    await user.type(subtotalInput, "15000");
+
+    rerender(
+      <PosCartItemDialog
+        line={secondLine}
+        onClose={() => undefined}
+        onConfirm={() => undefined}
+        onDelete={() => undefined}
+        open
+      />,
+    );
+
+    expect(screen.getByLabelText("Qty Item Keranjang")).toHaveValue("0.5");
+    expect(screen.getByLabelText("Subtotal Akhir Item")).toHaveValue("6000");
+    expect(screen.getByText(/Subtotal sebelum diskon:/)).toHaveTextContent("Rp 6.000");
+  });
+
   it("keeps remove-dialog focus and white cursor in sync when arrows move back and forth", async () => {
     const user = userEvent.setup();
 

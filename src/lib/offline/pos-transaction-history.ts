@@ -1,4 +1,5 @@
 import { offlineDb, type PosTransactionRecord } from "@/lib/offline/db";
+import { normalizePricingSnapshot } from "@/lib/pricing/special-price";
 import {
   buildPosTransactionCursorQuery,
   maxPosTransactionSyncCursor,
@@ -133,7 +134,7 @@ function normalizeLocalTransaction(record: PosTransactionRecord): PosTransaction
       ...line,
       unit_mutasi: line.unit_mutasi ?? undefined,
       unit_label: line.unit_label?.trim() || undefined,
-      pricing_snapshot: line.pricing_snapshot ?? undefined,
+      pricing_snapshot: normalizePricingSnapshot(line.pricing_snapshot),
     })),
   };
 }
@@ -157,7 +158,7 @@ function normalizeServerTransaction(record: PosTransactionServerRecord): PosTran
       ...line,
       unit_mutasi: line.unit_mutasi ?? undefined,
       unit_label: line.unit_label?.trim() || undefined,
-      pricing_snapshot: line.pricing_snapshot ?? undefined,
+      pricing_snapshot: normalizePricingSnapshot(line.pricing_snapshot),
     })),
   });
 }

@@ -21,6 +21,35 @@ export type PosLinePricingSnapshot = {
   breakdown: PricingBreakdownRow[];
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function normalizeInteger(value: unknown, minimum = 0) {
+  if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value) || value < minimum) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function normalizeQty(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return undefined;
+  }
+
+  const qtyTenths = value * 10;
+  if (!Number.isInteger(qtyTenths)) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function normalizeUnit(value: unknown): InventoryMutationUnit | undefined {
+  return value === "SMALL" || value === "LARGE" ? value : undefined;
+}
+
 export function assertValidSpecialPriceRules(rules: ProductSpecialPriceRecord[]) {
   const seen = new Set<string>();
 
@@ -49,4 +78,80 @@ export function sortSpecialPriceRules(rules: ProductSpecialPriceRecord[]) {
 
     return right.qty_tenths - left.qty_tenths;
   });
+}
+
+export function normalizePricingSnapshot(value: unknown): PosLinePricingSnapshot | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const baseUnitPrice = normalizeInteger(value.base_unit_price);
+  const automaticSubtotal = normalizeInteger(value.automatic_subtotal);
+  if (baseUnitPrice === undefined || automaticSubtotal === undefined) {
+    return undefined;
+  }
+
+  if (!Array.isArray(value.rules) || !Array.isArray(value.breakdown)) {
+    return undefined;
+  }
+
+  const rules = value.rules
+    .map((rule) => {
+      if (!isRecord(rule)) {
+        return undefined;
+      }
+
+      const unit_mutasi = normalizeUnit(rule.unit_mutasi);
+      const qty_tenths = normalizeInteger(rule.qty_tenths, 1);
+      const harga = normalizeInteger(rule.harga, 0);
+      if (!unit_mutasi || qty_tenths === undefined || harga === undefined) {
+        return undefined;
+      }
+
+      return { unit_mutasi, qty_tenths, harga };
+    })
+    .filter((rule): rule is ProductSpecialPriceRecord => Boolean(rule));
+
+  if (rules.length !== value.rules.length) {
+    return undefined;
+  }
+
+  try {
+    assertValidSpecialPriceRules(rules);
+  } catch {
+    return undefined;
+  }
+
+  const breakdown = value.breakdown
+    .map((row) => {
+      if (!isRecord(row)) {
+        return undefined;
+      }
+
+      const qty = normalizeQty(row.qty);
+      const unit_price = normalizeInteger(row.unit_price, 0);
+      const total = normalizeInteger(row.total, 0);
+      const source = row.source === "base" || row.source === "special" ? row.source : undefined;
+      if (qty === undefined || unit_price === undefined || total === undefined || source === undefined) {
+        return undefined;
+      }
+
+      return { qty, unit_price, total, source };
+    })
+    .filter((row): row is PricingBreakdownRow => Boolean(row));
+
+  if (breakdown.length !== value.breakdown.length) {
+    return undefined;
+  }
+
+  if (breakdown.reduce((sum, row) => sum + row.total, 0) !== automaticSubtotal) {
+    return undefined;
+  }
+
+  return {
+    base_unit_price: baseUnitPrice,
+    automatic_subtotal: automaticSubtotal,
+    rules: sortSpecialPriceRules(rules),
+    breakdown,
+  };
 }

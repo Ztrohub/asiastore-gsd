@@ -21,7 +21,7 @@ import type { PosCartLine, PosCartUnitOption } from "@/features/pos/hooks/use-po
 import { resolveLinePricing } from "@/features/pos/lib/special-pricing";
 import { getSellUnitOptions } from "@/features/pos/lib/product-units";
 import type { TransactionHistoryEditableInput } from "@/features/pos/lib/transaction-history-update";
-import { normalizeQuantityInput } from "@/lib/inventory/quantity";
+import { formatQuantityForDisplay, normalizeQuantityInput } from "@/lib/inventory/quantity";
 import type { InventoryMutationUnit, PosTransactionRecord, ProductRecord } from "@/lib/offline/db";
 import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 import { createProductSearch } from "@/lib/search/product-fuzzy-search";
@@ -277,9 +277,20 @@ export function TransactionEditDialog({
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="font-medium">{line.nama_produk}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {line.qty} x {formatCurrencyIdr(line.harga_jual)}
-                          </p>
+                          {line.pricing_snapshot.breakdown.length > 0 ? (
+                            <div className="space-y-0.5 text-xs text-muted-foreground">
+                              {line.pricing_snapshot.breakdown.map((breakdownRow, breakdownIndex) => (
+                                <p key={`${line.id_produk}-draft-breakdown-${breakdownIndex}`}>
+                                  {formatQuantityForDisplay(breakdownRow.qty)} x{" "}
+                                  {formatCurrencyIdr(breakdownRow.unit_price)}
+                                </p>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">
+                              {formatQuantityForDisplay(line.qty)} x {formatCurrencyIdr(line.harga_jual)}
+                            </p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             Diskon item {formatCurrencyIdr(line.line_discount)}
                           </p>
@@ -492,6 +503,7 @@ export function TransactionEditDialog({
       />
 
       <PosCartItemDialog
+        key={editingIndex === null ? "transaction-edit-item-none" : `${lines[editingIndex]?.id_produk}-${editingIndex}`}
         line={editingIndex === null ? undefined : lines[editingIndex]}
         onClose={() => setItemDialogOpen(false)}
         onConfirm={({ qty, finalSubtotal }) => {

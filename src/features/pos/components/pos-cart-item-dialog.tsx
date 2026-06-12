@@ -97,6 +97,12 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
   }
 
   useEffect(() => {
+    setQtyInput(line ? String(line.qty) : "1");
+    setFinalSubtotalInput(String(getFinalSubtotal(line)));
+    setHasManualSubtotalOverride(hasSubtotalOverride(line));
+  }, [line, open]);
+
+  useEffect(() => {
     if (!open) return;
     qtyInputRef.current?.focus();
     qtyInputRef.current?.select();
