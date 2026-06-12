@@ -7,6 +7,11 @@ import { enqueueDelta, markAcked } from "@/lib/offline/sync-queue";
 import { normalizeProductUom } from "@/lib/inventory/uom";
 import { postProductUpserts } from "@/lib/offline/inventory-sync-transport";
 import {
+  assertValidSpecialPriceRules,
+  sortSpecialPriceRules,
+  type ProductSpecialPriceRecord,
+} from "@/lib/pricing/special-price";
+import {
   buildProductCursorQuery,
   maxProductSyncCursor,
   parseProductSyncCursor,
@@ -33,6 +38,7 @@ type ProductInput = {
   allow_buy_in_large?: boolean;
   allow_sell_in_small?: boolean;
   allow_sell_in_large?: boolean;
+  special_prices?: ProductSpecialPriceRecord[];
 };
 
 const PRODUCT_SYNC_CURSOR_KEY = "inventory_products_last_sync_cursor";
@@ -122,6 +128,19 @@ function optionalString(value: string | null | undefined) {
   return normalized ? normalized : undefined;
 }
 
+function normalizeSpecialPriceInput(
+  nextRules: ProductSpecialPriceRecord[] | undefined,
+  existingRules: ProductRecord["special_prices"],
+) {
+  if (nextRules === undefined) {
+    return existingRules;
+  }
+
+  const normalizedRules = sortSpecialPriceRules(nextRules);
+  assertValidSpecialPriceRules(normalizedRules);
+  return normalizedRules;
+}
+
 async function queueProductSync(product: ProductRecord) {
   return enqueueDelta({
     entityType: "inventory_product",
@@ -169,6 +188,7 @@ export async function persistProductCatalog(input: ProductInput) {
   const existing =
     input.id_produk ? await offlineDb.products.get(input.id_produk) : undefined;
   const marketplaceState = normalizeProductMarketplace(input, existing);
+  const specialPrices = normalizeSpecialPriceInput(input.special_prices, existing?.special_prices);
   const product: ProductRecord = normalizeProductUom({
     ...(existing ?? {
       id_produk: input.id_produk ?? crypto.randomUUID(),
@@ -203,6 +223,7 @@ export async function persistProductCatalog(input: ProductInput) {
       input.allow_sell_in_small ?? existing?.allow_sell_in_small,
     allow_sell_in_large:
       input.allow_sell_in_large ?? existing?.allow_sell_in_large,
+    special_prices: specialPrices,
     updatedAt: now,
   });
   await offlineDb.products.put(product);

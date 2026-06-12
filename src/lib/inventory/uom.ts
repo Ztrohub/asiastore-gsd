@@ -1,5 +1,10 @@
 import type { ProductRecord } from "@/lib/offline/db";
 import { normalizeProductMarketplace } from "@/lib/inventory/marketplace";
+import {
+  assertValidSpecialPriceRules,
+  sortSpecialPriceRules,
+  type ProductSpecialPriceRecord,
+} from "@/lib/pricing/special-price";
 
 export type UomMutationUnit = "small" | "large";
 export type UomFlow = "purchase" | "sale";
@@ -34,6 +39,31 @@ function normalizeOptionalInteger(value: number | null | undefined) {
 function normalizeStockValue(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
   return value;
+}
+
+function normalizeSpecialPriceRules(rules: ProductRecord["special_prices"]) {
+  if (!Array.isArray(rules)) {
+    return undefined;
+  }
+
+  const normalized = rules
+    .map((rule) => {
+      if (!rule) return null;
+
+      return {
+        unit_mutasi: rule.unit_mutasi,
+        qty_tenths: Number(rule.qty_tenths),
+        harga: Number(rule.harga),
+      } satisfies ProductSpecialPriceRecord;
+    })
+    .filter((rule): rule is ProductSpecialPriceRecord => Boolean(rule));
+
+  try {
+    assertValidSpecialPriceRules(normalized);
+    return sortSpecialPriceRules(normalized);
+  } catch {
+    return [];
+  }
 }
 
 export function normalizeProductUom(product: ProductRecord): ProductRecord {
@@ -72,6 +102,7 @@ export function normalizeProductUom(product: ProductRecord): ProductRecord {
     allow_buy_in_large: allowBuyLarge,
     allow_sell_in_small: allowSellSmall,
     allow_sell_in_large: allowSellLarge,
+    special_prices: normalizeSpecialPriceRules(product.special_prices),
   };
 }
 

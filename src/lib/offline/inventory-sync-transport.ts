@@ -1,3 +1,5 @@
+import type { ProductSpecialPriceRecord } from "@/lib/pricing/special-price";
+
 type InventorySyncEvent = {
   id_queue: string;
   id_transaksi: string;
@@ -33,6 +35,7 @@ type ProductSyncRecord = {
   allow_buy_in_large?: boolean;
   allow_sell_in_small?: boolean;
   allow_sell_in_large?: boolean;
+  special_prices?: ProductSpecialPriceRecord[];
   updatedAt: number;
 };
 

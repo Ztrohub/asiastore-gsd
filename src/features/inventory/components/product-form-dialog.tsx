@@ -17,7 +17,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { ProductRecord } from "@/lib/offline/db";
-import { useProductPriceInput } from "@/features/inventory/hooks/use-product-price-input";
+import {
+  assertValidSpecialPriceRules,
+  sortSpecialPriceRules,
+  type ProductSpecialPriceRecord,
+} from "@/lib/pricing/special-price";
+import { parseRawPrice, useProductPriceInput } from "@/features/inventory/hooks/use-product-price-input";
 
 type SubmitPayload = {
   id_produk?: string;
@@ -39,6 +44,13 @@ type SubmitPayload = {
   allow_buy_in_large: boolean;
   allow_sell_in_small: boolean;
   allow_sell_in_large: boolean;
+  special_prices: ProductSpecialPriceRecord[];
+};
+
+type SpecialPriceDraft = {
+  unit_mutasi: "SMALL" | "LARGE";
+  qty: string;
+  harga: string;
 };
 
 type Props = {
@@ -47,6 +59,51 @@ type Props = {
   onClose: () => void;
   onSubmit: (payload: SubmitPayload) => Promise<void>;
 };
+
+function createSpecialPriceDraft(rule?: ProductSpecialPriceRecord): SpecialPriceDraft {
+  return {
+    unit_mutasi: rule?.unit_mutasi ?? "SMALL",
+    qty: rule ? (rule.qty_tenths / 10).toFixed(1) : "",
+    harga: rule ? String(rule.harga) : "",
+  };
+}
+
+function parseQtyTenths(value: string) {
+  const parsed = Number(value.trim().replace(",", "."));
+  const scaled = parsed * 10;
+  const rounded = Math.round(scaled);
+
+  if (!Number.isFinite(parsed) || Math.abs(scaled - rounded) > Number.EPSILON) {
+    throw new Error("Qty harga khusus harus kelipatan 0.1 antara 0.1 sampai 0.9.");
+  }
+
+  return rounded;
+}
+
+function normalizeSpecialPriceDrafts(
+  drafts: SpecialPriceDraft[],
+  flags: { allowSmall: boolean; allowLarge: boolean },
+) {
+  const normalizedRules = sortSpecialPriceRules(
+    drafts.map((draft) => ({
+      unit_mutasi: draft.unit_mutasi,
+      qty_tenths: parseQtyTenths(draft.qty),
+      harga: parseRawPrice(draft.harga),
+    })),
+  );
+
+  for (const rule of normalizedRules) {
+    if (rule.unit_mutasi === "SMALL" && !flags.allowSmall) {
+      throw new Error("Harga khusus unit kecil hanya bisa dipakai jika penjualan unit kecil aktif.");
+    }
+    if (rule.unit_mutasi === "LARGE" && !flags.allowLarge) {
+      throw new Error("Harga khusus unit besar hanya bisa dipakai jika penjualan unit besar aktif.");
+    }
+  }
+
+  assertValidSpecialPriceRules(normalizedRules);
+  return normalizedRules;
+}
 
 export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
@@ -77,6 +134,9 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
   const [allowBuyInLarge, setAllowBuyInLarge] = useState(editingProduct?.allow_buy_in_large ?? false);
   const [allowSellInSmall, setAllowSellInSmall] = useState(editingProduct?.allow_sell_in_small ?? true);
   const [allowSellInLarge, setAllowSellInLarge] = useState(editingProduct?.allow_sell_in_large ?? false);
+  const [specialPriceDrafts, setSpecialPriceDrafts] = useState<SpecialPriceDraft[]>(
+    editingProduct?.special_prices?.map((rule) => createSpecialPriceDraft(rule)) ?? [],
+  );
   const [isActive, setIsActive] = useState(editingProduct?.is_active ?? true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -159,6 +219,21 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
       }
     }
 
+    let specialPrices: ProductSpecialPriceRecord[];
+    try {
+      specialPrices = normalizeSpecialPriceDrafts(specialPriceDrafts, {
+        allowSmall: finalAllowSellInSmall,
+        allowLarge: finalAllowSellInLarge,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Data harga khusus belum valid. Periksa field yang ditandai lalu coba lagi.";
+      setError(message);
+      return;
+    }
+
     setSubmitting(true);
     try {
       await onSubmit({
@@ -181,6 +256,7 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
         allow_buy_in_large: finalAllowBuyInLarge,
         allow_sell_in_small: finalAllowSellInSmall,
         allow_sell_in_large: finalAllowSellInLarge,
+        special_prices: specialPrices,
       });
       setNamaProduk("");
       setSku("");
@@ -197,6 +273,7 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
       setAllowBuyInLarge(false);
       setAllowSellInSmall(true);
       setAllowSellInLarge(false);
+      setSpecialPriceDrafts([]);
       setIsActive(true);
       smallPriceInput.reset();
       largePriceInput.reset();
@@ -476,6 +553,133 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
               </div>
             </section>
           </div>
+
+          <section className="space-y-3 rounded-md border border-border p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Harga Khusus Per Qty
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Atur harga final untuk pecahan qty 0.1 sampai 0.9 per unit jual.
+                </p>
+              </div>
+              <Button
+                onClick={() =>
+                  setSpecialPriceDrafts((current) => [...current, createSpecialPriceDraft()])
+                }
+                type="button"
+                variant="outline"
+              >
+                Tambah harga khusus
+              </Button>
+            </div>
+
+            {specialPriceDrafts.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Belum ada harga khusus. Produk akan memakai harga dasar untuk semua pecahan qty.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {specialPriceDrafts.map((draft, index) => {
+                  const rowNumber = index + 1;
+                  const showLargeOption =
+                    Boolean(unitLargeName.trim()) || draft.unit_mutasi === "LARGE";
+
+                  return (
+                    <div
+                      className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-[140px_120px_1fr_auto]"
+                      key={`special-price-${rowNumber}`}
+                    >
+                      <div className="space-y-1">
+                        <label
+                          className="text-xs font-medium"
+                          htmlFor={`special-price-unit-${rowNumber}`}
+                        >
+                          Unit harga khusus {rowNumber}
+                        </label>
+                        <select
+                          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
+                          id={`special-price-unit-${rowNumber}`}
+                          onChange={(event) =>
+                            setSpecialPriceDrafts((current) => {
+                              const next = [...current];
+                              next[index] = {
+                                ...next[index],
+                                unit_mutasi: event.target.value as "SMALL" | "LARGE",
+                              };
+                              return next;
+                            })
+                          }
+                          value={draft.unit_mutasi}
+                        >
+                          <option value="SMALL">{unitSmallName.trim() || "Unit kecil"}</option>
+                          {showLargeOption ? (
+                            <option value="LARGE">{unitLargeName.trim() || "Unit besar"}</option>
+                          ) : null}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium" htmlFor={`special-price-qty-${rowNumber}`}>
+                          Qty harga khusus {rowNumber}
+                        </label>
+                        <Input
+                          id={`special-price-qty-${rowNumber}`}
+                          inputMode="decimal"
+                          onChange={(event) =>
+                            setSpecialPriceDrafts((current) => {
+                              const next = [...current];
+                              next[index] = { ...next[index], qty: event.target.value };
+                              return next;
+                            })
+                          }
+                          placeholder="0.5"
+                          value={draft.qty}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label
+                          className="text-xs font-medium"
+                          htmlFor={`special-price-price-${rowNumber}`}
+                        >
+                          Harga khusus {rowNumber}
+                        </label>
+                        <Input
+                          id={`special-price-price-${rowNumber}`}
+                          inputMode="numeric"
+                          onChange={(event) =>
+                            setSpecialPriceDrafts((current) => {
+                              const next = [...current];
+                              next[index] = { ...next[index], harga: event.target.value };
+                              return next;
+                            })
+                          }
+                          placeholder="6000"
+                          value={draft.harga}
+                        />
+                      </div>
+
+                      <div className="flex items-end">
+                        <Button
+                          onClick={() =>
+                            setSpecialPriceDrafts((current) =>
+                              current.filter((_, itemIndex) => itemIndex !== index),
+                            )
+                          }
+                          type="button"
+                          variant="outline"
+                        >
+                          Hapus
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
           <p className="text-[11px] text-muted-foreground">
             Stok unit kecil dan unit besar dipisahkan agar penjualan kemasan utuh tidak tercampur dengan eceran.

@@ -64,10 +64,12 @@ describe("product catalog offline-first sync contract", () => {
       unit_large_name: "dus",
       unit_large_to_small: 12,
       allow_sell_in_large: true,
+      special_prices: [{ unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 }],
     });
 
     const product = putProduct.mock.calls[0][0];
     const queueRow = addQueue.mock.calls[0][0];
+    const queuedPayload = JSON.parse(queueRow.deltaPayload);
 
     expect(product).toHaveProperty("id_produk");
     expect(product).toHaveProperty("nama_produk", "Kopi Susu");
@@ -76,8 +78,14 @@ describe("product catalog offline-first sync contract", () => {
     expect(product).toHaveProperty("harga_jual_unit_besar", 160000);
     expect(product).toHaveProperty("stok_saat_ini", 10);
     expect(product).toHaveProperty("stok_unit_besar_saat_ini", 4);
+    expect(product).toHaveProperty("special_prices", [
+      { unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 },
+    ]);
     expect(queueRow.status).toBe("pending");
     expect(queueRow.entityType).toBe("inventory_product");
+    expect(queuedPayload.special_prices).toEqual([
+      { unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 },
+    ]);
   });
 
   it("keeps integer-only price storage by rejecting decimal values", async () => {
@@ -359,5 +367,62 @@ describe("product catalog offline-first sync contract", () => {
 
     expect(productState).toHaveLength(2);
     expect(clearProducts).not.toHaveBeenCalled();
+  });
+
+  it("keeps server special price arrays when syncing product rows into the offline cache", async () => {
+    let productState: Array<{
+      id_produk: string;
+      nama_produk: string;
+      harga_jual: number;
+      stok_saat_ini: number;
+      is_active: boolean;
+      updatedAt: number;
+      special_prices?: Array<{ unit_mutasi: "SMALL" | "LARGE"; qty_tenths: number; harga: number }>;
+    }> = [];
+
+    productsToArray.mockImplementation(async () => [...productState]);
+    putProduct.mockImplementation(async (product: (typeof productState)[number]) => {
+      productState = productState.filter((item) => item.id_produk !== product.id_produk).concat(product);
+    });
+
+    Object.defineProperty(window.navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        cursor: "1779947000000:prod-remote",
+        products: [
+          {
+            id_produk: "prod-remote",
+            nama_produk: "Produk Remote",
+            harga_jual: 21000,
+            stok_saat_ini: 9,
+            is_active: true,
+            unit_small_name: "pcs",
+            special_prices: [{ unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 }],
+            updatedAt: "2026-06-10T05:58:38.018Z",
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { useProductCatalog } = await import("@/features/inventory/hooks/use-product-catalog");
+    const { result } = renderHook(() => useProductCatalog());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.products).toHaveLength(1);
+    });
+
+    expect(result.current.products[0]).toEqual(
+      expect.objectContaining({
+        id_produk: "prod-remote",
+        special_prices: [{ unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 }],
+      }),
+    );
   });
 });
