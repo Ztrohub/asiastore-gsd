@@ -43,6 +43,36 @@ describe("pos checkout payment rules", () => {
     expect(totals.total).toBe(0);
   });
 
+  it("uses pricing snapshot automatic subtotal before manual discounts", async () => {
+    const { computeCheckoutTotals } = await import("@/features/pos/hooks/use-pos-checkout");
+    const totals = computeCheckoutTotals(
+      [
+        {
+          id_produk: "p1",
+          nama_produk: "A",
+          unit_price: 10000,
+          qty: 1.6,
+          line_discount: 16500,
+          pricing_snapshot: {
+            base_unit_price: 10000,
+            automatic_subtotal: 17000,
+            rules: [{ unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 }],
+            breakdown: [
+              { qty: 1.1, unit_price: 10000, total: 11000, source: "base" },
+              { qty: 0.5, unit_price: 6000, total: 6000, source: "special" },
+            ],
+          },
+        },
+      ],
+      600,
+    );
+
+    expect(totals.subtotal).toBe(17000);
+    expect(totals.itemDiscount).toBe(16500);
+    expect(totals.orderDiscount).toBe(500);
+    expect(totals.total).toBe(0);
+  });
+
   it("blocks underpayment for cash and defaults amount received to total", async () => {
     const { persistPosTransaction } = await import("@/features/pos/hooks/use-pos-checkout");
     await expect(

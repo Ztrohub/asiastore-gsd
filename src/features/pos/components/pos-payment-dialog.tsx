@@ -22,6 +22,7 @@ import {
   type CheckoutLineInput,
   type PosPaymentMethod,
 } from "@/features/pos/hooks/use-pos-checkout";
+import { formatQuantityForDisplay } from "@/lib/inventory/quantity";
 
 type PosPaymentDialogProps = {
   open: boolean;
@@ -111,19 +112,34 @@ export function PosPaymentDialog({
         </DialogHeader>
 
         <div className="max-h-52 space-y-1 overflow-auto rounded-md border border-border bg-background/40 p-2 text-sm">
-          {lines.map((line) => (
+          {lines.map((line, lineIndex) => {
+            const breakdown = line.pricing_snapshot?.breakdown ?? [];
+            const automaticSubtotal =
+              line.pricing_snapshot?.automatic_subtotal ?? line.qty * line.unit_price;
+
+            return (
             <div
               className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded border border-border/70 p-2"
-              key={line.id_produk}
+              key={`${line.id_produk}-${line.unit_mutasi ?? lineIndex}`}
             >
               <div className="min-w-0">
                 <p className="truncate font-medium">{line.nama_produk}</p>
-                <p className="text-xs text-muted-foreground">
-                  {line.qty} x {formatCurrencyIdr(line.unit_price)}
-                </p>
+                {breakdown.length > 0 ? (
+                  <div className="space-y-0.5 text-xs text-muted-foreground">
+                    {breakdown.map((row, breakdownIndex) => (
+                      <p key={`${line.id_produk}-breakdown-${breakdownIndex}`}>
+                        {formatQuantityForDisplay(row.qty)} x {formatCurrencyIdr(row.unit_price)}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {formatQuantityForDisplay(line.qty)} x {formatCurrencyIdr(line.unit_price)}
+                  </p>
+                )}
               </div>
               <div className="text-right">
-                <p className="text-xs">{formatCurrencyIdr(line.qty * line.unit_price)}</p>
+                <p className="text-xs">{formatCurrencyIdr(automaticSubtotal)}</p>
                 {(line.line_discount ?? 0) > 0 ? (
                   <p className="text-[11px] text-muted-foreground">
                     - {formatCurrencyIdr(line.line_discount ?? 0)}
@@ -131,7 +147,8 @@ export function PosPaymentDialog({
                 ) : null}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="space-y-1 rounded-md border border-border bg-muted/30 p-2 text-sm">

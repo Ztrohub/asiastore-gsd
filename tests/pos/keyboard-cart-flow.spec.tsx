@@ -41,6 +41,18 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         is_active: true,
         updatedAt: Date.now(),
       },
+      {
+        id_produk: "p-4",
+        nama_produk: "Jus Mangga",
+        sku: "JUS-001",
+        harga_jual: 10000,
+        stok_saat_ini: 8,
+        stok_unit_besar_saat_ini: 0,
+        is_active: true,
+        allow_sell_in_small: true,
+        special_prices: [{ unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 }],
+        updatedAt: Date.now(),
+      },
     ],
     loading: false,
   }),
@@ -229,6 +241,26 @@ describe("pos keyboard cart flow", () => {
 
     expect(screen.getByTestId("cart-row-0")).toHaveTextContent(/2\s*x\s*Rp\s*12\.000/);
     expect(screen.getByTestId("cart-total")).toHaveTextContent(/24\.000/);
+  });
+
+  it("renders special price breakdown rows in the cart for fractional qty pricing", async () => {
+    const user = userEvent.setup();
+    render(<PosScreen />);
+
+    await user.keyboard("jus");
+    await user.keyboard("{Enter}");
+
+    const qtyInput = await screen.findByLabelText("Qty");
+    expect(qtyInput).toHaveValue("1");
+
+    await user.keyboard("1.6");
+    await user.keyboard("{Enter}");
+
+    const cartRow = screen.getByTestId("cart-row-0");
+    expect(cartRow).toHaveTextContent("Jus Mangga (pcs)");
+    expect(cartRow).toHaveTextContent(/1,1\s*x\s*Rp\s*10\.000/);
+    expect(cartRow).toHaveTextContent(/0,5\s*x\s*Rp\s*6\.000/);
+    expect(cartRow).toHaveTextContent(/Rp\s*17\.000/);
   });
 
   it("uses Delete in cart edit dialog to open delete confirmation instead of clearing qty", async () => {

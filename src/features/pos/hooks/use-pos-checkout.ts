@@ -9,6 +9,7 @@ import {
   type InventoryMutationUnit,
 } from "@/lib/offline/db";
 import { persistStockOutMutation } from "@/features/pos/hooks/use-stock-out-mutation";
+import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 
 export type { PosPaymentMethod } from "@/lib/offline/db";
 
@@ -20,6 +21,7 @@ export type CheckoutLineInput = {
   unit_mutasi?: InventoryMutationUnit;
   unit_label?: string;
   line_discount?: number;
+  pricing_snapshot?: PosLinePricingSnapshot;
 };
 
 export type CheckoutInput = {
@@ -35,9 +37,12 @@ type UsePosCheckoutOptions = {
 };
 
 export function computeCheckoutTotals(lines: CheckoutLineInput[], orderDiscount = 0) {
-  const subtotal = lines.reduce((sum, line) => sum + line.unit_price * line.qty, 0);
+  const subtotal = lines.reduce(
+    (sum, line) => sum + (line.pricing_snapshot?.automatic_subtotal ?? line.unit_price * line.qty),
+    0,
+  );
   const itemDiscount = lines.reduce((sum, line) => {
-    const maxDiscount = line.unit_price * line.qty;
+    const maxDiscount = line.pricing_snapshot?.automatic_subtotal ?? line.unit_price * line.qty;
     const value = Math.max(0, Math.min(line.line_discount ?? 0, maxDiscount));
     return sum + value;
   }, 0);
@@ -68,7 +73,7 @@ export async function persistPosTransaction(input: CheckoutInput) {
   const transactionId = crypto.randomUUID();
   const shortId = createPosTransactionId(new Date(now), now % 100000);
   const normalizedLines = input.lines.map((line) => {
-    const baseTotal = line.unit_price * line.qty;
+    const baseTotal = line.pricing_snapshot?.automatic_subtotal ?? line.unit_price * line.qty;
     const discount = Math.max(0, Math.min(line.line_discount ?? 0, baseTotal));
     return {
       ...line,

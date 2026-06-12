@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import type { PosCartLine } from "@/features/pos/hooks/use-pos-cart";
 import { formatCurrencyIdr } from "@/features/format/currency";
+import { formatQuantityForDisplay } from "@/lib/inventory/quantity";
 
 type Props = {
   lines: PosCartLine[];
@@ -53,6 +54,13 @@ export function PosCartPanel({
               onClick={() => onSelect(idx)}
               type="button"
             >
+              {(() => {
+                const breakdown = line.pricing_snapshot?.breakdown ?? [];
+                const automaticSubtotal =
+                  line.pricing_snapshot?.automatic_subtotal ?? line.qty * line.harga_jual;
+
+                return (
+                  <>
               <div className="min-w-0 space-y-1">
                 <p
                   className="break-words whitespace-normal font-medium leading-5"
@@ -60,14 +68,27 @@ export function PosCartPanel({
                 >
                   {line.nama_produk}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {line.qty} x {formatCurrencyIdr(line.harga_jual)}
-                </p>
+                {breakdown.length > 0 ? (
+                  <div className="space-y-0.5 text-xs text-muted-foreground">
+                    {breakdown.map((row, breakdownIndex) => (
+                      <p key={`${line.id_produk}-breakdown-${breakdownIndex}`}>
+                        {formatQuantityForDisplay(row.qty)} x {formatCurrencyIdr(row.unit_price)}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {formatQuantityForDisplay(line.qty)} x {formatCurrencyIdr(line.harga_jual)}
+                  </p>
+                )}
               </div>
               <div className="space-y-1 text-right">
-                <p className="text-xs font-medium">{formatCurrencyIdr(line.qty * line.harga_jual)}</p>
+                <p className="text-xs font-medium">{formatCurrencyIdr(automaticSubtotal)}</p>
                 <p className="text-[11px] text-muted-foreground">- {formatCurrencyIdr(line.line_discount)}</p>
               </div>
+                  </>
+                );
+              })()}
             </button>
           ))}
         </div>

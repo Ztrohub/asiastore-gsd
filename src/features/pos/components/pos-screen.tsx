@@ -120,6 +120,7 @@ export function PosScreen() {
         unit_mutasi: line.unit_mutasi,
         unit_label: line.unit_label,
         line_discount: line.line_discount,
+        pricing_snapshot: line.pricing_snapshot,
       })),
     [lines],
   );

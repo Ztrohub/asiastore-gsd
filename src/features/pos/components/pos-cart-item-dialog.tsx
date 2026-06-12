@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { formatCurrencyIdr } from "@/features/format/currency";
 import type { PosCartLine } from "@/features/pos/hooks/use-pos-cart";
+import { resolveLinePricing } from "@/features/pos/lib/special-pricing";
 import { normalizeQuantityInput } from "@/lib/inventory/quantity";
 
 type Props = {
@@ -30,12 +31,37 @@ type Props = {
 
 function getFinalSubtotal(line?: PosCartLine) {
   if (!line) return 0;
-  return Math.max(0, Math.trunc(line.harga_jual * line.qty - line.line_discount));
+  const automaticSubtotal = line.pricing_snapshot?.automatic_subtotal ?? line.harga_jual * line.qty;
+  return Math.max(0, Math.trunc(automaticSubtotal - line.line_discount));
 }
 
 function hasSubtotalOverride(line?: PosCartLine) {
   if (!line) return false;
-  return getFinalSubtotal(line) !== Math.max(0, Math.trunc(line.harga_jual * line.qty));
+  const automaticSubtotal = line.pricing_snapshot?.automatic_subtotal ?? line.harga_jual * line.qty;
+  return getFinalSubtotal(line) !== Math.max(0, Math.trunc(automaticSubtotal));
+}
+
+function resolveAutomaticSubtotalPreview(line: PosCartLine | undefined, rawQty: string) {
+  if (!line) return 0;
+
+  const normalized = rawQty.trim().replace(",", ".");
+  const parsed = Number(normalized || "0");
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return 0;
+  }
+
+  const qty = Math.trunc(parsed * 10) / 10;
+
+  try {
+    return resolveLinePricing({
+      qty,
+      unit_mutasi: line.unit_mutasi,
+      baseUnitPrice: line.pricing_snapshot?.base_unit_price ?? line.harga_jual,
+      rules: line.pricing_snapshot?.rules ?? [],
+    }).automatic_subtotal;
+  } catch {
+    return Math.max(0, Math.trunc((line.pricing_snapshot?.base_unit_price ?? line.harga_jual) * qty));
+  }
 }
 
 export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: Props) {
@@ -50,8 +76,7 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
     });
 
   const unitPrice = line?.harga_jual ?? 0;
-  const qtyPreview = Number(qtyInput || "0");
-  const baseSubtotal = unitPrice * (Number.isFinite(qtyPreview) ? qtyPreview : 0);
+  const automaticSubtotalPreview = resolveAutomaticSubtotalPreview(line, qtyInput);
 
   function submit() {
     const qty = normalizeQuantityInput(qtyInput);
@@ -115,7 +140,7 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
           </p>
           <p>
             Subtotal sebelum diskon:{" "}
-            <span className="font-medium">{formatCurrencyIdr(Math.max(0, baseSubtotal))}</span>
+            <span className="font-medium">{formatCurrencyIdr(Math.max(0, automaticSubtotalPreview))}</span>
           </p>
         </div>
 
@@ -129,9 +154,7 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
               const nextQtyInput = event.target.value;
               setQtyInput(nextQtyInput);
               if (hasManualSubtotalOverride) return;
-              const nextQtyPreview = Number(nextQtyInput || "0");
-              const nextBaseSubtotal = unitPrice * (Number.isFinite(nextQtyPreview) ? nextQtyPreview : 0);
-              setFinalSubtotalInput(String(Math.max(0, Math.trunc(nextBaseSubtotal))));
+              setFinalSubtotalInput(String(Math.max(0, Math.trunc(resolveAutomaticSubtotalPreview(line, nextQtyInput)))));
             }}
             onFocus={(event) => event.currentTarget.select()}
             onKeyDown={(event) => {
@@ -155,7 +178,9 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
               const nextValue = event.target.value;
               setFinalSubtotalInput(nextValue);
               const normalizedSubtotal = Math.max(0, Math.trunc(Number(nextValue || "0")));
-              setHasManualSubtotalOverride(normalizedSubtotal !== Math.max(0, Math.trunc(baseSubtotal)));
+              setHasManualSubtotalOverride(
+                normalizedSubtotal !== Math.max(0, Math.trunc(automaticSubtotalPreview)),
+              );
             }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
