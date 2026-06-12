@@ -1,4 +1,4 @@
-import { PosPaymentMethod, type Prisma } from "@prisma/client";
+import { PosPaymentMethod, Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "@/lib/db/prisma";
 import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
@@ -50,7 +50,7 @@ function mapPaymentMethodFromDb(value: PosPaymentMethod) {
 }
 
 function serializePricingSnapshot(snapshot?: PosLinePricingSnapshot) {
-  return snapshot ? (snapshot as Prisma.InputJsonValue) : null;
+  return snapshot ? (snapshot as Prisma.InputJsonValue) : Prisma.DbNull;
 }
 
 function deserializePricingSnapshot(value: Prisma.JsonValue | null | undefined) {
