@@ -91,6 +91,46 @@ describe("transaction history mutation contract", () => {
     expect(addQueue).toHaveBeenCalledTimes(1);
   });
 
+  it("preserves pricing snapshots and uses automatic subtotal when re-saving a special-priced transaction", async () => {
+    const { updateTransactionHistory } = await import("@/features/pos/lib/transaction-history-update");
+    const pricingSnapshot = {
+      base_unit_price: 10000,
+      automatic_subtotal: 17000,
+      rules: [{ unit_mutasi: "SMALL" as const, qty_tenths: 5, harga: 6000 }],
+      breakdown: [
+        { qty: 1.1, unit_price: 10000, total: 11000, source: "base" as const },
+        { qty: 0.5, unit_price: 6000, total: 6000, source: "special" as const },
+      ],
+    };
+    const specialPricedLine = {
+      id_produk: "prod-1",
+      nama_produk: "Produk 1",
+      unit_price: 10000,
+      qty: 1.6,
+      unit_mutasi: "SMALL" as const,
+      unit_label: "pcs",
+      line_discount: 500,
+      line_total: 0,
+      pricing_snapshot: pricingSnapshot,
+    };
+
+    await updateTransactionHistory({
+      id_transaksi: "tx-1",
+      payment_method: "cash",
+      amount_received: 16500,
+      lines: [specialPricedLine],
+    });
+
+    const saved = putTransaction.mock.calls[0][0];
+    expect(saved.subtotal_amount).toBe(17000);
+    expect(saved.total_amount).toBe(16500);
+    expect(saved.lines[0]).toMatchObject({
+      line_discount: 500,
+      line_total: 16500,
+      pricing_snapshot: pricingSnapshot,
+    });
+  });
+
   it("soft deletes and restores without removing the transaction row", async () => {
     const { restoreTransactionHistory, softDeleteTransactionHistory } = await import(
       "@/features/pos/lib/transaction-history-update"

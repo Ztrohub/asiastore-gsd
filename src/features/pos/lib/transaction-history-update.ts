@@ -1,17 +1,27 @@
 import { computeCheckoutTotals, type CheckoutLineInput } from "@/features/pos/hooks/use-pos-checkout";
 import { offlineDb, type PosPaymentMethod, type PosTransactionLineRecord, type PosTransactionRecord } from "@/lib/offline/db";
+import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
+
+type EditableTransactionLine = PosTransactionLineRecord & {
+  pricing_snapshot?: PosLinePricingSnapshot;
+};
+
+type PersistedTransactionRecord = Omit<PosTransactionRecord, "lines"> & {
+  lines: EditableTransactionLine[];
+};
 
 export type TransactionHistoryEditableInput = {
   id_transaksi: string;
-  lines: PosTransactionLineRecord[];
+  lines: EditableTransactionLine[];
   payment_method: PosPaymentMethod;
   amount_received?: number;
   order_discount?: number;
   note?: string;
 };
 
-function normalizeLine(line: PosTransactionLineRecord): PosTransactionLineRecord {
-  const baseTotal = line.unit_price * line.qty;
+function normalizeLine(line: EditableTransactionLine): EditableTransactionLine {
+  const automaticSubtotal = line.pricing_snapshot?.automatic_subtotal ?? line.unit_price * line.qty;
+  const baseTotal = automaticSubtotal;
   const lineDiscount = Math.max(0, Math.min(Math.trunc(line.line_discount), baseTotal));
 
   return {
@@ -23,7 +33,7 @@ function normalizeLine(line: PosTransactionLineRecord): PosTransactionLineRecord
   };
 }
 
-function toCheckoutLines(lines: PosTransactionLineRecord[]): CheckoutLineInput[] {
+function toCheckoutLines(lines: EditableTransactionLine[]): CheckoutLineInput[] {
   return lines.map((line) => ({
     id_produk: line.id_produk,
     nama_produk: line.nama_produk,
@@ -32,6 +42,7 @@ function toCheckoutLines(lines: PosTransactionLineRecord[]): CheckoutLineInput[]
     unit_mutasi: line.unit_mutasi,
     unit_label: line.unit_label,
     line_discount: line.line_discount,
+    pricing_snapshot: line.pricing_snapshot,
   }));
 }
 
@@ -44,7 +55,7 @@ async function requireActiveSession() {
   return activeSession;
 }
 
-async function enqueueTransactionSync(payload: PosTransactionRecord, now: number) {
+async function enqueueTransactionSync(payload: PersistedTransactionRecord, now: number) {
   await offlineDb.syncQueue.add({
     status: "pending",
     attemptCount: 0,
@@ -79,7 +90,7 @@ export async function updateTransactionHistory(input: TransactionHistoryEditable
       ? Math.max(totals.total, Math.trunc(input.amount_received ?? totals.total))
       : undefined;
 
-  const nextPayload: PosTransactionRecord = {
+  const nextPayload: PersistedTransactionRecord = {
     ...current,
     payment_method: input.payment_method,
     subtotal_amount: totals.subtotal,
