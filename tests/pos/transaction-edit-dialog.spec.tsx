@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TransactionEditDialog } from "@/features/pos/components/transaction-edit-dialog";
 import type { PosCartLine } from "@/features/pos/hooks/use-pos-cart";
@@ -126,5 +127,131 @@ describe("transaction edit dialog responsive shell", () => {
 
     expect(screen.getByText(/1,1 x Rp\s*10\.000/)).toBeInTheDocument();
     expect(screen.getByText(/0,5 x Rp\s*6\.000/)).toBeInTheDocument();
+  });
+
+  it("preserves the stored line total when a legacy transaction line has no pricing snapshot", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <TransactionEditDialog
+        onClose={() => undefined}
+        onDelete={async () => undefined}
+        onRestore={async () => undefined}
+        onSave={onSave}
+        open
+        transaction={{
+          id_transaksi: "tx-1",
+          short_id: "TRX-001",
+          kasir_user_id: "cashier-1",
+          kasir_username: "kasir",
+          payment_method: "cash",
+          subtotal_amount: 17000,
+          item_discount: 0,
+          order_discount: 0,
+          total_amount: 17000,
+          amount_received: 20000,
+          change_amount: 3000,
+          counts_for_cash: true,
+          note: "catatan",
+          is_deleted: false,
+          lines: [
+            {
+              id_produk: "prod-1",
+              nama_produk: "Produk Legacy",
+              unit_price: 10000,
+              qty: 1.6,
+              unit_mutasi: "SMALL",
+              unit_label: "pcs",
+              line_discount: 0,
+              line_total: 17000,
+            },
+          ],
+          client_timestamp: Date.parse("2026-06-09T10:00:00.000Z"),
+          createdAt: Date.parse("2026-06-09T10:00:00.000Z"),
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+    const confirmDialog = await screen.findByRole("dialog", {
+      name: "Simpan perubahan transaksi?",
+    });
+    await user.click(within(confirmDialog).getByRole("button", { name: "Simpan" }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lines: [
+            expect.objectContaining({
+              line_total: 17000,
+              pricing_snapshot: expect.objectContaining({
+                automatic_subtotal: 17000,
+              }),
+            }),
+          ],
+        }),
+      );
+    });
+  });
+
+  it("resets the nested item-edit dialog when reopening the same transaction line", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <TransactionEditDialog
+        onClose={() => undefined}
+        onDelete={async () => undefined}
+        onRestore={async () => undefined}
+        onSave={async () => undefined}
+        open
+        transaction={{
+          id_transaksi: "tx-1",
+          short_id: "TRX-001",
+          kasir_user_id: "cashier-1",
+          kasir_username: "kasir",
+          payment_method: "cash",
+          subtotal_amount: 17000,
+          item_discount: 0,
+          order_discount: 0,
+          total_amount: 17000,
+          amount_received: 20000,
+          change_amount: 3000,
+          counts_for_cash: true,
+          note: "catatan",
+          is_deleted: false,
+          lines: [
+            {
+              id_produk: "prod-1",
+              nama_produk: "Produk Special",
+              unit_price: 10000,
+              qty: 1.6,
+              unit_mutasi: "SMALL",
+              unit_label: "pcs",
+              line_discount: 0,
+              line_total: 17000,
+              pricing_snapshot: pricingSnapshot,
+            },
+          ],
+          client_timestamp: Date.parse("2026-06-09T10:00:00.000Z"),
+          createdAt: Date.parse("2026-06-09T10:00:00.000Z"),
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit item" }));
+    const qtyInput = await screen.findByLabelText("Qty Item Keranjang");
+    await user.clear(qtyInput);
+    await user.type(qtyInput, "1.7");
+    await user.click(screen.getByRole("button", { name: "Batal" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Edit Item Keranjang")).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Edit item" }));
+
+    expect(await screen.findByLabelText("Qty Item Keranjang")).toHaveValue("1.6");
+    expect(screen.getByLabelText("Subtotal Akhir Item")).toHaveValue("17000");
   });
 });

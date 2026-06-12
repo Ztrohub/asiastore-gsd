@@ -194,6 +194,27 @@ describe("pos transaction screen contract", () => {
     expect(screen.getByLabelText("Catatan transaksi")).toBeDisabled();
   });
 
+  it("reopens the transaction edit dialog with fresh state for the newly selected transaction", async () => {
+    const user = userEvent.setup();
+
+    render(<PosTransactionsScreen />);
+
+    await user.click(screen.getByRole("button", { name: "Edit transaksi TRX-001" }));
+    await user.clear(screen.getByLabelText("Catatan transaksi"));
+    await user.type(screen.getByLabelText("Catatan transaksi"), "draft sementara");
+    await user.click(screen.getByRole("button", { name: "Tutup" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: /Edit transaksi TRX-001/i })).not.toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Edit transaksi TRX-002" }));
+
+    expect(screen.getByRole("dialog", { name: /Edit transaksi TRX-002/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Catatan transaksi")).toHaveValue("transaksi terhapus");
+    expect(screen.getByLabelText("Catatan transaksi")).toBeDisabled();
+  });
+
   it("updates the open dialog audit state and shows a success banner after saving", async () => {
     const user = userEvent.setup();
     updateTransaction.mockResolvedValueOnce({

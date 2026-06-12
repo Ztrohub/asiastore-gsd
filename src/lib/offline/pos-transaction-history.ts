@@ -119,6 +119,14 @@ function normalizeTimestamp(value: string | number) {
   return Date.now();
 }
 
+function getLatestServerTransactionTimestamp(record: PosTransactionServerRecord) {
+  return Math.max(
+    normalizeTimestamp(record.createdAt),
+    record.editedAt ? normalizeTimestamp(record.editedAt) : 0,
+    record.deletedAt ? normalizeTimestamp(record.deletedAt) : 0,
+  );
+}
+
 function normalizeLocalTransaction(record: PosTransactionRecord): PosTransactionRecord {
   return {
     ...record,
@@ -213,7 +221,7 @@ function resolveCursorFromPayload(
   }
 
   return serializePosTransactionSyncCursor({
-    timestamp: normalizeTimestamp(lastRow.createdAt),
+    timestamp: getLatestServerTransactionTimestamp(lastRow),
     id_transaksi: lastRow.id_transaksi,
   });
 }

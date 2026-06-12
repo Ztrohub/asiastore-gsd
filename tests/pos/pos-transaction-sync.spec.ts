@@ -246,6 +246,69 @@ describe("pos transaction sync contract", () => {
     });
   });
 
+  it("keeps zero cash amounts when writing transaction batches to Prisma", async () => {
+    vi.resetModules();
+
+    const upsert = vi.fn().mockResolvedValue(undefined);
+    const deleteMany = vi.fn().mockResolvedValue(undefined);
+    const createMany = vi.fn().mockResolvedValue(undefined);
+
+    vi.doMock("@/lib/db/prisma", () => ({
+      prisma: {
+        $transaction: vi.fn(async (callback: (trx: unknown) => Promise<unknown>) =>
+          callback({
+            posTransaction: { upsert },
+            posTransactionLine: { deleteMany, createMany },
+          }),
+        ),
+      },
+    }));
+
+    const { createPosTransactionBatch } = await import("@/lib/db/pos-transactions");
+
+    await createPosTransactionBatch([
+      {
+        id_transaksi: "tx-free-1",
+        short_id: "TRX-FREE",
+        kasir_user_id: "user-1",
+        kasir_username: "kasir",
+        payment_method: "cash",
+        subtotal_amount: 0,
+        item_discount: 0,
+        order_discount: 0,
+        total_amount: 0,
+        amount_received: 0,
+        change_amount: 0,
+        counts_for_cash: true,
+        note: "gratis",
+        client_timestamp: Date.parse("2026-06-01T00:00:00.000Z"),
+        lines: [
+          {
+            id_produk: "p1",
+            nama_produk: "Promo",
+            unit_price: 0,
+            qty: 1,
+            line_discount: 0,
+            line_total: 0,
+          },
+        ],
+      },
+    ]);
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          amount_received: 0,
+          change_amount: 0,
+        }),
+        create: expect.objectContaining({
+          amount_received: 0,
+          change_amount: 0,
+        }),
+      }),
+    );
+  });
+
   it("includes edited transactions in sync reads based on the latest change timestamp", async () => {
     vi.resetModules();
 
@@ -437,6 +500,81 @@ describe("pos transaction sync contract", () => {
         }),
       ],
     });
+
+    const rows = await listPosTransactionsForSync();
+    expect(rows[0]?.lines[0]?.pricing_snapshot).toBeUndefined();
+  });
+
+  it("drops inconsistent pricing snapshots whose breakdown rows do not match the declared pricing rules", async () => {
+    vi.resetModules();
+
+    const inconsistentSnapshot = {
+      base_unit_price: 10000,
+      automatic_subtotal: 17500,
+      rules: [{ unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 }],
+      breakdown: [
+        { qty: 1.1, unit_price: 10000, total: 11000, source: "base" as const },
+        { qty: 0.5, unit_price: 6500, total: 6500, source: "special" as const },
+      ],
+    };
+    const queryRaw = vi.fn().mockResolvedValue([{ id_transaksi: "tx-remote-1", sync_at: new Date("2026-06-01T01:00:00.000Z") }]);
+    const findMany = vi.fn(async (args?: { where?: { id_transaksi?: { in?: string[] } } }) => {
+      if (args?.where?.id_transaksi?.in) {
+        return [
+          {
+            id_transaksi: "tx-remote-1",
+            short_id: "TRX-001",
+            kasir_user_id: "user-1",
+            kasir_username: "kasir",
+            payment_method: "CASH",
+            subtotal_amount: 17500,
+            item_discount: 0,
+            order_discount: 0,
+            total_amount: 17500,
+            amount_received: 20000,
+            change_amount: 2500,
+            counts_for_cash: true,
+            note: "catatan",
+            is_deleted: false,
+            editedAt: null,
+            editedByUserId: null,
+            editedByUsername: null,
+            deletedAt: null,
+            deletedByUserId: null,
+            deletedByUsername: null,
+            client_timestamp: new Date("2026-06-01T00:00:00.000Z"),
+            createdAt: new Date("2026-06-01T01:00:00.000Z"),
+            lines: [
+              {
+                id_produk: "p1",
+                nama_produk: "A",
+                unit_price: 10000,
+                qty: 1.6,
+                unit_mutasi: "SMALL",
+                unit_label: "pcs",
+                line_discount: 0,
+                line_total: 17500,
+                pricing_snapshot: inconsistentSnapshot,
+              },
+            ],
+          },
+        ];
+      }
+
+      return [];
+    });
+
+    vi.doMock("@/lib/db/prisma", () => ({
+      prisma: {
+        $queryRaw: queryRaw,
+        posTransaction: { findMany },
+      },
+    }));
+    vi.doMock("@/lib/sync/pos-transaction-sync-cursor", () => ({
+      parsePosTransactionSyncCursor: vi.fn().mockReturnValue(undefined),
+    }));
+
+    const { listPosTransactionsForSync } = await import("@/lib/db/pos-transactions");
 
     const rows = await listPosTransactionsForSync();
     expect(rows[0]?.lines[0]?.pricing_snapshot).toBeUndefined();

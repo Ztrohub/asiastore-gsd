@@ -21,6 +21,10 @@ export type PosLinePricingSnapshot = {
   breakdown: PricingBreakdownRow[];
 };
 
+function toQtyTenths(qty: number) {
+  return Math.round(qty * 10);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -142,6 +146,26 @@ export function normalizePricingSnapshot(value: unknown): PosLinePricingSnapshot
 
   if (breakdown.length !== value.breakdown.length) {
     return undefined;
+  }
+
+  const validSpecialRuleKeys = new Set(
+    rules.map((rule) => `${rule.qty_tenths}:${rule.harga}`),
+  );
+  for (const row of breakdown) {
+    if (row.source === "base") {
+      if (row.unit_price !== baseUnitPrice) {
+        return undefined;
+      }
+      if (row.total !== Math.round(row.qty * baseUnitPrice)) {
+        return undefined;
+      }
+      continue;
+    }
+
+    const ruleKey = `${toQtyTenths(row.qty)}:${row.unit_price}`;
+    if (row.total !== row.unit_price || !validSpecialRuleKeys.has(ruleKey)) {
+      return undefined;
+    }
   }
 
   if (breakdown.reduce((sum, row) => sum + row.total, 0) !== automaticSubtotal) {

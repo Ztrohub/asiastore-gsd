@@ -92,4 +92,52 @@ describe("remote pos transaction pull sync contract", () => {
       value: "1717203600000:tx-remote-1",
     });
   });
+
+  it("falls back to the latest change timestamp when the server omits the cursor", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        transactions: [
+          {
+            id_transaksi: "tx-remote-1",
+            short_id: "TRX-001",
+            kasir_user_id: "user-2",
+            kasir_username: "kasir-b",
+            payment_method: "cash",
+            subtotal_amount: 12000,
+            item_discount: 0,
+            order_discount: 0,
+            total_amount: 12000,
+            amount_received: 15000,
+            change_amount: 3000,
+            counts_for_cash: true,
+            note: "sinkron dari device lain",
+            client_timestamp: "2026-06-01T00:00:00.000Z",
+            createdAt: "2026-06-01T01:00:00.000Z",
+            editedAt: "2026-06-01T02:00:00.000Z",
+            lines: [
+              {
+                id_produk: "prod-1",
+                nama_produk: "Kopi Susu",
+                unit_price: 12000,
+                qty: 1,
+                line_discount: 0,
+                line_total: 12000,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { syncPosTransactionsFromServer } = await import("@/lib/offline/pos-transaction-history");
+    await syncPosTransactionsFromServer();
+
+    expect(appMetaPut).toHaveBeenCalledWith({
+      key: "pos_transactions_last_sync_cursor",
+      value: `${Date.parse("2026-06-01T02:00:00.000Z")}:tx-remote-1`,
+    });
+  });
 });

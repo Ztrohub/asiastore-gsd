@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -71,18 +71,22 @@ function createPricingSnapshot(params: {
   });
 }
 
+function createFallbackStoredPricingSnapshot(line: PosTransactionRecord["lines"][number]) {
+  return {
+    base_unit_price: line.unit_price,
+    automatic_subtotal: Math.max(0, Math.trunc(line.line_total + line.line_discount)),
+    rules: [],
+    breakdown: [],
+  } satisfies PosLinePricingSnapshot;
+}
+
 function getStoredLinePricingSnapshot(line: PosTransactionRecord["lines"][number]) {
   const snapshot = (line as StoredTransactionLine).pricing_snapshot;
   if (snapshot) {
     return snapshot;
   }
 
-  return createPricingSnapshot({
-    qty: line.qty,
-    unit_mutasi: line.unit_mutasi ?? "SMALL",
-    unit_price: line.unit_price,
-    rules: [],
-  });
+  return createFallbackStoredPricingSnapshot(line);
 }
 
 function toDraftLine(
@@ -128,11 +132,13 @@ export function TransactionEditDialog({
   onRestore,
 }: Props) {
   const { products, loading: productsLoading } = useProductCatalog();
-  const [lines, setLines] = useState<PosCartLine[]>([]);
-  const [note, setNote] = useState("");
-  const [orderDiscount, setOrderDiscount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>("cash");
-  const [amountReceivedInput, setAmountReceivedInput] = useState("0");
+  const [lines, setLines] = useState<PosCartLine[]>(() => transaction?.lines.map(toDraftLine) ?? []);
+  const [note, setNote] = useState(() => transaction?.note ?? "");
+  const [orderDiscount, setOrderDiscount] = useState(() => transaction?.order_discount ?? 0);
+  const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>(() => transaction?.payment_method ?? "cash");
+  const [amountReceivedInput, setAmountReceivedInput] = useState(
+    () => String(transaction?.amount_received ?? transaction?.total_amount ?? 0),
+  );
   const [query, setQuery] = useState("");
   const [qtyOpen, setQtyOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductRecord | null>(null);
@@ -165,31 +171,17 @@ export function TransactionEditDialog({
   );
   const isDeleted = transaction?.is_deleted ?? false;
 
-  useEffect(() => {
-    if (!open || !transaction) {
-      return;
-    }
-
-    setLines(transaction.lines.map(toDraftLine));
-    setNote(transaction.note ?? "");
-    setOrderDiscount(transaction.order_discount);
-    setPaymentMethod(transaction.payment_method);
-    setAmountReceivedInput(String(transaction.amount_received ?? transaction.total_amount));
-    setQuery("");
-    setQtyOpen(false);
-    setSelectedProduct(null);
-    setEditingIndex(null);
-    setItemDialogOpen(false);
-    setRemoveLineIndex(null);
-    setConfirmAction(null);
-  }, [open, transaction]);
-
   const amountReceived =
     paymentMethod === "cash"
       ? Math.max(0, Math.trunc(Number(amountReceivedInput || "0")))
       : undefined;
   const changeAmount =
     paymentMethod === "cash" ? Math.max(0, (amountReceived ?? totals.total) - totals.total) : 0;
+
+  const closeItemDialog = () => {
+    setItemDialogOpen(false);
+    setEditingIndex(null);
+  };
 
   const submitSave = async () => {
     if (!transaction) return;
@@ -505,7 +497,7 @@ export function TransactionEditDialog({
       <PosCartItemDialog
         key={editingIndex === null ? "transaction-edit-item-none" : `${lines[editingIndex]?.id_produk}-${editingIndex}`}
         line={editingIndex === null ? undefined : lines[editingIndex]}
-        onClose={() => setItemDialogOpen(false)}
+        onClose={closeItemDialog}
         onConfirm={({ qty, finalSubtotal }) => {
           if (editingIndex === null) return;
           setLines((current) => {
@@ -528,12 +520,13 @@ export function TransactionEditDialog({
             };
             return next;
           });
-          setItemDialogOpen(false);
+          closeItemDialog();
         }}
         onDelete={() => {
           if (editingIndex === null) return;
-          setItemDialogOpen(false);
-          setRemoveLineIndex(editingIndex);
+          const indexToRemove = editingIndex;
+          closeItemDialog();
+          setRemoveLineIndex(indexToRemove);
         }}
         open={itemDialogOpen}
       />

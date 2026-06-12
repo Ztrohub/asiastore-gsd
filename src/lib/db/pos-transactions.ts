@@ -83,6 +83,8 @@ export async function createPosTransactionBatch(transactions: PosTransactionBatc
 
   for (const tx of transactions) {
     try {
+      const amountReceived = typeof tx.amount_received === "number" ? Math.trunc(tx.amount_received) : null;
+      const changeAmount = typeof tx.change_amount === "number" ? Math.trunc(tx.change_amount) : null;
       await prisma.$transaction(async (trx) => {
         await trx.posTransaction.upsert({
           where: { id_transaksi: tx.id_transaksi },
@@ -95,8 +97,8 @@ export async function createPosTransactionBatch(transactions: PosTransactionBatc
             item_discount: Math.trunc(tx.item_discount),
             order_discount: Math.trunc(tx.order_discount),
             total_amount: Math.trunc(tx.total_amount),
-            amount_received: tx.amount_received ? Math.trunc(tx.amount_received) : null,
-            change_amount: tx.change_amount ? Math.trunc(tx.change_amount) : null,
+            amount_received: amountReceived,
+            change_amount: changeAmount,
             counts_for_cash: tx.counts_for_cash,
             note: tx.note ?? null,
             is_deleted: tx.is_deleted ?? false,
@@ -118,8 +120,8 @@ export async function createPosTransactionBatch(transactions: PosTransactionBatc
             item_discount: Math.trunc(tx.item_discount),
             order_discount: Math.trunc(tx.order_discount),
             total_amount: Math.trunc(tx.total_amount),
-            amount_received: tx.amount_received ? Math.trunc(tx.amount_received) : null,
-            change_amount: tx.change_amount ? Math.trunc(tx.change_amount) : null,
+            amount_received: amountReceived,
+            change_amount: changeAmount,
             counts_for_cash: tx.counts_for_cash,
             note: tx.note ?? null,
             is_deleted: tx.is_deleted ?? false,

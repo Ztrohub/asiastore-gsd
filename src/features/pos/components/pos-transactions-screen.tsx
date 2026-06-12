@@ -60,6 +60,14 @@ export function PosTransactionsScreen() {
     restoreTransaction,
   } = usePosTransactions();
   const displayRows = rows.map((row) => transactionOverrides[row.id_transaksi] ?? row);
+  const transactionEditKey = editingTransaction
+    ? [
+        editingTransaction.id_transaksi,
+        editingTransaction.editedAt ?? "unedited",
+        editingTransaction.deletedAt ?? "not-deleted",
+        editingTransaction.is_deleted ? "deleted" : "active",
+      ].join(":")
+    : "transaction-edit-closed";
 
   const upsertTransactionState = (transaction: PosTransactionRecord) => {
     setEditingTransaction(transaction);
@@ -296,6 +304,7 @@ export function PosTransactionsScreen() {
       </section>
 
       <TransactionEditDialog
+        key={transactionEditKey}
         onClose={() => setEditingTransaction(null)}
         onDelete={async (id_transaksi) => {
           try {

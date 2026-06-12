@@ -132,7 +132,7 @@ describe("dialog action navigation", () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
-  it("resets cart edit state when switching to a different line", async () => {
+  it("resets cart edit state when the dialog remounts for a different line", async () => {
     const user = userEvent.setup();
 
     const firstLine = {
@@ -173,6 +173,7 @@ describe("dialog action navigation", () => {
 
     const { rerender } = render(
       <PosCartItemDialog
+        key="first-line"
         line={firstLine}
         onClose={() => undefined}
         onConfirm={() => undefined}
@@ -190,6 +191,7 @@ describe("dialog action navigation", () => {
 
     rerender(
       <PosCartItemDialog
+        key="second-line"
         line={secondLine}
         onClose={() => undefined}
         onConfirm={() => undefined}
