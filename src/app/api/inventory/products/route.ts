@@ -11,6 +11,11 @@ import {
 } from "@/lib/db/product-catalog";
 import { isValidProductMarketplace, normalizeProductMarketplace } from "@/lib/inventory/marketplace";
 import {
+  assertValidSpecialPriceRules,
+  sortSpecialPriceRules,
+  type ProductSpecialPriceRecord,
+} from "@/lib/pricing/special-price";
+import {
   parseProductSyncCursor,
   serializeProductSyncCursor,
 } from "@/lib/sync/product-sync-cursor";
@@ -35,6 +40,11 @@ type ProductPayload = {
   allow_buy_in_large?: boolean;
   allow_sell_in_small?: boolean;
   allow_sell_in_large?: boolean;
+  special_prices?: Array<{
+    unit_mutasi?: "SMALL" | "LARGE";
+    qty_tenths?: number;
+    harga?: number;
+  }>;
   updatedAt?: number;
 };
 
@@ -60,6 +70,33 @@ function optionalNumber(value: number | null | undefined) {
 function optionalString(value: string | null | undefined) {
   const normalized = value?.trim();
   return normalized ? normalized : undefined;
+}
+
+function normalizeSpecialPricePayload(
+  rules: ProductPayload["special_prices"],
+): ProductSpecialPriceRecord[] | undefined | null {
+  if (rules === undefined) return undefined;
+  if (!Array.isArray(rules)) return null;
+
+  const normalized: ProductSpecialPriceRecord[] = [];
+  for (const rule of rules) {
+    if (rule.unit_mutasi !== "SMALL" && rule.unit_mutasi !== "LARGE") {
+      return null;
+    }
+
+    normalized.push({
+      unit_mutasi: rule.unit_mutasi,
+      qty_tenths: Number(rule.qty_tenths),
+      harga: Number(rule.harga),
+    });
+  }
+
+  try {
+    assertValidSpecialPriceRules(normalized);
+    return sortSpecialPriceRules(normalized);
+  } catch {
+    return null;
+  }
 }
 
 function isValidProductPayload(product: ProductPayload) {
@@ -126,6 +163,7 @@ function isValidProductPayload(product: ProductPayload) {
   if (!allowSellInSmall && !allowSellInLarge) return false;
   if ((allowBuyInLarge || allowSellInLarge) && !hasLargeUnit) return false;
   if (!hasLargeUnit && hargaJualUnitBesar !== undefined) return false;
+  if (normalizeSpecialPricePayload(product.special_prices) === null) return false;
 
   return true;
 }
@@ -211,6 +249,7 @@ export async function POST(request: NextRequest) {
   try {
     for (const item of products) {
       const marketplaceState = normalizeProductMarketplace(item);
+      const specialPrices = normalizeSpecialPricePayload(item.special_prices);
       await upsertProduct({
         id_produk: item.id_produk,
         nama_produk: item.nama_produk!.trim(),
@@ -231,6 +270,7 @@ export async function POST(request: NextRequest) {
         allow_buy_in_large: item.allow_buy_in_large,
         allow_sell_in_small: item.allow_sell_in_small,
         allow_sell_in_large: item.allow_sell_in_large,
+        special_prices: specialPrices ?? undefined,
         updatedAt: item.updatedAt,
       });
     }

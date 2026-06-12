@@ -177,4 +177,75 @@ describe("inventory product route validation", () => {
     expect(payload).toEqual({ ok: false, message: "Payload produk tidak valid." });
     expect(upsertProductMock).not.toHaveBeenCalled();
   });
+
+  it("accepts special price rules and forwards them to the product catalog upsert", async () => {
+    const { POST } = await import("@/app/api/inventory/products/route");
+
+    const request = new Request("http://localhost/api/inventory/products", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        products: [
+          {
+            id_produk: "prod-special",
+            nama_produk: "Produk Special",
+            harga_jual: 10000,
+            stok_saat_ini: 4,
+            is_active: true,
+            unit_small_name: "pcs",
+            allow_buy_in_small: true,
+            allow_buy_in_large: false,
+            allow_sell_in_small: true,
+            allow_sell_in_large: false,
+            special_prices: [{ unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 }],
+            updatedAt: 1781070003000,
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request as never);
+
+    expect(response.status).toBe(200);
+    expect(upsertProductMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        special_prices: [{ unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 }],
+      }),
+    );
+  });
+
+  it("rejects duplicate special price rules for the same unit and qty", async () => {
+    const { POST } = await import("@/app/api/inventory/products/route");
+
+    const request = new Request("http://localhost/api/inventory/products", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        products: [
+          {
+            id_produk: "prod-special",
+            nama_produk: "Produk Special",
+            harga_jual: 10000,
+            stok_saat_ini: 4,
+            is_active: true,
+            unit_small_name: "pcs",
+            allow_buy_in_small: true,
+            allow_buy_in_large: false,
+            allow_sell_in_small: true,
+            allow_sell_in_large: false,
+            special_prices: [
+              { unit_mutasi: "SMALL", qty_tenths: 5, harga: 6000 },
+              { unit_mutasi: "SMALL", qty_tenths: 5, harga: 6200 },
+            ],
+            updatedAt: 1781070003000,
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request as never);
+
+    expect(response.status).toBe(400);
+    expect(upsertProductMock).not.toHaveBeenCalled();
+  });
 });

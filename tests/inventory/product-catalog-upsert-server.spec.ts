@@ -5,9 +5,10 @@ const findMany = vi.fn();
 const upsert = vi.fn();
 const update = vi.fn();
 const create = vi.fn();
-
-vi.mock("@/lib/db/prisma", () => ({
-  prisma: {
+const deleteMany = vi.fn();
+const createMany = vi.fn();
+const transaction = vi.fn(async (callback: (trx: unknown) => Promise<unknown>) =>
+  callback({
     product: {
       findMany,
       findUnique,
@@ -15,12 +16,35 @@ vi.mock("@/lib/db/prisma", () => ({
       update,
       create,
     },
+    productSpecialPrice: {
+      deleteMany,
+      createMany,
+    },
+  }),
+);
+
+vi.mock("@/lib/db/prisma", () => ({
+  prisma: {
+    $transaction: transaction,
+    product: {
+      findMany,
+      findUnique,
+      upsert,
+      update,
+      create,
+    },
+    productSpecialPrice: {
+      deleteMany,
+      createMany,
+    },
   },
 }));
 
 describe("server product upsert conflict handling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    deleteMany.mockResolvedValue({ count: 0 });
+    createMany.mockResolvedValue({ count: 0 });
   });
 
   it("falls back to existing server product id when incoming id differs but sku already exists", async () => {

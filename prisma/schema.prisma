@@ -94,9 +94,24 @@ model Product {
   last_synced_at  DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  special_prices  ProductSpecialPrice[]
 
   @@index([nama_produk])
   @@index([is_active])
+}
+
+model ProductSpecialPrice {
+  id          String                @id @default(cuid())
+  id_produk   String
+  unit_mutasi InventoryMutationUnit
+  qty_tenths  Int
+  harga       Int
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  product     Product               @relation(fields: [id_produk], references: [id_produk], onDelete: Cascade)
+
+  @@unique([id_produk, unit_mutasi, qty_tenths])
+  @@index([id_produk, unit_mutasi])
 }
 
 model PosTransaction {
@@ -140,6 +155,7 @@ model PosTransactionLine {
   unit_label         String?
   line_discount      Int @default(0)
   line_total         Int
+  pricing_snapshot   Json?
   createdAt          DateTime @default(now())
   transaction        PosTransaction @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade)
 

@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/db/prisma";
 import { toDatabaseProductMarketplace } from "@/lib/inventory/marketplace";
 import {
+  assertValidSpecialPriceRules,
+  sortSpecialPriceRules,
+  type ProductSpecialPriceRecord,
+} from "@/lib/pricing/special-price";
+import {
   isProductAfterCursor,
   parseProductSyncCursor,
 } from "@/lib/sync/product-sync-cursor";
@@ -25,6 +30,7 @@ export type ProductUpsertInput = {
   allow_buy_in_large?: boolean;
   allow_sell_in_small?: boolean;
   allow_sell_in_large?: boolean;
+  special_prices?: ProductSpecialPriceRecord[];
   updatedAt?: number;
 };
 
@@ -38,6 +44,8 @@ type ProductChangeTimestamps = {
   updatedAt: Date;
   last_synced_at: Date | null;
 };
+
+type ProductCatalogDbClient = Pick<typeof prisma, "product" | "productSpecialPrice">;
 
 export class ProductCatalogConflictError extends Error {
   readonly code = "SKU_CONFLICT";
@@ -105,6 +113,28 @@ function normalizeUomInput(input: ProductUpsertInput) {
   };
 }
 
+function filterRulesByEnabledUnits(
+  rules: ProductSpecialPriceRecord[],
+  flags: { allowSmall: boolean; allowLarge: boolean },
+) {
+  return rules.filter((rule) =>
+    rule.unit_mutasi === "SMALL" ? flags.allowSmall : flags.allowLarge,
+  );
+}
+
+function normalizeSpecialPriceRules(
+  input: ProductSpecialPriceRecord[] | undefined,
+  flags: { allowSmall: boolean; allowLarge: boolean },
+) {
+  if (input === undefined) {
+    return undefined;
+  }
+
+  const normalizedRules = sortSpecialPriceRules(filterRulesByEnabledUnits(input, flags));
+  assertValidSpecialPriceRules(normalizedRules);
+  return normalizedRules;
+}
+
 function isStaleUpdate(updatedAt: number | undefined, lastSyncedAt: Date | null) {
   return Boolean(lastSyncedAt && updatedAt && updatedAt < lastSyncedAt.getTime());
 }
@@ -126,6 +156,40 @@ export function getProductChangeTime(product: ProductChangeTimestamps) {
   );
 }
 
+async function loadProductWithSpecialPrices(db: ProductCatalogDbClient, id_produk: string) {
+  return db.product.findUnique({
+    where: { id_produk },
+    include: {
+      special_prices: {
+        orderBy: [{ unit_mutasi: "asc" }, { qty_tenths: "desc" }],
+      },
+    },
+  });
+}
+
+async function syncProductSpecialPrices(
+  db: ProductCatalogDbClient,
+  id_produk: string,
+  rules: ProductSpecialPriceRecord[] | undefined,
+) {
+  if (rules !== undefined) {
+    await db.productSpecialPrice.deleteMany({ where: { id_produk } });
+
+    if (rules.length > 0) {
+      await db.productSpecialPrice.createMany({
+        data: rules.map((rule) => ({
+          id_produk,
+          unit_mutasi: rule.unit_mutasi,
+          qty_tenths: rule.qty_tenths,
+          harga: rule.harga,
+        })),
+      });
+    }
+  }
+
+  return loadProductWithSpecialPrices(db, id_produk);
+}
+
 export async function listProducts(params?: ProductListParams) {
   const parsedCursor = parseProductSyncCursor(params?.cursor ?? params?.updatedAfterMs);
 
@@ -139,6 +203,11 @@ export async function listProducts(params?: ProductListParams) {
           ],
         }
       : undefined,
+    include: {
+      special_prices: {
+        orderBy: [{ unit_mutasi: "asc" }, { qty_tenths: "desc" }],
+      },
+    },
     orderBy: [{ updatedAt: "asc" }, { id_produk: "asc" }],
   });
 
@@ -162,6 +231,10 @@ export async function upsertProduct(input: ProductUpsertInput) {
   const normalizedSku = normalizeSku(input.sku);
   const idProduk = input.id_produk;
   const normalizedUom = normalizeUomInput(input);
+  const normalizedRules = normalizeSpecialPriceRules(input.special_prices, {
+    allowSmall: normalizedUom.allow_sell_in_small,
+    allowLarge: normalizedUom.allow_sell_in_large,
+  });
   const largeSalePrice =
     normalizedUom.allow_sell_in_large && !Number.isInteger(input.harga_jual_unit_besar)
       ? input.harga_jual
@@ -178,88 +251,96 @@ export async function upsertProduct(input: ProductUpsertInput) {
     ...normalizedUom,
   };
 
-  if (idProduk) {
-    const existingById = await prisma.product.findUnique({
-      where: { id_produk: idProduk },
-      select: existingMarketplaceSelect,
-    });
+  return prisma.$transaction(async (trx) => {
+    if (idProduk) {
+      const existingById = await trx.product.findUnique({
+        where: { id_produk: idProduk },
+        select: existingMarketplaceSelect,
+      });
 
-    let targetId = idProduk;
-    let marketplaceFallback = existingById;
-    if (isStaleUpdate(input.updatedAt, existingById?.last_synced_at ?? null)) {
-      return prisma.product.findUnique({ where: { id_produk: idProduk } });
+      let targetId = idProduk;
+      let marketplaceFallback = existingById;
+      if (isStaleUpdate(input.updatedAt, existingById?.last_synced_at ?? null)) {
+        return loadProductWithSpecialPrices(trx, idProduk);
+      }
+
+      if (normalizedSku) {
+        const existingBySku = await trx.product.findUnique({
+          where: { sku: normalizedSku },
+          select: existingMarketplaceSelect,
+        });
+
+        if (existingBySku) {
+          if (existingById && existingBySku.id_produk !== idProduk) {
+            throw new ProductCatalogConflictError({
+              sku: normalizedSku,
+              conflictingProductId: existingBySku.id_produk,
+            });
+          }
+
+          if (!existingById) {
+            targetId = existingBySku.id_produk;
+            marketplaceFallback = existingBySku;
+            if (isStaleUpdate(input.updatedAt, existingBySku.last_synced_at)) {
+              return loadProductWithSpecialPrices(trx, targetId);
+            }
+          }
+        }
+      }
+
+      const payload = {
+        ...basePayload,
+        ...toDatabaseProductMarketplace(input, marketplaceFallback),
+        last_synced_at: incomingSyncedAt,
+      };
+
+      const product = await trx.product.upsert({
+        where: { id_produk: targetId },
+        update: payload,
+        create: {
+          id_produk: targetId,
+          ...payload,
+        },
+      });
+
+      return syncProductSpecialPrices(trx, product.id_produk, normalizedRules);
     }
 
     if (normalizedSku) {
-      const existingBySku = await prisma.product.findUnique({
+      const existingBySku = await trx.product.findUnique({
         where: { sku: normalizedSku },
         select: existingMarketplaceSelect,
       });
 
       if (existingBySku) {
-        if (existingById && existingBySku.id_produk !== idProduk) {
-          throw new ProductCatalogConflictError({
-            sku: normalizedSku,
-            conflictingProductId: existingBySku.id_produk,
-          });
+        if (isStaleUpdate(input.updatedAt, existingBySku.last_synced_at)) {
+          return loadProductWithSpecialPrices(trx, existingBySku.id_produk);
         }
 
-        if (!existingById) {
-          targetId = existingBySku.id_produk;
-          marketplaceFallback = existingBySku;
-          if (isStaleUpdate(input.updatedAt, existingBySku.last_synced_at)) {
-            return prisma.product.findUnique({ where: { id_produk: targetId } });
-          }
-        }
+        const payload = {
+          ...basePayload,
+          ...toDatabaseProductMarketplace(input, existingBySku),
+          last_synced_at: incomingSyncedAt,
+        };
+        const product = await trx.product.update({
+          where: { id_produk: existingBySku.id_produk },
+          data: payload,
+        });
+
+        return syncProductSpecialPrices(trx, product.id_produk, normalizedRules);
       }
     }
 
     const payload = {
       ...basePayload,
-      ...toDatabaseProductMarketplace(input, marketplaceFallback),
+      ...toDatabaseProductMarketplace(input),
       last_synced_at: incomingSyncedAt,
     };
 
-    return prisma.product.upsert({
-      where: { id_produk: targetId },
-      update: payload,
-      create: {
-        id_produk: targetId,
-        ...payload,
-      },
-    });
-  }
-
-  if (normalizedSku) {
-    const existingBySku = await prisma.product.findUnique({
-      where: { sku: normalizedSku },
-      select: existingMarketplaceSelect,
+    const product = await trx.product.create({
+      data: payload,
     });
 
-    if (existingBySku) {
-      if (isStaleUpdate(input.updatedAt, existingBySku.last_synced_at)) {
-        return prisma.product.findUnique({ where: { id_produk: existingBySku.id_produk } });
-      }
-      const payload = {
-        ...basePayload,
-        ...toDatabaseProductMarketplace(input, existingBySku),
-        last_synced_at: incomingSyncedAt,
-      };
-      return prisma.product.update({
-        where: { id_produk: existingBySku.id_produk },
-        data: payload,
-      });
-    }
-  }
-
-  const payload = {
-    ...basePayload,
-    ...toDatabaseProductMarketplace(input),
-    last_synced_at: incomingSyncedAt,
-  };
-
-  return prisma.product.create({
-    data: payload,
+    return syncProductSpecialPrices(trx, product.id_produk, normalizedRules);
   });
 }
-
