@@ -83,14 +83,26 @@ function formatCompactReceiptNumber(value: number) {
   return `${rounded < 0 ? "-" : ""}${grouped}`;
 }
 
-function buildItemDetailLines(qty: number, unitPrice: number, lineTotal: number, lineDiscount: number) {
-  const detailLines = [`${qty} x ${formatCompactReceiptNumber(unitPrice)}`];
-
-  if (lineDiscount > 0) {
-    detailLines.push(`Disc ${formatCompactReceiptNumber(-lineDiscount)}`);
+function formatCompactReceiptQuantity(value: number) {
+  const truncated = Math.trunc(value * 10) / 10;
+  if (Number.isInteger(truncated)) {
+    return String(truncated);
   }
 
-  detailLines.push(`Sub ${formatCompactReceiptNumber(lineTotal)}`);
+  return truncated.toFixed(1).replace(/\.0$/, "");
+}
+
+function buildItemDetailLines(item: PosTransactionRecord["lines"][number]) {
+  const detailLines =
+    item.pricing_snapshot?.breakdown.map(
+      (row) => `${formatCompactReceiptQuantity(row.qty)} x ${formatCompactReceiptNumber(row.unit_price)}`,
+    ) ?? [`${formatCompactReceiptQuantity(item.qty)} x ${formatCompactReceiptNumber(item.unit_price)}`];
+
+  if (item.line_discount > 0) {
+    detailLines.push(`Disc ${formatCompactReceiptNumber(-item.line_discount)}`);
+  }
+
+  detailLines.push(`Sub ${formatCompactReceiptNumber(item.line_total)}`);
 
   return detailLines;
 }
@@ -122,7 +134,7 @@ export function buildReceiptText(settings: PrinterBridgeSettings, tx: PosTransac
     lines.push(
       ...combineReceiptColumns(
         wrapLine(item.nama_produk, ITEM_NAME_WIDTH),
-        buildItemDetailLines(item.qty, item.unit_price, item.line_total, item.line_discount),
+        buildItemDetailLines(item),
       ),
     );
     lines.push("-".repeat(WIDTH));

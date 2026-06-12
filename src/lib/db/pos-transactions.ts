@@ -1,6 +1,7 @@
-import { PosPaymentMethod } from "@prisma/client";
+import { PosPaymentMethod, type Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "@/lib/db/prisma";
+import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 import { parsePosTransactionSyncCursor } from "@/lib/sync/pos-transaction-sync-cursor";
 
 export const POS_TRANSACTION_SYNC_BATCH_SIZE = 100;
@@ -36,6 +37,7 @@ export type PosTransactionBatchInput = {
     unit_label?: string;
     line_discount: number;
     line_total: number;
+    pricing_snapshot?: PosLinePricingSnapshot;
   }>;
 };
 
@@ -45,6 +47,14 @@ function mapPaymentMethod(value: "cash" | "bank_transfer") {
 
 function mapPaymentMethodFromDb(value: PosPaymentMethod) {
   return value === PosPaymentMethod.CASH ? "cash" : "bank_transfer";
+}
+
+function serializePricingSnapshot(snapshot?: PosLinePricingSnapshot) {
+  return snapshot ? (snapshot as Prisma.InputJsonValue) : null;
+}
+
+function deserializePricingSnapshot(value: Prisma.JsonValue | null | undefined) {
+  return (value ?? undefined) as PosLinePricingSnapshot | undefined;
 }
 
 export function getPosTransactionSyncTime(transaction: { createdAt: Date }) {
@@ -120,6 +130,7 @@ export async function createPosTransactionBatch(transactions: PosTransactionBatc
             unit_label: line.unit_label ?? null,
             line_discount: Math.trunc(line.line_discount),
             line_total: Math.trunc(line.line_total),
+            pricing_snapshot: serializePricingSnapshot(line.pricing_snapshot),
           })),
         });
       });
@@ -208,6 +219,7 @@ export async function listPosTransactionsForSync(params?: { cursor?: string; lim
       unit_label: line.unit_label ?? undefined,
       line_discount: line.line_discount,
       line_total: line.line_total,
+      pricing_snapshot: deserializePricingSnapshot(line.pricing_snapshot),
     })),
   }));
 }

@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { ProductSpecialPriceRecord } from "@/lib/pricing/special-price";
+import type { PosLinePricingSnapshot, ProductSpecialPriceRecord } from "@/lib/pricing/special-price";
 
 export type CredentialCacheRecord = {
   userId: string;
@@ -95,6 +95,7 @@ export type PosTransactionLineRecord = {
   unit_label?: string;
   line_discount: number;
   line_total: number;
+  pricing_snapshot?: PosLinePricingSnapshot;
 };
 
 export type PosTransactionRecord = {

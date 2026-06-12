@@ -19,6 +19,7 @@ import { TransactionEditDialog } from "@/features/pos/components/transaction-edi
 import { usePrinterBridgeSettings } from "@/features/pos/hooks/use-printer-bridge-settings";
 import { useReceiptPrinting } from "@/features/pos/hooks/use-receipt-printing";
 import { usePosTransactions } from "@/features/pos/hooks/use-pos-transactions";
+import { formatQuantityForDisplay } from "@/lib/inventory/quantity";
 import type { PosTransactionRecord } from "@/lib/offline/db";
 
 function resolvePaymentLabel(paymentMethod: "cash" | "bank_transfer") {
@@ -256,10 +257,21 @@ export function PosTransactionsScreen() {
                                   >
                                     <div className="min-w-0">
                                       <p className="font-medium">{line.nama_produk}</p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {line.qty} x {formatCurrencyIdr(line.unit_price)}
-                                        {line.unit_label ? ` / ${line.unit_label}` : ""}
-                                      </p>
+                                      {line.pricing_snapshot?.breakdown?.length ? (
+                                        <div className="space-y-0.5 text-xs text-muted-foreground">
+                                          {line.pricing_snapshot.breakdown.map((breakdownRow, breakdownIndex) => (
+                                            <p key={`${row.id_transaksi}-${line.id_produk}-breakdown-${breakdownIndex}`}>
+                                              {formatQuantityForDisplay(breakdownRow.qty)} x{" "}
+                                              {formatCurrencyIdr(breakdownRow.unit_price)}
+                                            </p>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground">
+                                          {formatQuantityForDisplay(line.qty)} x {formatCurrencyIdr(line.unit_price)}
+                                          {line.unit_label ? ` / ${line.unit_label}` : ""}
+                                        </p>
+                                      )}
                                     </div>
                                     <div className="text-right">
                                       <p>{formatCurrencyIdr(line.line_total)}</p>

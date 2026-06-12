@@ -61,6 +61,35 @@ const compactNameTransaction = {
   ],
 };
 
+const specialPriceReceiptTransaction = {
+  ...cashTransaction,
+  subtotal_amount: 17000,
+  item_discount: 0,
+  order_discount: 0,
+  total_amount: 17000,
+  amount_received: 20000,
+  change_amount: 3000,
+  lines: [
+    {
+      id_produk: "p-special",
+      nama_produk: "Kopi Mix",
+      unit_price: 10000,
+      qty: 1.6,
+      line_discount: 0,
+      line_total: 17000,
+      pricing_snapshot: {
+        base_unit_price: 10000,
+        automatic_subtotal: 17000,
+        rules: [{ unit_mutasi: "SMALL" as const, qty_tenths: 5, harga: 6000 }],
+        breakdown: [
+          { qty: 1.1, unit_price: 10000, total: 11000, source: "base" as const },
+          { qty: 0.5, unit_price: 6000, total: 6000, source: "special" as const },
+        ],
+      },
+    },
+  ],
+};
+
 function wrapLineLegacy(input: string, width = WIDTH) {
   const out: string[] = [];
   let remain = input.trim();
@@ -185,6 +214,19 @@ describe("receipt formatting", () => {
       `${padEnd("SYNC-DEVICE-177986", 18)} ${"3 x 50.000".padStart(13)}`,
       `${padEnd("3157370 pcs", 18)} ${"Disc -10.000".padStart(13)}`,
       `${"Sub 140.000".padStart(WIDTH)}`,
+    ]);
+  });
+
+  it("prints pricing snapshot breakdown rows before the line subtotal on receipts", () => {
+    const text = buildReceiptText(settings, specialPriceReceiptTransaction);
+    const lines = text.split("\n");
+    const itemBlock = lines.slice(7, 11);
+
+    expect(itemBlock).toEqual([
+      `${padEnd("Kopi Mix", 18)} ${"1.1 x 10.000".padStart(13)}`,
+      `${padEnd("", 18)} ${"0.5 x 6.000".padStart(13)}`,
+      `${padEnd("", 18)} ${"Sub 17.000".padStart(13)}`,
+      "-".repeat(WIDTH),
     ]);
   });
 });

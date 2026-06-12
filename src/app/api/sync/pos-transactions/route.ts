@@ -11,6 +11,7 @@ import {
   parsePosTransactionSyncCursor,
   serializePosTransactionSyncCursor,
 } from "@/lib/sync/pos-transaction-sync-cursor";
+import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 
 type Body = {
   transactions?: Array<{
@@ -44,6 +45,7 @@ type Body = {
       unit_label?: string;
       line_discount: number;
       line_total: number;
+      pricing_snapshot?: PosLinePricingSnapshot;
     }>;
   }>;
 };

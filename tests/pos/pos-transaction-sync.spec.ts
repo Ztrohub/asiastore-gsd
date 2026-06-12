@@ -43,6 +43,16 @@ vi.mock("@/lib/offline/pos-sync-transport", () => ({
   postPosTransactions,
 }));
 
+const pricingSnapshot = {
+  base_unit_price: 10000,
+  automatic_subtotal: 17000,
+  rules: [{ unit_mutasi: "SMALL" as const, qty_tenths: 5, harga: 6000 }],
+  breakdown: [
+    { qty: 1.1, unit_price: 10000, total: 11000, source: "base" as const },
+    { qty: 0.5, unit_price: 6000, total: 6000, source: "special" as const },
+  ],
+};
+
 describe("pos transaction sync contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -87,5 +97,149 @@ describe("pos transaction sync contract", () => {
     const { runPosSyncPass } = await import("@/lib/offline/pos-sync");
     await runPosSyncPass();
     expect(markAcked).toHaveBeenCalledWith(10);
+  });
+
+  it("submits pricing snapshots from queued transactions without stripping the payload", async () => {
+    const payload = {
+      id_transaksi: "tx-1",
+      lines: [
+        {
+          id_produk: "p1",
+          nama_produk: "A",
+          unit_price: 10000,
+          qty: 1.6,
+          line_discount: 0,
+          line_total: 17000,
+          pricing_snapshot: pricingSnapshot,
+        },
+      ],
+    };
+    getRetryableQueueByEntity.mockResolvedValue([
+      { id: 10, deltaPayload: JSON.stringify(payload) },
+    ]);
+    postPosTransactions.mockResolvedValue({
+      results: [{ id_transaksi: "tx-1", status: "acked" }],
+    });
+
+    const { runPosSyncPass } = await import("@/lib/offline/pos-sync");
+    await runPosSyncPass();
+
+    expect(postPosTransactions).toHaveBeenCalledWith([
+      expect.objectContaining({
+        lines: [expect.objectContaining({ pricing_snapshot: pricingSnapshot })],
+      }),
+    ]);
+  });
+
+  it("persists and re-reads pricing snapshots in the server transaction batch mapping", async () => {
+    vi.resetModules();
+
+    const upsert = vi.fn().mockResolvedValue(undefined);
+    const deleteMany = vi.fn().mockResolvedValue(undefined);
+    const createMany = vi.fn().mockResolvedValue(undefined);
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        id_transaksi: "tx-remote-1",
+        short_id: "TRX-001",
+        kasir_user_id: "user-1",
+        kasir_username: "kasir",
+        payment_method: "CASH",
+        subtotal_amount: 17000,
+        item_discount: 0,
+        order_discount: 0,
+        total_amount: 17000,
+        amount_received: 20000,
+        change_amount: 3000,
+        counts_for_cash: true,
+        note: "catatan",
+        is_deleted: false,
+        editedAt: null,
+        editedByUserId: null,
+        editedByUsername: null,
+        deletedAt: null,
+        deletedByUserId: null,
+        deletedByUsername: null,
+        client_timestamp: new Date("2026-06-01T00:00:00.000Z"),
+        createdAt: new Date("2026-06-01T01:00:00.000Z"),
+        lines: [
+          {
+            id_produk: "p1",
+            nama_produk: "A",
+            unit_price: 10000,
+            qty: 1.6,
+            unit_mutasi: "SMALL",
+            unit_label: "pcs",
+            line_discount: 0,
+            line_total: 17000,
+            pricing_snapshot: pricingSnapshot,
+          },
+        ],
+      },
+    ]);
+
+    vi.doMock("@/lib/db/prisma", () => ({
+      prisma: {
+        $transaction: vi.fn(async (callback: (trx: unknown) => Promise<unknown>) =>
+          callback({
+            posTransaction: { upsert },
+            posTransactionLine: { deleteMany, createMany },
+          }),
+        ),
+        posTransaction: { findMany },
+      },
+    }));
+    vi.doMock("@/lib/sync/pos-transaction-sync-cursor", () => ({
+      parsePosTransactionSyncCursor: vi.fn().mockReturnValue(undefined),
+    }));
+
+    const { createPosTransactionBatch, listPosTransactionsForSync } = await import(
+      "@/lib/db/pos-transactions"
+    );
+
+    await createPosTransactionBatch([
+      {
+        id_transaksi: "tx-remote-1",
+        short_id: "TRX-001",
+        kasir_user_id: "user-1",
+        kasir_username: "kasir",
+        payment_method: "cash",
+        subtotal_amount: 17000,
+        item_discount: 0,
+        order_discount: 0,
+        total_amount: 17000,
+        amount_received: 20000,
+        change_amount: 3000,
+        counts_for_cash: true,
+        note: "catatan",
+        client_timestamp: Date.parse("2026-06-01T00:00:00.000Z"),
+        lines: [
+          {
+            id_produk: "p1",
+            nama_produk: "A",
+            unit_price: 10000,
+            qty: 1.6,
+            unit_mutasi: "SMALL",
+            unit_label: "pcs",
+            line_discount: 0,
+            line_total: 17000,
+            pricing_snapshot: pricingSnapshot,
+          },
+        ],
+      },
+    ]);
+
+    expect(createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          pricing_snapshot: pricingSnapshot,
+        }),
+      ],
+    });
+
+    const rows = await listPosTransactionsForSync();
+
+    expect(rows[0]?.lines[0]).toMatchObject({
+      pricing_snapshot: pricingSnapshot,
+    });
   });
 });

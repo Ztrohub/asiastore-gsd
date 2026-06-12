@@ -122,6 +122,7 @@ describe("transaction history mutation contract", () => {
     });
 
     const saved = putTransaction.mock.calls[0][0];
+    const queued = JSON.parse(addQueue.mock.calls[0][0].deltaPayload);
     expect(saved.subtotal_amount).toBe(17000);
     expect(saved.total_amount).toBe(16500);
     expect(saved.lines[0]).toMatchObject({
@@ -129,6 +130,7 @@ describe("transaction history mutation contract", () => {
       line_total: 16500,
       pricing_snapshot: pricingSnapshot,
     });
+    expect(queued.lines[0]?.pricing_snapshot).toEqual(pricingSnapshot);
   });
 
   it("soft deletes and restores without removing the transaction row", async () => {

@@ -133,6 +133,7 @@ function normalizeLocalTransaction(record: PosTransactionRecord): PosTransaction
       ...line,
       unit_mutasi: line.unit_mutasi ?? undefined,
       unit_label: line.unit_label?.trim() || undefined,
+      pricing_snapshot: line.pricing_snapshot ?? undefined,
     })),
   };
 }
@@ -156,6 +157,7 @@ function normalizeServerTransaction(record: PosTransactionServerRecord): PosTran
       ...line,
       unit_mutasi: line.unit_mutasi ?? undefined,
       unit_label: line.unit_label?.trim() || undefined,
+      pricing_snapshot: line.pricing_snapshot ?? undefined,
     })),
   });
 }

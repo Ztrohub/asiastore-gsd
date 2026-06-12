@@ -18,11 +18,11 @@ const activeTransaction = {
   kasir_user_id: "user-1",
   kasir_username: "kasir",
   payment_method: "cash" as const,
-  subtotal_amount: 20000,
+  subtotal_amount: 25000,
   item_discount: 1000,
   order_discount: 0,
-  total_amount: 19000,
-  amount_received: 20000,
+  total_amount: 24000,
+  amount_received: 25000,
   change_amount: 1000,
   counts_for_cash: true,
   note: "dibayar tunai",
@@ -38,13 +38,22 @@ const activeTransaction = {
   lines: [
     {
       id_produk: "prod-1",
-      nama_produk: "Kopi Susu",
-      unit_price: 12000,
-      qty: 1,
+      nama_produk: "Kopi Susu Spesial",
+      unit_price: 10000,
+      qty: 1.6,
       unit_mutasi: "SMALL",
       unit_label: "pcs",
       line_discount: 1000,
-      line_total: 11000,
+      line_total: 16000,
+      pricing_snapshot: {
+        base_unit_price: 10000,
+        automatic_subtotal: 17000,
+        rules: [{ unit_mutasi: "SMALL" as const, qty_tenths: 5, harga: 6000 }],
+        breakdown: [
+          { qty: 1.1, unit_price: 10000, total: 11000, source: "base" as const },
+          { qty: 0.5, unit_price: 6000, total: 6000, source: "special" as const },
+        ],
+      },
     },
     {
       id_produk: "prod-2",
@@ -152,9 +161,11 @@ describe("pos transaction screen contract", () => {
     expect(setDateTo).toHaveBeenCalledWith("2026-06-02");
 
     fireEvent.click(screen.getByRole("button", { name: "Detail transaksi TRX-001" }));
-    expect(screen.getByText("Kopi Susu")).toBeInTheDocument();
+    expect(screen.getByText("Kopi Susu Spesial")).toBeInTheDocument();
     expect(screen.getByText("Roti Bakar")).toBeInTheDocument();
     expect(screen.getByText("dibayar tunai")).toBeInTheDocument();
+    expect(screen.getByText(/1,1 x Rp\s*10\.000/)).toBeInTheDocument();
+    expect(screen.getByText(/0,5 x Rp\s*6\.000/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Halaman sebelumnya" }));
     fireEvent.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
