@@ -99,5 +99,6 @@ Resume file: .planning/phases/03-pos-checkout-and-receipt-printing/03-01-PLAN.md
 | 260611-guk | tambahkan icon di sebelah nama produk untuk produk yang terdaftar di marketplace | 2026-06-11 | 2def0cb | [260611-guk-tambahkan-icon-di-sebelah-nama-produk-un](./quick/260611-guk-tambahkan-icon-di-sebelah-nama-produk-un/) |
 | 260611-h6w | hapus tulisan marketplace hanya icon saja di sebelah kanan badge produk inventory | 2026-06-11 | 7588b59 | [260611-h6w-hapus-tulisan-marketplace-hanya-icon-saj](./quick/260611-h6w-hapus-tulisan-marketplace-hanya-icon-saj/) |
 | 260612-7i4 | tambahkan fitur harga khusus per qty di produk POS | 2026-06-12 | c27d119 | [260612-7i4-tambahkan-fitur-harga-khusus-per-qty-di-](./quick/260612-7i4-tambahkan-fitur-harga-khusus-per-qty-di-/) |
+| 260613-ib9 | tambahkan fitur update stok marketplace dari file excel xlsx di tab Marketplace inventori, client-only, configurable column mapping/start row/percentage, mismatch=0, sheet pertama saja | 2026-06-13 | daf3f4d | [260613-ib9-tambahkan-fitur-update-stok-marketplace-](./quick/260613-ib9-tambahkan-fitur-update-stok-marketplace-/) |
 
-Last activity: 2026-06-12 - Completed quick task 260612-7i4: tambahkan fitur harga khusus per qty di produk POS
+Last activity: 2026-06-13 - Completed quick task 260613-ib9: tambahkan fitur update stok marketplace dari file excel xlsx di tab Marketplace inventori, client-only, configurable column mapping/start row/percentage, mismatch=0, sheet pertama saja
