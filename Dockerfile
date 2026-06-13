@@ -7,6 +7,8 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml .npmrc* ./
+# Prisma postinstall runs during pnpm install, so the schema must exist in deps.
+COPY prisma/schema.prisma ./prisma/schema.prisma
 RUN pnpm install
 
 # --- STAGE 2: Build the Next.js app ---
