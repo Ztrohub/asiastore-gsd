@@ -32,6 +32,8 @@ Fitur harus menyediakan field konfigurasi template yang editable agar perubahan 
 - `Start Row`, default `4`
 - `Persentase Stok`, default `30`
 
+Konfigurasi export harus disimpan lokal di browser client pada device yang sama agar ketika user mengubah mapping kolom, `start row`, atau persentase stok, nilai tersebut otomatis dipakai lagi pada kunjungan berikutnya tanpa perlu input ulang. Persistensi ini tetap local-only dan tidak disimpan ke storage server, database aplikasi, atau sinkronisasi antar device.
+
 Aturan validasi konfigurasi:
 
 - Nama kolom harus berupa label kolom Excel seperti `A`, `B`, `I`, `AA`.
@@ -46,6 +48,7 @@ Aturan validasi konfigurasi:
   - form konfigurasi template
   - tombol `Proses & Download`
   - ringkasan hasil proses
+- Saat tab dibuka, form konfigurasi otomatis memuat nilai terakhir yang tersimpan lokal di browser; jika belum ada, gunakan default `B`, `E`, `I`, `4`, `30`.
 - Ringkasan hasil minimal menampilkan:
   - jumlah row yang diperiksa
   - jumlah row yang match
@@ -61,6 +64,7 @@ Perubahan harus diisolasi ke area inventori tanpa menyentuh perilaku fitur lain:
 - `InventoryTabs` hanya bertambah satu tab baru `Marketplace`.
 - Seluruh UI dan state baru ditempatkan di komponen terpisah khusus marketplace stock update.
 - Logika parsing workbook, validasi mapping kolom, pencocokan row, dan penulisan stok ditempatkan di util murni yang dapat dites tanpa UI.
+- Persistensi konfigurasi export memakai penyimpanan browser lokal yang ringan dan terisolasi, bukan Dexie produk/inventory, agar fitur ini tidak ikut mempengaruhi alur data inventori lain.
 - Komponen UI hanya mengorkestrasi:
   - pemilihan file
   - pembacaan data produk dari hook katalog produk yang sudah ada
@@ -71,20 +75,22 @@ Perubahan harus diisolasi ke area inventori tanpa menyentuh perilaku fitur lain:
 ## Data Flow
 
 1. User membuka tab `Marketplace`.
-2. User memilih file `.xlsx`.
-3. User memeriksa atau mengubah konfigurasi kolom, `start row`, dan persentase stok.
-4. UI mengambil daftar produk dari katalog lokal yang sudah tersedia di halaman inventori.
-5. Sistem membaca sheet pertama workbook.
-6. Sistem memindai row mulai dari `start row` sampai row terakhir yang berisi data.
-7. Untuk setiap row:
+2. UI memuat konfigurasi export terakhir dari penyimpanan lokal browser, atau memakai default jika belum ada.
+3. User memilih file `.xlsx`.
+4. User memeriksa atau mengubah konfigurasi kolom, `start row`, dan persentase stok.
+5. Saat konfigurasi diubah, nilai terbaru disimpan kembali ke penyimpanan lokal browser.
+6. UI mengambil daftar produk dari katalog lokal yang sudah tersedia di halaman inventori.
+7. Sistem membaca sheet pertama workbook.
+8. Sistem memindai row mulai dari `start row` sampai row terakhir yang berisi data.
+9. Untuk setiap row:
    - baca nilai `ID Produk` dan `ID SKU` dari kolom yang dikonfigurasi
    - normalisasi nilai sebagai string trim untuk pencocokan exact
    - cari produk marketplace dengan pasangan ID yang sama
    - jika match, hitung `ceil(stok_saat_ini * persentase / 100)` lalu tulis ke kolom stok
    - jika tidak match, tulis `0` ke kolom stok
    - biarkan seluruh sel lain pada row tersebut tetap seperti file asli
-8. Workbook hasil dibuat kembali di browser.
-9. File hasil diunduh tanpa menyimpan file sumber atau hasil ke backend.
+10. Workbook hasil dibuat kembali di browser.
+11. File hasil diunduh tanpa menyimpan file sumber atau hasil ke backend.
 
 ## Error Handling
 
@@ -92,6 +98,7 @@ Perubahan harus diisolasi ke area inventori tanpa menyentuh perilaku fitur lain:
 - Jika ekstensi file bukan `.xlsx`, proses diblokir.
 - Jika workbook gagal dibaca, user mendapat pesan error pembacaan file.
 - Jika konfigurasi kolom atau `start row` tidak valid, proses diblokir sebelum workbook diproses.
+- Jika penyimpanan lokal browser tidak bisa diakses, fitur tetap bisa dipakai dengan nilai form saat ini, tetapi konfigurasi tidak dipersistkan.
 - Jika katalog produk marketplace lokal kosong, proses diblokir dengan pesan yang jelas karena tidak ada data untuk dicocokkan.
 - Jika browser gagal auto-download, hasil proses tetap dipertahankan di memory agar user bisa menekan download ulang.
 
@@ -103,6 +110,7 @@ Fitur ini tidak boleh mempengaruhi fungsi lain aplikasi. Untuk itu:
 - Tidak boleh ada write ke Prisma, route API inventori, sync queue, atau database lain.
 - Tidak boleh ada perubahan perilaku pada tab `Produk` dan `Stock In` selain penambahan tab `Marketplace`.
 - Tidak boleh ada coupling baru ke proses sinkronisasi inventory atau POS.
+- Persistensi konfigurasi hanya boleh lokal ke browser client, tidak boleh masuk ke storage backend atau sinkronisasi aplikasi.
 
 ## Testing Scope
 
@@ -113,6 +121,7 @@ Fitur ini tidak boleh mempengaruhi fungsi lain aplikasi. Untuk itu:
 - Test util untuk proteksi row sebelum `start row`.
 - Test UI inventory untuk memastikan tab `Marketplace` tampil tanpa merusak tab `Produk` dan `Stock In`.
 - Test UI untuk memastikan default konfigurasi (`B`, `E`, `I`, `4`, `30`) benar.
+- Test UI untuk memastikan konfigurasi yang diubah tersimpan lokal dan dimuat kembali saat tab dibuka ulang.
 - Test UI untuk memastikan proses diblokir ketika file belum dipilih atau konfigurasi invalid.
 - Re-run suite inventory yang sudah ada untuk memastikan tidak ada regresi pada flow lama.
 

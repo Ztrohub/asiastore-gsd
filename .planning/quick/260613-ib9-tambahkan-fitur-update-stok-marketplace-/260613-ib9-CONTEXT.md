@@ -22,6 +22,7 @@ Menambahkan fitur update stok marketplace dari file Excel `.xlsx` di tab `Market
   - ID SKU: `E`
   - Stok: `I`
 - Mapping configurability: user bisa mengubah kolom ID Produk, ID SKU, kolom Stok, dan `start row` jika template berubah.
+- Config persistence: konfigurasi export disimpan lokal di browser client agar perubahan mapping kolom, `start row`, dan persentase tidak perlu diisi ulang.
 - Mismatch behavior: jika pasangan ID Produk + ID SKU tidak cocok, tulis stok `0`.
 - Row behavior: tidak menambah row baru, tidak menghapus row, tidak mengubah urutan row.
 - File support: `.xlsx` saja.
