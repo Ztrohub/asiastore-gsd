@@ -19,8 +19,9 @@ import { useProductCatalog } from "@/features/inventory/hooks/use-product-catalo
 import { ProductFormDialog } from "@/features/inventory/components/product-form-dialog";
 import { ProductTable } from "@/features/inventory/components/product-table";
 import { StockInTab } from "@/features/inventory/components/stock-in-tab";
+import { MarketplaceStockTab } from "@/features/inventory/components/marketplace-stock-tab";
 
-type TabKey = "produk" | "stock-in";
+type TabKey = "produk" | "stock-in" | "marketplace";
 type ProductTypeFilter = "all" | "marketplace";
 
 type InventoryProductFilters = {
@@ -131,6 +132,14 @@ export function InventoryTabs() {
         >
           Stock In
         </Button>
+        <Button
+          aria-selected={activeTab === "marketplace"}
+          onClick={() => setActiveTab("marketplace")}
+          role="tab"
+          variant={activeTab === "marketplace" ? "default" : "outline"}
+        >
+          Marketplace
+        </Button>
       </div>
 
       <div hidden={activeTab !== "produk"} role="tabpanel">
@@ -180,6 +189,10 @@ export function InventoryTabs() {
         ) : (
           <p className="text-sm text-muted-foreground">Belum ada produk untuk diproses.</p>
         )}
+      </div>
+
+      <div hidden={activeTab !== "marketplace"} role="tabpanel">
+        <MarketplaceStockTab products={products} />
       </div>
 
       <ProductFormDialog

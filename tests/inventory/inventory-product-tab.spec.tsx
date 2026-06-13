@@ -1,3 +1,4 @@
+import * as XLSX from "xlsx";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,6 +34,8 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         stok_saat_ini: 4,
         is_active: true,
         is_marketplace: true,
+        marketplace_product_id: "MP-TEH",
+        marketplace_sku_id: "SKU-TEH",
         updatedAt: Date.now(),
       },
       {
@@ -43,6 +46,8 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         stok_saat_ini: 3,
         is_active: true,
         is_marketplace: true,
+        marketplace_product_id: "MP-SUSU",
+        marketplace_sku_id: "SKU-SUSU",
         updatedAt: Date.now(),
       },
     ],
@@ -59,13 +64,88 @@ describe("inventory product tab contract", () => {
     vi.clearAllMocks();
     saveProduct.mockResolvedValue({});
     vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:marketplace-export");
   });
 
   it("renders inventory tabs without stock adjustment", () => {
     render(<InventoryTabs />);
     expect(screen.getByRole("tab", { name: "Produk" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Stock In" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Marketplace" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Stock Adjustment" })).not.toBeInTheDocument();
+  });
+
+  it("loads default marketplace export config and restores saved local config", async () => {
+    window.localStorage.setItem(
+      "inventory.marketplace-export-config",
+      JSON.stringify({
+        productIdColumn: "C",
+        skuIdColumn: "F",
+        stockColumn: "J",
+        startRow: 6,
+        percentage: 45,
+      }),
+    );
+
+    render(<InventoryTabs />);
+    fireEvent.click(screen.getByRole("tab", { name: "Marketplace" }));
+
+    expect(await screen.findByLabelText("Kolom ID Produk")).toHaveValue("C");
+    expect(screen.getByLabelText("Kolom ID SKU")).toHaveValue("F");
+    expect(screen.getByLabelText("Kolom Stok")).toHaveValue("J");
+    expect(screen.getByLabelText("Start Row")).toHaveValue(6);
+    expect(screen.getByLabelText("Persentase Stok")).toHaveValue(45);
+  });
+
+  it("blocks processing when no xlsx file is selected", async () => {
+    render(<InventoryTabs />);
+    fireEvent.click(screen.getByRole("tab", { name: "Marketplace" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Proses & Download" }));
+
+    expect(await screen.findByText("Pilih file .xlsx terlebih dahulu.")).toBeInTheDocument();
+  });
+
+  it("validates excel-style column labels and start row before processing", async () => {
+    render(<InventoryTabs />);
+    fireEvent.click(screen.getByRole("tab", { name: "Marketplace" }));
+
+    fireEvent.change(await screen.findByLabelText("Kolom ID Produk"), {
+      target: { value: "1B" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Proses & Download" }));
+
+    expect(await screen.findByText("Kolom harus memakai format huruf Excel.")).toBeInTheDocument();
+  });
+
+  it("shows summary and download fallback after a successful process", async () => {
+    const workbook = XLSX.utils.book_new();
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ["header 1"],
+      ["header 2"],
+      ["header 3"],
+      [null, "MP-TEH", null, null, "SKU-TEH", null, null, null, 99],
+      [null, "NOT-FOUND", null, null, "SKU-404", null, null, null, 99],
+    ]);
+    XLSX.utils.book_append_sheet(workbook, sheet, "Template");
+    const bytes = XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+    const file = new File([bytes], "template.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    render(<InventoryTabs />);
+    fireEvent.click(screen.getByRole("tab", { name: "Marketplace" }));
+    fireEvent.change(await screen.findByLabelText("File template marketplace"), {
+      target: { files: [file] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Proses & Download" }));
+
+    expect(await screen.findByText("Jumlah row diperiksa: 2")).toBeInTheDocument();
+    expect(screen.getByText("Jumlah row match: 1")).toBeInTheDocument();
+    expect(screen.getByText("Jumlah row diisi 0: 1")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Download Ulang" })).toHaveAttribute(
+      "href",
+      "blob:marketplace-export",
+    );
   });
 
   it("opens tambah produk modal and closes via batal action", async () => {
@@ -157,7 +237,9 @@ describe("inventory product tab contract", () => {
     const susuCell = screen.getByText("Kopi Susu").closest("td");
     const tubrukCell = screen.getByText("Kopi Tubruk").closest("td");
 
-    expect(screen.queryAllByText("Marketplace")).toHaveLength(0);
+    expect(within(tehCell!).queryByText("Marketplace")).not.toBeInTheDocument();
+    expect(within(susuCell!).queryByText("Marketplace")).not.toBeInTheDocument();
+    expect(within(tubrukCell!).queryByText("Marketplace")).not.toBeInTheDocument();
     expect(within(tehCell!).getByLabelText("Produk marketplace")).toBeInTheDocument();
     expect(within(susuCell!).getByLabelText("Produk marketplace")).toBeInTheDocument();
     expect(within(tubrukCell!).queryByLabelText("Produk marketplace")).not.toBeInTheDocument();
