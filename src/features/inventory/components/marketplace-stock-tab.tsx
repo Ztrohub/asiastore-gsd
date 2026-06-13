@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import type { ProductRecord } from "@/lib/offline/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,35 +83,38 @@ export function MarketplaceStockTab({ products }: Props) {
       return;
     }
 
-    const buffer = await file.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: "array" });
-    const processed = updateMarketplaceWorkbookStock(workbook, config, marketplaceProducts);
-    const output = XLSX.write(processed.workbook, {
-      type: "array",
-      bookType: "xlsx",
-    });
-    const blob = new Blob([output], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const downloadUrl = URL.createObjectURL(blob);
-    const fileName = file.name.replace(/\.xlsx$/i, "") + "-updated.xlsx";
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
 
-    if (result?.downloadUrl) {
-      URL.revokeObjectURL(result.downloadUrl);
-    }
+      const processed = updateMarketplaceWorkbookStock(workbook, config, marketplaceProducts);
+      const output = await processed.workbook.xlsx.writeBuffer();
+      const blob = new Blob([output], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const downloadUrl = URL.createObjectURL(blob);
+      const fileName = file.name.replace(/\.xlsx$/i, "") + "-updated.xlsx";
 
-    setResult({
-      ...processed.summary,
-      downloadUrl,
-      fileName,
-    });
-    setError(null);
+      if (result?.downloadUrl) {
+        URL.revokeObjectURL(result.downloadUrl);
+      }
 
-    if (typeof document !== "undefined") {
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = fileName;
-      link.click();
+      setResult({
+        ...processed.summary,
+        downloadUrl,
+        fileName,
+      });
+      setError(null);
+
+      if (typeof document !== "undefined") {
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = fileName;
+        link.click();
+      }
+    } catch {
+      setError("File template marketplace tidak bisa diproses.");
     }
   }
 

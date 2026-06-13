@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -118,16 +118,14 @@ describe("inventory product tab contract", () => {
   });
 
   it("shows summary and download fallback after a successful process", async () => {
-    const workbook = XLSX.utils.book_new();
-    const sheet = XLSX.utils.aoa_to_sheet([
-      ["header 1"],
-      ["header 2"],
-      ["header 3"],
-      [null, "MP-TEH", null, null, "SKU-TEH", null, null, null, 99],
-      [null, "NOT-FOUND", null, null, "SKU-404", null, null, null, 99],
-    ]);
-    XLSX.utils.book_append_sheet(workbook, sheet, "Template");
-    const bytes = XLSX.write(workbook, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Template");
+    sheet.addRow(["header 1"]);
+    sheet.addRow(["header 2"]);
+    sheet.addRow(["header 3"]);
+    sheet.addRow([null, "MP-TEH", null, null, "SKU-TEH", null, null, null, 99]);
+    sheet.addRow([null, "NOT-FOUND", null, null, "SKU-404", null, null, null, 99]);
+    const bytes = await workbook.xlsx.writeBuffer();
     const file = new File([bytes], "template.xlsx", {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });

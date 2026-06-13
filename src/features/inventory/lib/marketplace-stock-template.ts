@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import type ExcelJS from "exceljs";
 import type { ProductRecord } from "@/lib/offline/db";
 import type { MarketplaceExportConfig } from "@/features/inventory/lib/marketplace-stock-config";
 
@@ -34,16 +34,23 @@ function buildMarketplaceLookup(products: ProductRecord[]) {
 }
 
 export function updateMarketplaceWorkbookStock(
-  workbook: XLSX.WorkBook,
+  workbook: ExcelJS.Workbook,
   config: MarketplaceExportConfig,
   products: ProductRecord[],
 ) {
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json<(string | number | null)[]>(sheet, {
-    header: 1,
-    raw: true,
-  });
+  const sheet = workbook.worksheets[0];
+
+  if (!sheet) {
+    return {
+      workbook,
+      summary: {
+        totalRows: 0,
+        matchedRows: 0,
+        zeroedRows: 0,
+      },
+    };
+  }
+
   const lookup = buildMarketplaceLookup(products);
   const productIdIndex = columnLabelToIndex(config.productIdColumn);
   const skuIdIndex = columnLabelToIndex(config.skuIdColumn);
@@ -53,10 +60,10 @@ export function updateMarketplaceWorkbookStock(
   let matchedRows = 0;
   let zeroedRows = 0;
 
-  for (let rowIndex = Math.max(config.startRow - 1, 0); rowIndex < rows.length; rowIndex += 1) {
-    const row = rows[rowIndex] ?? [];
-    const productId = String(row[productIdIndex] ?? "").trim();
-    const skuId = String(row[skuIdIndex] ?? "").trim();
+  for (let rowNumber = Math.max(config.startRow, 1); rowNumber <= sheet.rowCount; rowNumber += 1) {
+    const row = sheet.getRow(rowNumber);
+    const productId = row.getCell(productIdIndex + 1).text.trim();
+    const skuId = row.getCell(skuIdIndex + 1).text.trim();
 
     if (!productId && !skuId) {
       continue;
@@ -67,16 +74,15 @@ export function updateMarketplaceWorkbookStock(
 
     if (product) {
       matchedRows += 1;
-      row[stockIndex] = calculateMarketplaceStockValue(product.stok_saat_ini, config.percentage);
+      row.getCell(stockIndex + 1).value = calculateMarketplaceStockValue(
+        product.stok_saat_ini,
+        config.percentage,
+      );
     } else {
       zeroedRows += 1;
-      row[stockIndex] = 0;
+      row.getCell(stockIndex + 1).value = 0;
     }
-
-    rows[rowIndex] = row;
   }
-
-  workbook.Sheets[sheetName] = XLSX.utils.aoa_to_sheet(rows);
 
   return {
     workbook,
