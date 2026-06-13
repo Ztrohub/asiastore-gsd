@@ -1,4 +1,4 @@
-﻿-- AlterTable
+-- AlterTable
 ALTER TABLE "PosTransactionLine" ADD COLUMN     "pricing_snapshot" JSONB;
 
 -- CreateTable
@@ -22,4 +22,3 @@ CREATE UNIQUE INDEX "ProductSpecialPrice_id_produk_unit_mutasi_qty_tenths_key" O
 
 -- AddForeignKey
 ALTER TABLE "ProductSpecialPrice" ADD CONSTRAINT "ProductSpecialPrice_id_produk_fkey" FOREIGN KEY ("id_produk") REFERENCES "Product"("id_produk") ON DELETE CASCADE ON UPDATE CASCADE;
-
