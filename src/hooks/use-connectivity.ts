@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+const CONNECTIVITY_POLL_MS = 30_000;
+
 async function checkReachable() {
   try {
     const response = await fetch("/api/health", {
@@ -36,7 +38,7 @@ export function useConnectivity() {
     window.addEventListener("offline", sync);
     const timer = window.setInterval(() => {
       sync().catch(() => undefined);
-    }, 5000);
+    }, CONNECTIVITY_POLL_MS);
     return () => {
       window.clearTimeout(kickoff);
       window.clearInterval(timer);

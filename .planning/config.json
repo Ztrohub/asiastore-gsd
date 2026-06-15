@@ -8,7 +8,8 @@
     "research": false,
     "verifier": true,
     "nyquist_validation": true,
-    "auto_advance": true
+    "auto_advance": true,
+    "_auto_chain_active": false
   },
   "ship": {
     "pr_body_sections": []
