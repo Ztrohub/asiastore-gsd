@@ -1,5 +1,6 @@
 import type ExcelJS from "exceljs";
 import type { ProductRecord } from "@/lib/offline/db";
+import { getProductMarketplaceListings } from "@/lib/inventory/marketplace";
 import type { MarketplaceExportConfig } from "@/features/inventory/lib/marketplace-stock-config";
 
 export function columnLabelToIndex(label: string) {
@@ -20,16 +21,12 @@ export function calculateMarketplaceStockValue(stock: number, percentage: number
 function buildMarketplaceLookup(products: ProductRecord[]) {
   return new Map(
     products
-      .filter(
-        (product) =>
-          product.is_marketplace &&
-          product.marketplace_product_id &&
-          product.marketplace_sku_id,
-      )
-      .map((product) => [
-        `${String(product.marketplace_product_id).trim()}::${String(product.marketplace_sku_id).trim()}`,
-        product,
-      ]),
+      .flatMap((product) =>
+        getProductMarketplaceListings(product).map((listing) => [
+          `${listing.marketplace_product_id.trim()}::${listing.marketplace_sku_id.trim()}`,
+          listing,
+        ] as const),
+      ),
   );
 }
 
@@ -70,12 +67,12 @@ export function updateMarketplaceWorkbookStock(
     }
 
     totalRows += 1;
-    const product = lookup.get(`${productId}::${skuId}`);
+    const listing = lookup.get(`${productId}::${skuId}`);
 
-    if (product) {
+    if (listing) {
       matchedRows += 1;
       row.getCell(stockIndex + 1).value = calculateMarketplaceStockValue(
-        product.stok_saat_ini,
+        listing.stock,
         config.percentage,
       );
     } else {

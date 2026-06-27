@@ -23,6 +23,8 @@ export type ProductUpsertInput = {
   marketplace_product_name?: string;
   marketplace_product_id?: string;
   marketplace_sku_id?: string;
+  marketplace_large_product_id?: string;
+  marketplace_large_sku_id?: string;
   unit_small_name?: string;
   unit_large_name?: string;
   unit_large_to_small?: number;
@@ -146,6 +148,8 @@ const existingMarketplaceSelect = {
   marketplace_product_name: true,
   marketplace_product_id: true,
   marketplace_sku_id: true,
+  marketplace_large_product_id: true,
+  marketplace_large_sku_id: true,
 } as const;
 
 export function getProductChangeTime(product: ProductChangeTimestamps) {

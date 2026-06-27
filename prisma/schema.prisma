@@ -84,6 +84,8 @@ model Product {
   marketplace_product_name String?
   marketplace_product_id   String?
   marketplace_sku_id       String?
+  marketplace_large_product_id String?
+  marketplace_large_sku_id     String?
   unit_small_name String   @default("pcs")
   unit_large_name String?
   unit_large_to_small Int?

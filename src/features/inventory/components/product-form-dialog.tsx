@@ -37,6 +37,8 @@ type SubmitPayload = {
   marketplace_product_name?: string;
   marketplace_product_id?: string;
   marketplace_sku_id?: string;
+  marketplace_large_product_id?: string;
+  marketplace_large_sku_id?: string;
   unit_small_name: string;
   unit_large_name?: string;
   unit_large_to_small?: number;
@@ -119,6 +121,12 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
   const [marketplaceSkuId, setMarketplaceSkuId] = useState(
     editingProduct?.marketplace_sku_id ?? "",
   );
+  const [marketplaceLargeProductId, setMarketplaceLargeProductId] = useState(
+    editingProduct?.marketplace_large_product_id ?? "",
+  );
+  const [marketplaceLargeSkuId, setMarketplaceLargeSkuId] = useState(
+    editingProduct?.marketplace_large_sku_id ?? "",
+  );
   const [stokAwalUnitKecil, setStokAwalUnitKecil] = useState(
     String(editingProduct?.stok_saat_ini ?? 0),
   );
@@ -165,6 +173,8 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
     const normalizedMarketplaceProductName = marketplaceProductName.trim();
     const normalizedMarketplaceProductId = marketplaceProductId.trim();
     const normalizedMarketplaceSkuId = marketplaceSkuId.trim();
+    const normalizedMarketplaceLargeProductId = marketplaceLargeProductId.trim();
+    const normalizedMarketplaceLargeSkuId = marketplaceLargeSkuId.trim();
 
     if (!namaProduk.trim()) {
       setError("Data belum valid. Periksa field yang ditandai lalu coba lagi.");
@@ -197,6 +207,15 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
         !normalizedMarketplaceSkuId)
     ) {
       setError("Lengkapi data marketplace untuk produk yang dijual di marketplace.");
+      return;
+    }
+    if (
+      isMarketplace &&
+      hasLargeUnit &&
+      Boolean(normalizedMarketplaceLargeProductId || normalizedMarketplaceLargeSkuId) &&
+      (!normalizedMarketplaceLargeProductId || !normalizedMarketplaceLargeSkuId)
+    ) {
+      setError("Lengkapi ID marketplace unit besar jika salah satunya diisi.");
       return;
     }
 
@@ -249,6 +268,10 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
         marketplace_product_name: isMarketplace ? normalizedMarketplaceProductName : undefined,
         marketplace_product_id: isMarketplace ? normalizedMarketplaceProductId : undefined,
         marketplace_sku_id: isMarketplace ? normalizedMarketplaceSkuId : undefined,
+        marketplace_large_product_id:
+          isMarketplace && hasLargeUnit ? normalizedMarketplaceLargeProductId || undefined : undefined,
+        marketplace_large_sku_id:
+          isMarketplace && hasLargeUnit ? normalizedMarketplaceLargeSkuId || undefined : undefined,
         unit_small_name: normalizedSmallUnit,
         unit_large_name: normalizedLargeUnit || undefined,
         unit_large_to_small: hasLargeUnit ? parsedLargeFactor : undefined,
@@ -264,6 +287,8 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
       setMarketplaceProductName("");
       setMarketplaceProductId("");
       setMarketplaceSkuId("");
+      setMarketplaceLargeProductId("");
+      setMarketplaceLargeSkuId("");
       setStokAwalUnitKecil("0");
       setStokAwalUnitBesar("0");
       setUnitSmallName("pcs");
@@ -355,6 +380,8 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
                         setMarketplaceProductName("");
                         setMarketplaceProductId("");
                         setMarketplaceSkuId("");
+                        setMarketplaceLargeProductId("");
+                        setMarketplaceLargeSkuId("");
                       }
                     }}
                     type="checkbox"
@@ -396,6 +423,42 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
                         value={marketplaceSkuId}
                       />
                     </div>
+                    {unitLargeName.trim() ? (
+                      <div className="space-y-3 rounded-md border border-border p-3">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          Marketplace unit besar
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Isi jika unit besar dijual sebagai SKU marketplace terpisah.
+                        </p>
+                        <div className="space-y-1">
+                          <label
+                            className="text-xs font-medium"
+                            htmlFor="marketplace-large-product-id"
+                          >
+                            ID produk marketplace unit besar
+                          </label>
+                          <Input
+                            id="marketplace-large-product-id"
+                            onChange={(event) => setMarketplaceLargeProductId(event.target.value)}
+                            value={marketplaceLargeProductId}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label
+                            className="text-xs font-medium"
+                            htmlFor="marketplace-large-sku-id"
+                          >
+                            ID SKU marketplace unit besar
+                          </label>
+                          <Input
+                            id="marketplace-large-sku-id"
+                            onChange={(event) => setMarketplaceLargeSkuId(event.target.value)}
+                            value={marketplaceLargeSkuId}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

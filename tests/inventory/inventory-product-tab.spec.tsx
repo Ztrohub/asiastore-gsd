@@ -195,6 +195,59 @@ describe("inventory product tab contract", () => {
     });
   });
 
+  it("submits separate marketplace identifiers for large unit when configured", async () => {
+    render(<InventoryTabs />);
+    fireEvent.click(screen.getByRole("button", { name: "Tambah Produk" }));
+
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Nama produk"), {
+      target: { value: "Kopi Dus Marketplace" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Harga jual unit kecil"), {
+      target: { value: "15000" },
+    });
+    fireEvent.click(within(dialog).getByLabelText("Jual di marketplace"));
+    fireEvent.change(within(dialog).getByLabelText("Nama produk marketplace"), {
+      target: { value: "Kopi Dus Marketplace Official" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("ID produk marketplace"), {
+      target: { value: "MP-001" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("ID SKU marketplace"), {
+      target: { value: "SKU-MP-001" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Nama unit besar"), {
+      target: { value: "dus" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Konversi ke unit kecil"), {
+      target: { value: "12" },
+    });
+    fireEvent.click(within(dialog).getByLabelText("Izinkan jual unit besar"));
+    fireEvent.change(within(dialog).getByLabelText("Harga jual unit besar"), {
+      target: { value: "150000" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("ID produk marketplace unit besar"), {
+      target: { value: "MP-001-DUS" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("ID SKU marketplace unit besar"), {
+      target: { value: "SKU-MP-001-DUS" },
+    });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Simpan Produk" }));
+
+    await waitFor(() => {
+      expect(saveProduct).toHaveBeenCalledTimes(1);
+    });
+    expect(saveProduct.mock.calls[0][0]).toMatchObject({
+      nama_produk: "Kopi Dus Marketplace",
+      is_marketplace: true,
+      marketplace_product_id: "MP-001",
+      marketplace_sku_id: "SKU-MP-001",
+      marketplace_large_product_id: "MP-001-DUS",
+      marketplace_large_sku_id: "SKU-MP-001-DUS",
+    });
+  });
+
   it("supports aktif/nonaktif toggle when editing product", async () => {
     render(<InventoryTabs />);
     fireEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);

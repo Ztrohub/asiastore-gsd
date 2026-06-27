@@ -33,6 +33,8 @@ type ProductPayload = {
   marketplace_product_name?: string | null;
   marketplace_product_id?: string | null;
   marketplace_sku_id?: string | null;
+  marketplace_large_product_id?: string | null;
+  marketplace_large_sku_id?: string | null;
   unit_small_name?: string;
   unit_large_name?: string | null;
   unit_large_to_small?: number | null;
@@ -263,6 +265,8 @@ export async function POST(request: NextRequest) {
         marketplace_product_name: marketplaceState.marketplace_product_name,
         marketplace_product_id: marketplaceState.marketplace_product_id,
         marketplace_sku_id: marketplaceState.marketplace_sku_id,
+        marketplace_large_product_id: marketplaceState.marketplace_large_product_id,
+        marketplace_large_sku_id: marketplaceState.marketplace_large_sku_id,
         unit_small_name: item.unit_small_name?.trim() || undefined,
         unit_large_name: optionalString(item.unit_large_name),
         unit_large_to_small: optionalNumber(item.unit_large_to_small),

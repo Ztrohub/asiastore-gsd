@@ -191,6 +191,44 @@ describe("product catalog offline-first sync contract", () => {
     expect(queuedPayload).not.toHaveProperty("marketplace_sku_id");
   });
 
+  it("stores large-unit marketplace identifiers in local cache and queued sync payload", async () => {
+    const { persistProductCatalog } = await import("@/features/inventory/hooks/use-product-catalog");
+    await persistProductCatalog({
+      nama_produk: "Produk Marketplace Besar",
+      harga_jual: 50000,
+      harga_jual_unit_besar: 540000,
+      stok_saat_ini: 8,
+      stok_unit_besar_saat_ini: 3,
+      is_active: true,
+      unit_small_name: "pcs",
+      unit_large_name: "dus",
+      unit_large_to_small: 12,
+      allow_buy_in_small: true,
+      allow_buy_in_large: true,
+      allow_sell_in_small: true,
+      allow_sell_in_large: true,
+      is_marketplace: true,
+      marketplace_product_name: "Produk Marketplace Official",
+      marketplace_product_id: "MP-001",
+      marketplace_sku_id: "SKU-MP-001",
+      marketplace_large_product_id: "MP-001-DUS",
+      marketplace_large_sku_id: "SKU-MP-001-DUS",
+    } as never);
+
+    const product = putProduct.mock.calls[0][0];
+    const queueRow = addQueue.mock.calls[0][0];
+    const queuedPayload = JSON.parse(queueRow.deltaPayload);
+
+    expect(product.marketplace_product_id).toBe("MP-001");
+    expect(product.marketplace_sku_id).toBe("SKU-MP-001");
+    expect(product.marketplace_large_product_id).toBe("MP-001-DUS");
+    expect(product.marketplace_large_sku_id).toBe("SKU-MP-001-DUS");
+    expect(queuedPayload.marketplace_product_id).toBe("MP-001");
+    expect(queuedPayload.marketplace_sku_id).toBe("SKU-MP-001");
+    expect(queuedPayload.marketplace_large_product_id).toBe("MP-001-DUS");
+    expect(queuedPayload.marketplace_large_sku_id).toBe("SKU-MP-001-DUS");
+  });
+
   it("preserves negative local stock on refresh so POS stockout stays visible", async () => {
     productsToArray.mockResolvedValueOnce([
       {

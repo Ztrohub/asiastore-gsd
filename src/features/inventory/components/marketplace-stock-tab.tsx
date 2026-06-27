@@ -5,6 +5,7 @@ import ExcelJS from "exceljs";
 import type { ProductRecord } from "@/lib/offline/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { hasMarketplaceListings } from "@/lib/inventory/marketplace";
 import {
   loadMarketplaceExportConfig,
   saveMarketplaceExportConfig,
@@ -71,12 +72,7 @@ export function MarketplaceStockTab({ products }: Props) {
       return;
     }
 
-    const marketplaceProducts = products.filter(
-      (product) =>
-        product.is_marketplace &&
-        product.marketplace_product_id &&
-        product.marketplace_sku_id,
-    );
+    const marketplaceProducts = products.filter((product) => hasMarketplaceListings(product));
 
     if (marketplaceProducts.length === 0) {
       setError("Belum ada produk marketplace di katalog lokal.");
@@ -165,7 +161,7 @@ export function MarketplaceStockTab({ products }: Props) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Produk marketplace lokal tersedia: {products.filter((product) => product.is_marketplace).length}
+        Produk marketplace lokal tersedia: {products.filter((product) => hasMarketplaceListings(product)).length}
       </p>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}

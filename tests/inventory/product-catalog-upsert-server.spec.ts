@@ -120,6 +120,8 @@ describe("server product upsert conflict handling", () => {
       marketplace_product_name: "Produk Marketplace Existing",
       marketplace_product_id: "MP-EXISTING",
       marketplace_sku_id: "SKU-MP-EXISTING",
+      marketplace_large_product_id: "MP-EXISTING-DUS",
+      marketplace_large_sku_id: "SKU-MP-EXISTING-DUS",
     });
     upsert.mockResolvedValue({ id_produk: "prod-marketplace" });
 
@@ -139,6 +141,54 @@ describe("server product upsert conflict handling", () => {
           marketplace_product_name: "Produk Marketplace Existing",
           marketplace_product_id: "MP-EXISTING",
           marketplace_sku_id: "SKU-MP-EXISTING",
+          marketplace_large_product_id: "MP-EXISTING-DUS",
+          marketplace_large_sku_id: "SKU-MP-EXISTING-DUS",
+        }),
+      }),
+    );
+  });
+
+  it("stores dedicated large-unit marketplace identifiers when provided by sync payload", async () => {
+    findUnique.mockResolvedValueOnce({
+      id_produk: "prod-marketplace",
+      last_synced_at: null,
+      is_marketplace: true,
+      marketplace_product_name: "Produk Marketplace Existing",
+      marketplace_product_id: "MP-EXISTING",
+      marketplace_sku_id: "SKU-MP-EXISTING",
+    });
+    upsert.mockResolvedValue({ id_produk: "prod-marketplace" });
+
+    const { upsertProduct } = await import("@/lib/db/product-catalog");
+    await upsertProduct({
+      id_produk: "prod-marketplace",
+      nama_produk: "Produk Marketplace",
+      harga_jual: 22000,
+      harga_jual_unit_besar: 240000,
+      stok_saat_ini: 6,
+      stok_unit_besar_saat_ini: 2,
+      is_active: true,
+      unit_small_name: "pcs",
+      unit_large_name: "dus",
+      unit_large_to_small: 12,
+      allow_buy_in_small: true,
+      allow_buy_in_large: true,
+      allow_sell_in_small: true,
+      allow_sell_in_large: true,
+      is_marketplace: true,
+      marketplace_product_id: "MP-SMALL",
+      marketplace_sku_id: "SKU-SMALL",
+      marketplace_large_product_id: "MP-LARGE",
+      marketplace_large_sku_id: "SKU-LARGE",
+    } as never);
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          marketplace_product_id: "MP-SMALL",
+          marketplace_sku_id: "SKU-SMALL",
+          marketplace_large_product_id: "MP-LARGE",
+          marketplace_large_sku_id: "SKU-LARGE",
         }),
       }),
     );

@@ -141,6 +141,58 @@ describe("inventory product route validation", () => {
     );
   });
 
+  it("persists dedicated large-unit marketplace identifiers when provided", async () => {
+    const { POST } = await import("@/app/api/inventory/products/route");
+
+    const request = new Request("http://localhost/api/inventory/products", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        products: [
+          {
+            id_produk: "prod-marketplace-large",
+            nama_produk: "Produk Marketplace Besar",
+            harga_jual: 25000,
+            harga_jual_unit_besar: 250000,
+            stok_saat_ini: 12,
+            stok_unit_besar_saat_ini: 2,
+            is_active: true,
+            unit_small_name: "pcs",
+            unit_large_name: "dus",
+            unit_large_to_small: 12,
+            allow_buy_in_small: true,
+            allow_buy_in_large: true,
+            allow_sell_in_small: true,
+            allow_sell_in_large: true,
+            is_marketplace: true,
+            marketplace_product_name: "Produk Marketplace Tokopedia",
+            marketplace_product_id: "MP-001",
+            marketplace_sku_id: "SKU-MP-001",
+            marketplace_large_product_id: "MP-001-DUS",
+            marketplace_large_sku_id: "SKU-MP-001-DUS",
+            updatedAt: 1781070003000,
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request as never);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({ ok: true, count: 1 });
+    expect(upsertProductMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id_produk: "prod-marketplace-large",
+        is_marketplace: true,
+        marketplace_product_id: "MP-001",
+        marketplace_sku_id: "SKU-MP-001",
+        marketplace_large_product_id: "MP-001-DUS",
+        marketplace_large_sku_id: "SKU-MP-001-DUS",
+      }),
+    );
+  });
+
   it("rejects marketplace payloads when required marketplace identifiers are missing", async () => {
     const { POST } = await import("@/app/api/inventory/products/route");
 

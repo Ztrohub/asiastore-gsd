@@ -156,6 +156,46 @@ describe("marketplace stock template utilities", () => {
     expect(result.summary.zeroedRows).toBe(0);
   });
 
+  it("uses large-unit marketplace identifiers with large-unit stock when matched", () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Template");
+
+    sheet.addRow(["header 1"]);
+    sheet.addRow(["header 2"]);
+    sheet.addRow(["header 3"]);
+    sheet.addRow([null, "PROD-DUS", null, null, "SKU-DUS", null, null, null, 99]);
+
+    const result = updateMarketplaceWorkbookStock(
+      workbook,
+      {
+        productIdColumn: "B",
+        skuIdColumn: "E",
+        stockColumn: "I",
+        startRow: 4,
+        percentage: 30,
+      },
+      [
+        {
+          id_produk: "local-large",
+          nama_produk: "Produk Dus",
+          stok_saat_ini: 120,
+          stok_unit_besar_saat_ini: 2,
+          is_active: true,
+          is_marketplace: true,
+          marketplace_product_id: "PROD-PCS",
+          marketplace_sku_id: "SKU-PCS",
+          marketplace_large_product_id: "PROD-DUS",
+          marketplace_large_sku_id: "SKU-DUS",
+          updatedAt: Date.now(),
+        },
+      ] as never,
+    );
+
+    expect(result.workbook.getWorksheet("Template")?.getCell("I4").value).toBe(1);
+    expect(result.summary.matchedRows).toBe(1);
+    expect(result.summary.zeroedRows).toBe(0);
+  });
+
   it("persists export config locally and falls back to defaults when storage is unavailable", () => {
     saveMarketplaceExportConfig({
       productIdColumn: "C",

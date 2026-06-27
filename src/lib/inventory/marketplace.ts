@@ -3,6 +3,17 @@ type ProductMarketplaceInput = {
   marketplace_product_name?: string | null;
   marketplace_product_id?: string | null;
   marketplace_sku_id?: string | null;
+  marketplace_large_product_id?: string | null;
+  marketplace_large_sku_id?: string | null;
+  stok_saat_ini?: number | null;
+  stok_unit_besar_saat_ini?: number | null;
+};
+
+export type ProductMarketplaceListing = {
+  unit: "small" | "large";
+  marketplace_product_id: string;
+  marketplace_sku_id: string;
+  stock: number;
 };
 
 export const PRODUCT_MARKETPLACE_TEXT_MAX_LENGTH = 255;
@@ -16,7 +27,9 @@ function hasIncomingMarketplaceText(input: ProductMarketplaceInput) {
   return (
     input.marketplace_product_name !== undefined ||
     input.marketplace_product_id !== undefined ||
-    input.marketplace_sku_id !== undefined
+    input.marketplace_sku_id !== undefined ||
+    input.marketplace_large_product_id !== undefined ||
+    input.marketplace_large_sku_id !== undefined
   );
 }
 
@@ -37,6 +50,8 @@ export function normalizeProductMarketplace(
       marketplace_product_name: undefined,
       marketplace_product_id: undefined,
       marketplace_sku_id: undefined,
+      marketplace_large_product_id: undefined,
+      marketplace_large_sku_id: undefined,
     };
   }
 
@@ -51,7 +66,17 @@ export function normalizeProductMarketplace(
     marketplace_sku_id: normalizeMarketplaceText(
       input.marketplace_sku_id ?? fallback?.marketplace_sku_id,
     ),
+    marketplace_large_product_id: normalizeMarketplaceText(
+      input.marketplace_large_product_id ?? fallback?.marketplace_large_product_id,
+    ),
+    marketplace_large_sku_id: normalizeMarketplaceText(
+      input.marketplace_large_sku_id ?? fallback?.marketplace_large_sku_id,
+    ),
   };
+}
+
+function isValidMarketplaceValue(value: string | undefined) {
+  return typeof value === "string" && value.length > 0 && value.length <= PRODUCT_MARKETPLACE_TEXT_MAX_LENGTH;
 }
 
 export function isValidProductMarketplace(input: ProductMarketplaceInput) {
@@ -66,11 +91,20 @@ export function isValidProductMarketplace(input: ProductMarketplaceInput) {
     normalized.marketplace_sku_id,
   ];
 
-  return values.every(
-    (value) =>
-      typeof value === "string" &&
-      value.length > 0 &&
-      value.length <= PRODUCT_MARKETPLACE_TEXT_MAX_LENGTH,
+  if (!values.every(isValidMarketplaceValue)) {
+    return false;
+  }
+
+  const hasLargeMarketplaceValue =
+    normalized.marketplace_large_product_id !== undefined ||
+    normalized.marketplace_large_sku_id !== undefined;
+
+  if (!hasLargeMarketplaceValue) {
+    return true;
+  }
+
+  return [normalized.marketplace_large_product_id, normalized.marketplace_large_sku_id].every(
+    isValidMarketplaceValue,
   );
 }
 
@@ -85,5 +119,44 @@ export function toDatabaseProductMarketplace(
     marketplace_product_name: normalized.marketplace_product_name ?? null,
     marketplace_product_id: normalized.marketplace_product_id ?? null,
     marketplace_sku_id: normalized.marketplace_sku_id ?? null,
+    marketplace_large_product_id: normalized.marketplace_large_product_id ?? null,
+    marketplace_large_sku_id: normalized.marketplace_large_sku_id ?? null,
   };
+}
+
+function normalizeMarketplaceStock(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+export function getProductMarketplaceListings(input: ProductMarketplaceInput): ProductMarketplaceListing[] {
+  const normalized = normalizeProductMarketplace(input);
+  if (!normalized.is_marketplace) {
+    return [];
+  }
+
+  const listings: ProductMarketplaceListing[] = [];
+
+  if (normalized.marketplace_product_id && normalized.marketplace_sku_id) {
+    listings.push({
+      unit: "small",
+      marketplace_product_id: normalized.marketplace_product_id,
+      marketplace_sku_id: normalized.marketplace_sku_id,
+      stock: normalizeMarketplaceStock(input.stok_saat_ini),
+    });
+  }
+
+  if (normalized.marketplace_large_product_id && normalized.marketplace_large_sku_id) {
+    listings.push({
+      unit: "large",
+      marketplace_product_id: normalized.marketplace_large_product_id,
+      marketplace_sku_id: normalized.marketplace_large_sku_id,
+      stock: normalizeMarketplaceStock(input.stok_unit_besar_saat_ini),
+    });
+  }
+
+  return listings;
+}
+
+export function hasMarketplaceListings(input: ProductMarketplaceInput) {
+  return getProductMarketplaceListings(input).length > 0;
 }
