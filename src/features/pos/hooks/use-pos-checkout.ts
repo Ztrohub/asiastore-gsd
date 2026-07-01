@@ -7,6 +7,7 @@ import {
   type PosPaymentMethod,
   type PosTransactionRecord,
   type InventoryMutationUnit,
+  type ProductRecord,
 } from "@/lib/offline/db";
 import { persistStockOutMutation } from "@/features/pos/hooks/use-stock-out-mutation";
 import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
@@ -18,6 +19,8 @@ export type CheckoutLineInput = {
   nama_produk: string;
   unit_price: number;
   qty: number;
+  product_kind?: "NORMAL" | "PACKAGE";
+  package_items?: ProductRecord["package_items"];
   unit_mutasi?: InventoryMutationUnit;
   unit_label?: string;
   line_discount?: number;
@@ -51,6 +54,20 @@ export function computeCheckoutTotals(lines: CheckoutLineInput[], orderDiscount 
   const total = Math.max(0, subtotalAfterItem - normalizedOrderDiscount);
 
   return { subtotal, itemDiscount, orderDiscount: normalizedOrderDiscount, total };
+}
+
+export function normalizePackageQtyInput(raw: string) {
+  const normalized = raw.trim().replace(",", ".");
+  const parsed = Number(normalized);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error("Qty paket harus lebih dari 0.");
+  }
+  if (!Number.isInteger(parsed)) {
+    throw new Error("Qty paket harus bilangan bulat.");
+  }
+
+  return parsed;
 }
 
 export async function persistPosTransaction(input: CheckoutInput) {

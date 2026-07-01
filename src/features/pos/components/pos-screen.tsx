@@ -13,7 +13,12 @@ import { PosRemoveDialog } from "@/features/pos/components/pos-remove-dialog";
 import { PosTransactionSummaryPanel } from "@/features/pos/components/pos-transaction-summary-panel";
 import { useProductCatalog } from "@/features/inventory/hooks/use-product-catalog";
 import { usePosCart } from "@/features/pos/hooks/use-pos-cart";
-import { usePosCheckout, type PosPaymentMethod, computeCheckoutTotals } from "@/features/pos/hooks/use-pos-checkout";
+import {
+  usePosCheckout,
+  type PosPaymentMethod,
+  computeCheckoutTotals,
+  normalizePackageQtyInput,
+} from "@/features/pos/hooks/use-pos-checkout";
 import { usePrinterBridgeSettings } from "@/features/pos/hooks/use-printer-bridge-settings";
 import { useReceiptPrinting } from "@/features/pos/hooks/use-receipt-printing";
 import { getSellUnitOptions } from "@/features/pos/lib/product-units";
@@ -117,6 +122,8 @@ export function PosScreen() {
         nama_produk: line.nama_produk,
         unit_price: line.harga_jual,
         qty: line.qty,
+        product_kind: line.product_kind,
+        package_items: line.package_items,
         unit_mutasi: line.unit_mutasi,
         unit_label: line.unit_label,
         line_discount: line.line_discount,
@@ -131,6 +138,7 @@ export function PosScreen() {
   const safeProductIndex = Math.min(productIndex, Math.max(filteredProducts.length - 1, 0));
   const safeCartIndex = Math.min(cartIndex, Math.max(lines.length - 1, 0));
   const activeProduct = filteredProducts[safeProductIndex];
+  const activeProductIsPackage = (activeProduct?.product_kind ?? "NORMAL") === "PACKAGE";
   const activeCartLine = lines[safeCartIndex];
   const hasBlockingDialog =
     qtyOpen || cartItemOpen || deleteOpen || voidOpen || paymentOpen || Boolean(pendingTransaction);
@@ -401,11 +409,14 @@ export function PosScreen() {
         key={`qty-${qtyDialogKey}`}
         defaultQty="1"
         defaultUnitMutasi={qtyDefaultUnit}
+        integerOnly={activeProductIsPackage}
         onClose={() => setQtyOpen(false)}
         onConfirm={(payload) => {
           try {
-            const qty = normalizeQuantityInput(payload.qty);
             if (!activeProduct) return;
+            const qty = activeProductIsPackage
+              ? normalizePackageQtyInput(payload.qty)
+              : normalizeQuantityInput(payload.qty);
             const options = getEffectiveUnitOptions(activeProduct);
             const selected = options.find((item) => item.unit_mutasi === payload.unit_mutasi) ?? options[0];
             upsertLine(activeProduct, qty, selected);

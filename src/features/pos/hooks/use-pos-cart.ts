@@ -18,6 +18,8 @@ export type PosCartLine = {
   nama_produk_dasar: string;
   harga_jual: number;
   qty: number;
+  product_kind?: "NORMAL" | "PACKAGE";
+  package_items?: ProductRecord["package_items"];
   line_discount: number;
   unit_mutasi: InventoryMutationUnit;
   unit_label: string;
@@ -52,7 +54,10 @@ export function usePosCart() {
   const [note, setNote] = useState("");
 
   function upsertLine(
-    product: Pick<ProductRecord, "id_produk" | "nama_produk" | "harga_jual" | "special_prices">,
+    product: Pick<
+      ProductRecord,
+      "id_produk" | "nama_produk" | "harga_jual" | "special_prices" | "product_kind" | "package_items"
+    >,
     qty: number,
     selectedUnit: PosCartUnitOption,
     lineDiscount = 0,
@@ -77,6 +82,8 @@ export function usePosCart() {
             nama_produk_dasar: product.nama_produk,
             harga_jual: selectedUnit.unit_price,
             qty,
+            product_kind: product.product_kind,
+            package_items: product.package_items,
             line_discount: clampLineDiscount(lineDiscount, pricingSnapshot.automatic_subtotal),
             unit_mutasi: selectedUnit.unit_mutasi,
             unit_label: selectedUnit.unit_label,
@@ -92,6 +99,8 @@ export function usePosCart() {
         nama_produk_dasar: product.nama_produk,
         harga_jual: selectedUnit.unit_price,
         qty,
+        product_kind: product.product_kind,
+        package_items: product.package_items,
         line_discount: clampLineDiscount(lineDiscount, pricingSnapshot.automatic_subtotal),
         unit_mutasi: selectedUnit.unit_mutasi,
         unit_label: selectedUnit.unit_label,

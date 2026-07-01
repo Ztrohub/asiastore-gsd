@@ -106,4 +106,11 @@ describe("pos checkout payment rules", () => {
 
     expect(onCommitted).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps package qty integer-only before checkout persists the line", async () => {
+    const { normalizePackageQtyInput } = await import("@/features/pos/hooks/use-pos-checkout");
+
+    expect(() => normalizePackageQtyInput("1.5")).toThrow("Qty paket harus bilangan bulat.");
+    expect(normalizePackageQtyInput("3")).toBe(3);
+  });
 });

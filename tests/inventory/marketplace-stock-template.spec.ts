@@ -187,6 +187,38 @@ describe("marketplace stock template utilities", () => {
     expect(result.summary.zeroedRows).toBe(0);
   });
 
+  it("uses derived package stock when marketplace sku belongs to a package", () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Template");
+
+    sheet.addRow(["header 1"]);
+    sheet.addRow(["header 2"]);
+    sheet.addRow(["header 3"]);
+    sheet.addRow([null, null, null, null, "SKU-PKT-A", null, null, null, 0]);
+
+    const result = updateMarketplaceWorkbookStock(
+      workbook,
+      { skuIdColumn: "E", stockColumn: "I", startRow: 4, percentage: 30 },
+      [
+        {
+          id_produk: "pkg-1",
+          nama_produk: "Paket A",
+          harga_jual: 79000,
+          stok_saat_ini: 4,
+          is_active: true,
+          is_marketplace: true,
+          marketplace_product_name: "Paket A Marketplace",
+          marketplace_sku_id: "SKU-PKT-A",
+          product_kind: "PACKAGE",
+          unit_small_name: "paket",
+          updatedAt: Date.now(),
+        },
+      ] as never,
+    );
+
+    expect(result.workbook.getWorksheet("Template")?.getCell("I4").value).toBe(2);
+  });
+
   it("persists export config locally and falls back to defaults when storage is unavailable", () => {
     saveMarketplaceExportConfig({
       skuIdColumn: "F",

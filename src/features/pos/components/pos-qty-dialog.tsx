@@ -26,6 +26,7 @@ type Props = {
   productName?: string;
   unitOptions: ProductSellUnitOption[];
   defaultUnitMutasi: InventoryMutationUnit;
+  integerOnly?: boolean;
   onClose: () => void;
   onConfirm: (payload: { qty: string; unit_mutasi: InventoryMutationUnit }) => void;
 };
@@ -36,6 +37,7 @@ export function PosQtyDialog({
   productName,
   unitOptions,
   defaultUnitMutasi,
+  integerOnly = false,
   onClose,
   onConfirm,
 }: Props) {
@@ -125,7 +127,7 @@ export function PosQtyDialog({
         <Input
           aria-label="Qty"
           autoFocus
-          inputMode="decimal"
+          inputMode={integerOnly ? "numeric" : "decimal"}
           onChange={(event) => setQty(event.target.value)}
           onFocus={(event) => event.currentTarget.select()}
           onKeyDown={(event) => {
