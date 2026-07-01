@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { resolveLinePricing } from "@/features/pos/lib/special-pricing";
-import type { ProductRecord } from "@/lib/offline/db";
-import type { InventoryMutationUnit } from "@/lib/offline/db";
+import type { ProductRecord, InventoryMutationUnit, StockEffectSnapshot } from "@/lib/offline/db";
 import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 
 export type PosCartUnitOption = {
@@ -24,6 +23,7 @@ export type PosCartLine = {
   unit_mutasi: InventoryMutationUnit;
   unit_label: string;
   pricing_snapshot: PosLinePricingSnapshot;
+  stock_effect_snapshot?: StockEffectSnapshot;
 };
 
 function createPricingSnapshot(params: {

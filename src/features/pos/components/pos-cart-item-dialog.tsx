@@ -20,6 +20,7 @@ import { formatCurrencyIdr } from "@/features/format/currency";
 import type { PosCartLine } from "@/features/pos/hooks/use-pos-cart";
 import { resolveLinePricing } from "@/features/pos/lib/special-pricing";
 import { normalizeQuantityInput } from "@/lib/inventory/quantity";
+import { normalizePackageQtyInput } from "@/features/pos/hooks/use-pos-checkout";
 
 type Props = {
   open: boolean;
@@ -50,7 +51,10 @@ function resolveAutomaticSubtotalPreview(line: PosCartLine | undefined, rawQty: 
     return 0;
   }
 
-  const qty = Math.trunc(parsed * 10) / 10;
+  const qty =
+    (line.product_kind ?? "NORMAL") === "PACKAGE"
+      ? Math.trunc(parsed)
+      : Math.trunc(parsed * 10) / 10;
 
   try {
     return resolveLinePricing({
@@ -77,9 +81,10 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
 
   const unitPrice = line?.harga_jual ?? 0;
   const automaticSubtotalPreview = resolveAutomaticSubtotalPreview(line, qtyInput);
+  const integerOnly = (line?.product_kind ?? "NORMAL") === "PACKAGE";
 
   function submit() {
-    const qty = normalizeQuantityInput(qtyInput);
+    const qty = integerOnly ? normalizePackageQtyInput(qtyInput) : normalizeQuantityInput(qtyInput);
     const finalSubtotal = Math.max(0, Math.trunc(Number(finalSubtotalInput || "0")));
     onConfirm({ qty, finalSubtotal });
   }
@@ -149,7 +154,7 @@ export function PosCartItemDialog({ open, line, onClose, onDelete, onConfirm }: 
           <Input
             aria-label="Qty Item Keranjang"
             autoFocus
-            inputMode="decimal"
+            inputMode={integerOnly ? "numeric" : "decimal"}
             onChange={(event) => {
               const nextQtyInput = event.target.value;
               setQtyInput(nextQtyInput);

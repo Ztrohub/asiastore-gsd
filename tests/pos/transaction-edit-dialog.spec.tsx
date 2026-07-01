@@ -254,4 +254,78 @@ describe("transaction edit dialog responsive shell", () => {
     expect(await screen.findByLabelText("Qty Item Keranjang")).toHaveValue("1.6");
     expect(screen.getByLabelText("Subtotal Akhir Item")).toHaveValue("17000");
   });
+
+  it("preserves stock effect snapshots when re-saving a transaction draft", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    render(
+      <TransactionEditDialog
+        onClose={() => undefined}
+        onDelete={async () => undefined}
+        onRestore={async () => undefined}
+        onSave={onSave}
+        open
+        transaction={{
+          id_transaksi: "tx-1",
+          short_id: "TRX-001",
+          kasir_user_id: "cashier-1",
+          kasir_username: "kasir",
+          payment_method: "cash",
+          subtotal_amount: 79000,
+          item_discount: 0,
+          order_discount: 0,
+          total_amount: 79000,
+          amount_received: 80000,
+          change_amount: 1000,
+          counts_for_cash: true,
+          note: "catatan",
+          is_deleted: false,
+          lines: [
+            {
+              id_produk: "pkg-1",
+              nama_produk: "Paket A",
+              unit_price: 79000,
+              qty: 2,
+              unit_mutasi: "SMALL",
+              unit_label: "paket",
+              line_discount: 0,
+              line_total: 79000,
+              stock_effect_snapshot: {
+                source_kind: "PACKAGE" as const,
+                effects: [
+                  { id_produk: "prod-a", nama_produk_snapshot: "Produk A", unit_mutasi: "SMALL" as const, qty_delta: -2 },
+                ],
+              },
+            },
+          ],
+          client_timestamp: Date.parse("2026-06-09T09:00:00.000Z"),
+          createdAt: Date.parse("2026-06-09T09:00:00.000Z"),
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+    const confirmDialog = await screen.findByRole("dialog", {
+      name: "Simpan perubahan transaksi?",
+    });
+    await user.click(within(confirmDialog).getByRole("button", { name: "Simpan" }));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lines: [
+            expect.objectContaining({
+              stock_effect_snapshot: {
+                source_kind: "PACKAGE",
+                effects: [
+                  { id_produk: "prod-a", nama_produk_snapshot: "Produk A", unit_mutasi: "SMALL", qty_delta: -2 },
+                ],
+              },
+            }),
+          ],
+        }),
+      );
+    });
+  });
 });

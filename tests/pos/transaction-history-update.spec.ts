@@ -4,6 +4,7 @@ const getSession = vi.fn();
 const getTransaction = vi.fn();
 const putTransaction = vi.fn();
 const addQueue = vi.fn();
+const persistStockMutation = vi.fn();
 const transaction = vi.fn(async (...args: unknown[]) => {
   const callback = args.at(-1);
   if (typeof callback === "function") {
@@ -19,6 +20,10 @@ vi.mock("@/lib/offline/db", () => ({
     syncQueue: { add: addQueue },
     transaction,
   },
+}));
+
+vi.mock("@/features/inventory/hooks/use-stock-mutation", () => ({
+  persistStockMutation,
 }));
 
 describe("transaction history mutation contract", () => {
@@ -58,6 +63,7 @@ describe("transaction history mutation contract", () => {
       createdAt: Date.parse("2026-06-09T09:00:00.000Z"),
     });
     addQueue.mockResolvedValue(1);
+    persistStockMutation.mockResolvedValue({});
   });
 
   it("stamps edit audit metadata and rewrites the sync payload when a transaction is updated", async () => {
@@ -152,5 +158,64 @@ describe("transaction history mutation contract", () => {
       editedByUserId: "user-1",
       editedByUsername: "kasir",
     });
+  });
+
+  it("reverses stored package stock effects when soft deleting a transaction", async () => {
+    getTransaction.mockResolvedValueOnce({
+      id_transaksi: "tx-1",
+      short_id: "TRX-001",
+      kasir_user_id: "cashier-1",
+      kasir_username: "cashier",
+      payment_method: "cash",
+      subtotal_amount: 79000,
+      item_discount: 0,
+      order_discount: 0,
+      total_amount: 79000,
+      amount_received: 80000,
+      change_amount: 1000,
+      counts_for_cash: true,
+      is_deleted: false,
+      lines: [
+        {
+          id_produk: "pkg-1",
+          nama_produk: "Paket A",
+          unit_price: 79000,
+          qty: 2,
+          unit_mutasi: "SMALL",
+          unit_label: "paket",
+          line_discount: 0,
+          line_total: 79000,
+          stock_effect_snapshot: {
+            source_kind: "PACKAGE" as const,
+            effects: [
+              { id_produk: "prod-a", nama_produk_snapshot: "Produk A", unit_mutasi: "SMALL" as const, qty_delta: -2 },
+              { id_produk: "prod-b", nama_produk_snapshot: "Produk B", unit_mutasi: "LARGE" as const, qty_delta: -4 },
+            ],
+          },
+        },
+      ],
+      client_timestamp: Date.parse("2026-06-09T09:00:00.000Z"),
+      createdAt: Date.parse("2026-06-09T09:00:00.000Z"),
+    });
+
+    const { softDeleteTransactionHistory } = await import("@/features/pos/lib/transaction-history-update");
+    await softDeleteTransactionHistory("tx-1");
+
+    expect(persistStockMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jenis_mutasi: "STOCK_ADJUSTMENT",
+        id_produk: "prod-a",
+        delta_qty: 2,
+        unit_mutasi: "SMALL",
+      }),
+    );
+    expect(persistStockMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jenis_mutasi: "STOCK_ADJUSTMENT",
+        id_produk: "prod-b",
+        delta_qty: 4,
+        unit_mutasi: "LARGE",
+      }),
+    );
   });
 });

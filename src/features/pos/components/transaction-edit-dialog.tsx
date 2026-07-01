@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,7 +16,11 @@ import { formatCurrencyIdr } from "@/features/format/currency";
 import { PosCartItemDialog } from "@/features/pos/components/pos-cart-item-dialog";
 import { PosQtyDialog } from "@/features/pos/components/pos-qty-dialog";
 import { PosRemoveDialog } from "@/features/pos/components/pos-remove-dialog";
-import { computeCheckoutTotals, type PosPaymentMethod } from "@/features/pos/hooks/use-pos-checkout";
+import {
+  computeCheckoutTotals,
+  normalizePackageQtyInput,
+  type PosPaymentMethod,
+} from "@/features/pos/hooks/use-pos-checkout";
 import type { PosCartLine, PosCartUnitOption } from "@/features/pos/hooks/use-pos-cart";
 import { resolveLinePricing } from "@/features/pos/lib/special-pricing";
 import { getSellUnitOptions } from "@/features/pos/lib/product-units";
@@ -103,6 +107,7 @@ function toDraftLine(
     unit_mutasi: line.unit_mutasi ?? "SMALL",
     unit_label: line.unit_label ?? "pcs",
     pricing_snapshot: pricingSnapshot,
+    stock_effect_snapshot: (line as StoredTransactionLine).stock_effect_snapshot,
   };
 }
 
@@ -117,6 +122,7 @@ function toStoredLine(line: PosCartLine): StoredTransactionLine {
     line_discount: line.line_discount,
     line_total: Math.max(0, line.pricing_snapshot.automatic_subtotal - line.line_discount),
     pricing_snapshot: line.pricing_snapshot,
+    stock_effect_snapshot: line.stock_effect_snapshot,
   };
 
   return storedLine;
@@ -170,6 +176,7 @@ export function TransactionEditDialog({
     [normalizedLines, orderDiscount],
   );
   const isDeleted = transaction?.is_deleted ?? false;
+  const selectedProductIsPackage = (selectedProduct?.product_kind ?? "NORMAL") === "PACKAGE";
 
   const amountReceived =
     paymentMethod === "cash"
@@ -177,6 +184,26 @@ export function TransactionEditDialog({
       : undefined;
   const changeAmount =
     paymentMethod === "cash" ? Math.max(0, (amountReceived ?? totals.total) - totals.total) : 0;
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setLines(transaction?.lines.map(toDraftLine) ?? []);
+    setNote(transaction?.note ?? "");
+    setOrderDiscount(transaction?.order_discount ?? 0);
+    setPaymentMethod(transaction?.payment_method ?? "cash");
+    setAmountReceivedInput(String(transaction?.amount_received ?? transaction?.total_amount ?? 0));
+    setQuery("");
+    setQtyOpen(false);
+    setSelectedProduct(null);
+    setSelectedUnit("SMALL");
+    setEditingIndex(null);
+    setItemDialogOpen(false);
+    setRemoveLineIndex(null);
+    setConfirmAction(null);
+  }, [open, transaction]);
 
   const closeItemDialog = () => {
     setItemDialogOpen(false);
@@ -450,12 +477,15 @@ export function TransactionEditDialog({
       <PosQtyDialog
         defaultQty="1"
         defaultUnitMutasi={selectedUnit}
+        integerOnly={selectedProductIsPackage}
         onClose={() => setQtyOpen(false)}
         onConfirm={(payload) => {
           if (!selectedProduct) return;
           const options = getEffectiveUnitOptions(selectedProduct);
           const chosen = options.find((item) => item.unit_mutasi === payload.unit_mutasi) ?? options[0];
-          const qty = normalizeQuantityInput(payload.qty);
+          const qty = selectedProductIsPackage
+            ? normalizePackageQtyInput(payload.qty)
+            : normalizeQuantityInput(payload.qty);
           const pricingSnapshot = createPricingSnapshot({
             qty,
             unit_mutasi: chosen.unit_mutasi,
@@ -468,6 +498,8 @@ export function TransactionEditDialog({
             nama_produk_dasar: selectedProduct.nama_produk,
             harga_jual: chosen.unit_price,
             qty,
+            product_kind: selectedProduct.product_kind,
+            package_items: selectedProduct.package_items,
             line_discount: 0,
             unit_mutasi: chosen.unit_mutasi,
             unit_label: chosen.unit_label,

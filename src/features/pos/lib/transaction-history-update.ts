@@ -1,4 +1,8 @@
 import { computeCheckoutTotals, type CheckoutLineInput } from "@/features/pos/hooks/use-pos-checkout";
+import {
+  buildLineStockEffectSnapshot,
+  diffStockEffectMaps,
+} from "@/features/pos/lib/stock-effects";
 import { offlineDb, type PosPaymentMethod, type PosTransactionLineRecord, type PosTransactionRecord } from "@/lib/offline/db";
 import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 
@@ -68,6 +72,25 @@ async function enqueueTransactionSync(payload: PersistedTransactionRecord, now: 
   });
 }
 
+async function applyStockAdjustments(
+  id_transaksi: string,
+  deltas: Array<{ id_produk: string; unit_mutasi: "SMALL" | "LARGE"; qty_delta: number }>,
+) {
+  const { persistStockMutation } = await import("@/features/inventory/hooks/use-stock-mutation");
+  let logicalClock = 1;
+  for (const delta of deltas) {
+    await persistStockMutation({
+      id_transaksi,
+      id_produk: delta.id_produk,
+      unit_mutasi: delta.unit_mutasi,
+      delta_qty: delta.qty_delta,
+      jenis_mutasi: "STOCK_ADJUSTMENT",
+      logical_clock: logicalClock,
+    });
+    logicalClock += 1;
+  }
+}
+
 export async function updateTransactionHistory(input: TransactionHistoryEditableInput) {
   const [activeSession, current] = await Promise.all([
     requireActiveSession(),
@@ -78,7 +101,10 @@ export async function updateTransactionHistory(input: TransactionHistoryEditable
     throw new Error("Transaksi tidak ditemukan.");
   }
 
-  const normalizedLines = input.lines.map(normalizeLine);
+  const normalizedLines = input.lines.map((line) => ({
+    ...normalizeLine(line),
+    stock_effect_snapshot: line.stock_effect_snapshot ?? buildLineStockEffectSnapshot(line),
+  }));
   if (normalizedLines.length === 0) {
     throw new Error("Transaksi harus punya minimal satu item.");
   }
@@ -114,6 +140,11 @@ export async function updateTransactionHistory(input: TransactionHistoryEditable
     await enqueueTransactionSync(nextPayload, now);
   });
 
+  await applyStockAdjustments(
+    input.id_transaksi,
+    diffStockEffectMaps(current.lines as EditableTransactionLine[], normalizedLines),
+  );
+
   return nextPayload;
 }
 
@@ -144,6 +175,11 @@ export async function softDeleteTransactionHistory(id_transaksi: string) {
     await enqueueTransactionSync(nextPayload, now);
   });
 
+  await applyStockAdjustments(
+    id_transaksi,
+    diffStockEffectMaps(current.lines as EditableTransactionLine[], []),
+  );
+
   return nextPayload;
 }
 
@@ -170,6 +206,11 @@ export async function restoreTransactionHistory(id_transaksi: string) {
     await offlineDb.posTransactions.put(nextPayload);
     await enqueueTransactionSync(nextPayload, now);
   });
+
+  await applyStockAdjustments(
+    id_transaksi,
+    diffStockEffectMaps([], current.lines as EditableTransactionLine[]),
+  );
 
   return nextPayload;
 }
