@@ -44,8 +44,7 @@ export function MarketplaceStockTab({ products }: Props) {
   }, [result]);
 
   async function handleProcess() {
-    if (!isValidExcelColumnLabel(config.productIdColumn) ||
-      !isValidExcelColumnLabel(config.skuIdColumn) ||
+    if (!isValidExcelColumnLabel(config.skuIdColumn) ||
       !isValidExcelColumnLabel(config.stockColumn)
     ) {
       setError("Kolom harus memakai format huruf Excel.");
@@ -133,11 +132,6 @@ export function MarketplaceStockTab({ products }: Props) {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <ConfigField
-          label="Kolom ID Produk"
-          onChange={(value) => setConfig((current) => ({ ...current, productIdColumn: value }))}
-          value={config.productIdColumn}
-        />
         <ConfigField
           label="Kolom ID SKU"
           onChange={(value) => setConfig((current) => ({ ...current, skuIdColumn: value }))}

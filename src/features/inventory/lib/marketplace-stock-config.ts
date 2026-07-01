@@ -1,5 +1,4 @@
 export type MarketplaceExportConfig = {
-  productIdColumn: string;
   skuIdColumn: string;
   stockColumn: string;
   startRow: number;
@@ -7,7 +6,6 @@ export type MarketplaceExportConfig = {
 };
 
 export const DEFAULT_MARKETPLACE_EXPORT_CONFIG: MarketplaceExportConfig = {
-  productIdColumn: "B",
   skuIdColumn: "E",
   stockColumn: "I",
   startRow: 4,
@@ -23,9 +21,27 @@ export function loadMarketplaceExportConfig() {
       return DEFAULT_MARKETPLACE_EXPORT_CONFIG;
     }
 
+    const parsed = JSON.parse(raw) as Partial<MarketplaceExportConfig> & {
+      productIdColumn?: unknown;
+    };
+
     return {
-      ...DEFAULT_MARKETPLACE_EXPORT_CONFIG,
-      ...(JSON.parse(raw) as Partial<MarketplaceExportConfig>),
+      skuIdColumn:
+        typeof parsed.skuIdColumn === "string"
+          ? parsed.skuIdColumn
+          : DEFAULT_MARKETPLACE_EXPORT_CONFIG.skuIdColumn,
+      stockColumn:
+        typeof parsed.stockColumn === "string"
+          ? parsed.stockColumn
+          : DEFAULT_MARKETPLACE_EXPORT_CONFIG.stockColumn,
+      startRow:
+        typeof parsed.startRow === "number"
+          ? parsed.startRow
+          : DEFAULT_MARKETPLACE_EXPORT_CONFIG.startRow,
+      percentage:
+        typeof parsed.percentage === "number"
+          ? parsed.percentage
+          : DEFAULT_MARKETPLACE_EXPORT_CONFIG.percentage,
     };
   } catch {
     return DEFAULT_MARKETPLACE_EXPORT_CONFIG;

@@ -69,9 +69,7 @@ export function InventoryTabs() {
     is_active: boolean;
     is_marketplace: boolean;
     marketplace_product_name?: string;
-    marketplace_product_id?: string;
     marketplace_sku_id?: string;
-    marketplace_large_product_id?: string;
     marketplace_large_sku_id?: string;
     unit_small_name: string;
     unit_large_name?: string;

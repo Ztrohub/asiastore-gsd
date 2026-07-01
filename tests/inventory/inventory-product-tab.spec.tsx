@@ -90,7 +90,7 @@ describe("inventory product tab contract", () => {
     render(<InventoryTabs />);
     fireEvent.click(screen.getByRole("tab", { name: "Marketplace" }));
 
-    expect(await screen.findByLabelText("Kolom ID Produk")).toHaveValue("C");
+    expect(screen.queryByLabelText("Kolom ID Produk")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Kolom ID SKU")).toHaveValue("F");
     expect(screen.getByLabelText("Kolom Stok")).toHaveValue("J");
     expect(screen.getByLabelText("Start Row")).toHaveValue(6);
@@ -109,7 +109,7 @@ describe("inventory product tab contract", () => {
     render(<InventoryTabs />);
     fireEvent.click(screen.getByRole("tab", { name: "Marketplace" }));
 
-    fireEvent.change(await screen.findByLabelText("Kolom ID Produk"), {
+    fireEvent.change(await screen.findByLabelText("Kolom ID SKU"), {
       target: { value: "1B" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Proses & Download" }));
@@ -123,7 +123,7 @@ describe("inventory product tab contract", () => {
     sheet.addRow(["header 1"]);
     sheet.addRow(["header 2"]);
     sheet.addRow(["header 3"]);
-    sheet.addRow([null, "MP-TEH", null, null, "SKU-TEH", null, null, null, 99]);
+    sheet.addRow([null, "IGNORED-PRODUCT-ID", null, null, "SKU-TEH", null, null, null, 99]);
     sheet.addRow([null, "NOT-FOUND", null, null, "SKU-404", null, null, null, 99]);
     const bytes = await workbook.xlsx.writeBuffer();
     const file = new File([bytes], "template.xlsx", {
@@ -172,7 +172,7 @@ describe("inventory product tab contract", () => {
     expect(within(dialog).getByRole("button", { name: "Simpan Produk" })).toBeInTheDocument();
   });
 
-  it("submits marketplace metadata when marketplace checkbox is enabled", async () => {
+  it("submits marketplace metadata with sku-only identifiers when marketplace checkbox is enabled", async () => {
     render(<InventoryTabs />);
     fireEvent.click(screen.getByRole("button", { name: "Tambah Produk" }));
 
@@ -187,9 +187,6 @@ describe("inventory product tab contract", () => {
     fireEvent.change(within(dialog).getByLabelText("Nama produk marketplace"), {
       target: { value: "Kopi Marketplace Official" },
     });
-    fireEvent.change(within(dialog).getByLabelText("ID produk marketplace"), {
-      target: { value: "MP-001" },
-    });
     fireEvent.change(within(dialog).getByLabelText("ID SKU marketplace"), {
       target: { value: "SKU-MP-001" },
     });
@@ -203,12 +200,11 @@ describe("inventory product tab contract", () => {
       nama_produk: "Kopi Marketplace",
       is_marketplace: true,
       marketplace_product_name: "Kopi Marketplace Official",
-      marketplace_product_id: "MP-001",
       marketplace_sku_id: "SKU-MP-001",
     });
   });
 
-  it("submits separate marketplace identifiers for large unit when configured", async () => {
+  it("submits separate marketplace sku identifiers for large unit when configured", async () => {
     render(<InventoryTabs />);
     fireEvent.click(screen.getByRole("button", { name: "Tambah Produk" }));
 
@@ -223,9 +219,6 @@ describe("inventory product tab contract", () => {
     fireEvent.change(within(dialog).getByLabelText("Nama produk marketplace"), {
       target: { value: "Kopi Dus Marketplace Official" },
     });
-    fireEvent.change(within(dialog).getByLabelText("ID produk marketplace"), {
-      target: { value: "MP-001" },
-    });
     fireEvent.change(within(dialog).getByLabelText("ID SKU marketplace"), {
       target: { value: "SKU-MP-001" },
     });
@@ -239,9 +232,6 @@ describe("inventory product tab contract", () => {
     fireEvent.change(within(dialog).getByLabelText("Harga jual unit besar"), {
       target: { value: "150000" },
     });
-    fireEvent.change(within(dialog).getByLabelText("ID produk marketplace unit besar"), {
-      target: { value: "MP-001-DUS" },
-    });
     fireEvent.change(within(dialog).getByLabelText("ID SKU marketplace unit besar"), {
       target: { value: "SKU-MP-001-DUS" },
     });
@@ -254,9 +244,7 @@ describe("inventory product tab contract", () => {
     expect(saveProduct.mock.calls[0][0]).toMatchObject({
       nama_produk: "Kopi Dus Marketplace",
       is_marketplace: true,
-      marketplace_product_id: "MP-001",
       marketplace_sku_id: "SKU-MP-001",
-      marketplace_large_product_id: "MP-001-DUS",
       marketplace_large_sku_id: "SKU-MP-001-DUS",
     });
   });

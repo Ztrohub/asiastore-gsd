@@ -27,20 +27,19 @@ describe("marketplace stock template utilities", () => {
     expect(calculateMarketplaceStockValue(-8, 30)).toBe(0);
   });
 
-  it("updates only stock cells from the configured start row onward", async () => {
+  it("updates only stock cells from the configured start row onward using marketplace sku matching", async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Template");
 
     sheet.addRow(["header 1"]);
     sheet.addRow(["header 2"]);
     sheet.addRow(["header 3"]);
-    sheet.addRow([null, "PROD-1", null, null, "SKU-1", null, null, null, 99]);
-    sheet.addRow([null, "PROD-404", null, null, "SKU-404", null, null, null, 99]);
+    sheet.addRow([null, "ANY-PRODUCT-ID", null, null, "SKU-1", null, null, null, 99]);
+    sheet.addRow([null, "OTHER-ID", null, null, "SKU-404", null, null, null, 99]);
 
     const result = updateMarketplaceWorkbookStock(
       workbook,
       {
-        productIdColumn: "B",
         skuIdColumn: "E",
         stockColumn: "I",
         startRow: 4,
@@ -53,7 +52,6 @@ describe("marketplace stock template utilities", () => {
           stok_saat_ini: 11,
           is_active: true,
           is_marketplace: true,
-          marketplace_product_id: "PROD-1",
           marketplace_sku_id: "SKU-1",
           updatedAt: Date.now(),
         },
@@ -78,7 +76,7 @@ describe("marketplace stock template utilities", () => {
     sheet.addRow(["header 1"]);
     sheet.addRow(["header 2"]);
     sheet.addRow(["header 3"]);
-    sheet.addRow([null, "PROD-1", null, null, "SKU-1", null, null, null, 99]);
+    sheet.addRow([null, "ANY-PRODUCT-ID", null, null, "SKU-1", null, null, null, 99]);
     sheet.getColumn(9).width = 24;
     sheet.mergeCells("A1:C1");
     sheet.getCell("I4").font = { bold: true, color: { argb: "FFFF0000" } };
@@ -86,7 +84,6 @@ describe("marketplace stock template utilities", () => {
     const result = updateMarketplaceWorkbookStock(
       workbook,
       {
-        productIdColumn: "B",
         skuIdColumn: "E",
         stockColumn: "I",
         startRow: 4,
@@ -99,7 +96,6 @@ describe("marketplace stock template utilities", () => {
           stok_saat_ini: 11,
           is_active: true,
           is_marketplace: true,
-          marketplace_product_id: "PROD-1",
           marketplace_sku_id: "SKU-1",
           updatedAt: Date.now(),
         },
@@ -126,12 +122,11 @@ describe("marketplace stock template utilities", () => {
     sheet.addRow(["header 1"]);
     sheet.addRow(["header 2"]);
     sheet.addRow(["header 3"]);
-    sheet.addRow([null, "PROD-NEG", null, null, "SKU-NEG", null, null, null, 99]);
+    sheet.addRow([null, "OUTDATED-ID", null, null, "SKU-NEG", null, null, null, 99]);
 
     const result = updateMarketplaceWorkbookStock(
       workbook,
       {
-        productIdColumn: "B",
         skuIdColumn: "E",
         stockColumn: "I",
         startRow: 4,
@@ -144,7 +139,6 @@ describe("marketplace stock template utilities", () => {
           stok_saat_ini: -5,
           is_active: true,
           is_marketplace: true,
-          marketplace_product_id: "PROD-NEG",
           marketplace_sku_id: "SKU-NEG",
           updatedAt: Date.now(),
         },
@@ -156,19 +150,18 @@ describe("marketplace stock template utilities", () => {
     expect(result.summary.zeroedRows).toBe(0);
   });
 
-  it("uses large-unit marketplace identifiers with large-unit stock when matched", () => {
+  it("uses large-unit marketplace sku with large-unit stock when matched", () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Template");
 
     sheet.addRow(["header 1"]);
     sheet.addRow(["header 2"]);
     sheet.addRow(["header 3"]);
-    sheet.addRow([null, "PROD-DUS", null, null, "SKU-DUS", null, null, null, 99]);
+    sheet.addRow([null, "UNUSED-PRODUCT-ID", null, null, "SKU-DUS", null, null, null, 99]);
 
     const result = updateMarketplaceWorkbookStock(
       workbook,
       {
-        productIdColumn: "B",
         skuIdColumn: "E",
         stockColumn: "I",
         startRow: 4,
@@ -182,9 +175,7 @@ describe("marketplace stock template utilities", () => {
           stok_unit_besar_saat_ini: 2,
           is_active: true,
           is_marketplace: true,
-          marketplace_product_id: "PROD-PCS",
           marketplace_sku_id: "SKU-PCS",
-          marketplace_large_product_id: "PROD-DUS",
           marketplace_large_sku_id: "SKU-DUS",
           updatedAt: Date.now(),
         },
@@ -198,7 +189,6 @@ describe("marketplace stock template utilities", () => {
 
   it("persists export config locally and falls back to defaults when storage is unavailable", () => {
     saveMarketplaceExportConfig({
-      productIdColumn: "C",
       skuIdColumn: "F",
       stockColumn: "J",
       startRow: 6,
@@ -206,7 +196,6 @@ describe("marketplace stock template utilities", () => {
     });
 
     expect(loadMarketplaceExportConfig()).toEqual({
-      productIdColumn: "C",
       skuIdColumn: "F",
       stockColumn: "J",
       startRow: 6,

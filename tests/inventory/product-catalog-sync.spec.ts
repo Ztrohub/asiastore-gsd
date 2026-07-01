@@ -209,9 +209,7 @@ describe("product catalog offline-first sync contract", () => {
       allow_sell_in_large: true,
       is_marketplace: true,
       marketplace_product_name: "Produk Marketplace Official",
-      marketplace_product_id: "MP-001",
       marketplace_sku_id: "SKU-MP-001",
-      marketplace_large_product_id: "MP-001-DUS",
       marketplace_large_sku_id: "SKU-MP-001-DUS",
     } as never);
 
@@ -219,13 +217,13 @@ describe("product catalog offline-first sync contract", () => {
     const queueRow = addQueue.mock.calls[0][0];
     const queuedPayload = JSON.parse(queueRow.deltaPayload);
 
-    expect(product.marketplace_product_id).toBe("MP-001");
+    expect(product.marketplace_product_id).toBeUndefined();
     expect(product.marketplace_sku_id).toBe("SKU-MP-001");
-    expect(product.marketplace_large_product_id).toBe("MP-001-DUS");
+    expect(product.marketplace_large_product_id).toBeUndefined();
     expect(product.marketplace_large_sku_id).toBe("SKU-MP-001-DUS");
-    expect(queuedPayload.marketplace_product_id).toBe("MP-001");
+    expect(queuedPayload).not.toHaveProperty("marketplace_product_id");
     expect(queuedPayload.marketplace_sku_id).toBe("SKU-MP-001");
-    expect(queuedPayload.marketplace_large_product_id).toBe("MP-001-DUS");
+    expect(queuedPayload).not.toHaveProperty("marketplace_large_product_id");
     expect(queuedPayload.marketplace_large_sku_id).toBe("SKU-MP-001-DUS");
   });
 

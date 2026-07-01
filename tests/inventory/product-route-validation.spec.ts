@@ -117,7 +117,6 @@ describe("inventory product route validation", () => {
             allow_sell_in_large: false,
             is_marketplace: true,
             marketplace_product_name: "Produk Marketplace Tokopedia",
-            marketplace_product_id: "MP-001",
             marketplace_sku_id: "SKU-MP-001",
             updatedAt: 1781070003000,
           },
@@ -135,7 +134,6 @@ describe("inventory product route validation", () => {
         id_produk: "prod-marketplace",
         is_marketplace: true,
         marketplace_product_name: "Produk Marketplace Tokopedia",
-        marketplace_product_id: "MP-001",
         marketplace_sku_id: "SKU-MP-001",
       }),
     );
@@ -166,9 +164,7 @@ describe("inventory product route validation", () => {
             allow_sell_in_large: true,
             is_marketplace: true,
             marketplace_product_name: "Produk Marketplace Tokopedia",
-            marketplace_product_id: "MP-001",
             marketplace_sku_id: "SKU-MP-001",
-            marketplace_large_product_id: "MP-001-DUS",
             marketplace_large_sku_id: "SKU-MP-001-DUS",
             updatedAt: 1781070003000,
           },
@@ -185,15 +181,13 @@ describe("inventory product route validation", () => {
       expect.objectContaining({
         id_produk: "prod-marketplace-large",
         is_marketplace: true,
-        marketplace_product_id: "MP-001",
         marketplace_sku_id: "SKU-MP-001",
-        marketplace_large_product_id: "MP-001-DUS",
         marketplace_large_sku_id: "SKU-MP-001-DUS",
       }),
     );
   });
 
-  it("rejects marketplace payloads when required marketplace identifiers are missing", async () => {
+  it("rejects marketplace payloads when required marketplace sku identifiers are missing", async () => {
     const { POST } = await import("@/app/api/inventory/products/route");
 
     const request = new Request("http://localhost/api/inventory/products", {
@@ -214,8 +208,7 @@ describe("inventory product route validation", () => {
             allow_sell_in_large: false,
             is_marketplace: true,
             marketplace_product_name: "Produk Marketplace Tokopedia",
-            marketplace_product_id: "",
-            marketplace_sku_id: "SKU-MP-001",
+            marketplace_sku_id: "",
             updatedAt: 1781070003000,
           },
         ],

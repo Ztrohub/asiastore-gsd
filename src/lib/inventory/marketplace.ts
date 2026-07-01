@@ -11,7 +11,6 @@ type ProductMarketplaceInput = {
 
 export type ProductMarketplaceListing = {
   unit: "small" | "large";
-  marketplace_product_id: string;
   marketplace_sku_id: string;
   stock: number;
 };
@@ -60,14 +59,8 @@ export function normalizeProductMarketplace(
     marketplace_product_name: normalizeMarketplaceText(
       input.marketplace_product_name ?? fallback?.marketplace_product_name,
     ),
-    marketplace_product_id: normalizeMarketplaceText(
-      input.marketplace_product_id ?? fallback?.marketplace_product_id,
-    ),
     marketplace_sku_id: normalizeMarketplaceText(
       input.marketplace_sku_id ?? fallback?.marketplace_sku_id,
-    ),
-    marketplace_large_product_id: normalizeMarketplaceText(
-      input.marketplace_large_product_id ?? fallback?.marketplace_large_product_id,
     ),
     marketplace_large_sku_id: normalizeMarketplaceText(
       input.marketplace_large_sku_id ?? fallback?.marketplace_large_sku_id,
@@ -87,7 +80,6 @@ export function isValidProductMarketplace(input: ProductMarketplaceInput) {
 
   const values = [
     normalized.marketplace_product_name,
-    normalized.marketplace_product_id,
     normalized.marketplace_sku_id,
   ];
 
@@ -95,17 +87,13 @@ export function isValidProductMarketplace(input: ProductMarketplaceInput) {
     return false;
   }
 
-  const hasLargeMarketplaceValue =
-    normalized.marketplace_large_product_id !== undefined ||
-    normalized.marketplace_large_sku_id !== undefined;
+  const hasLargeMarketplaceValue = normalized.marketplace_large_sku_id !== undefined;
 
   if (!hasLargeMarketplaceValue) {
     return true;
   }
 
-  return [normalized.marketplace_large_product_id, normalized.marketplace_large_sku_id].every(
-    isValidMarketplaceValue,
-  );
+  return isValidMarketplaceValue(normalized.marketplace_large_sku_id);
 }
 
 export function toDatabaseProductMarketplace(
@@ -113,13 +101,19 @@ export function toDatabaseProductMarketplace(
   fallback?: ProductMarketplaceInput | null,
 ) {
   const normalized = normalizeProductMarketplace(input, fallback);
+  const fallbackProductId = normalizeMarketplaceText(fallback?.marketplace_product_id);
+  const fallbackLargeProductId = normalizeMarketplaceText(fallback?.marketplace_large_product_id);
+  const legacyProductId =
+    fallbackProductId ?? normalizeMarketplaceText(input.marketplace_product_id);
+  const legacyLargeProductId =
+    fallbackLargeProductId ?? normalizeMarketplaceText(input.marketplace_large_product_id);
 
   return {
     is_marketplace: normalized.is_marketplace,
     marketplace_product_name: normalized.marketplace_product_name ?? null,
-    marketplace_product_id: normalized.marketplace_product_id ?? null,
+    marketplace_product_id: normalized.is_marketplace ? legacyProductId ?? null : null,
     marketplace_sku_id: normalized.marketplace_sku_id ?? null,
-    marketplace_large_product_id: normalized.marketplace_large_product_id ?? null,
+    marketplace_large_product_id: normalized.is_marketplace ? legacyLargeProductId ?? null : null,
     marketplace_large_sku_id: normalized.marketplace_large_sku_id ?? null,
   };
 }
@@ -136,19 +130,17 @@ export function getProductMarketplaceListings(input: ProductMarketplaceInput): P
 
   const listings: ProductMarketplaceListing[] = [];
 
-  if (normalized.marketplace_product_id && normalized.marketplace_sku_id) {
+  if (normalized.marketplace_sku_id) {
     listings.push({
       unit: "small",
-      marketplace_product_id: normalized.marketplace_product_id,
       marketplace_sku_id: normalized.marketplace_sku_id,
       stock: normalizeMarketplaceStock(input.stok_saat_ini),
     });
   }
 
-  if (normalized.marketplace_large_product_id && normalized.marketplace_large_sku_id) {
+  if (normalized.marketplace_large_sku_id) {
     listings.push({
       unit: "large",
-      marketplace_product_id: normalized.marketplace_large_product_id,
       marketplace_sku_id: normalized.marketplace_large_sku_id,
       stock: normalizeMarketplaceStock(input.stok_unit_besar_saat_ini),
     });

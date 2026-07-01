@@ -23,7 +23,7 @@ function buildMarketplaceLookup(products: ProductRecord[]) {
     products
       .flatMap((product) =>
         getProductMarketplaceListings(product).map((listing) => [
-          `${listing.marketplace_product_id.trim()}::${listing.marketplace_sku_id.trim()}`,
+          listing.marketplace_sku_id.trim(),
           listing,
         ] as const),
       ),
@@ -49,7 +49,6 @@ export function updateMarketplaceWorkbookStock(
   }
 
   const lookup = buildMarketplaceLookup(products);
-  const productIdIndex = columnLabelToIndex(config.productIdColumn);
   const skuIdIndex = columnLabelToIndex(config.skuIdColumn);
   const stockIndex = columnLabelToIndex(config.stockColumn);
 
@@ -59,15 +58,14 @@ export function updateMarketplaceWorkbookStock(
 
   for (let rowNumber = Math.max(config.startRow, 1); rowNumber <= sheet.rowCount; rowNumber += 1) {
     const row = sheet.getRow(rowNumber);
-    const productId = row.getCell(productIdIndex + 1).text.trim();
     const skuId = row.getCell(skuIdIndex + 1).text.trim();
 
-    if (!productId && !skuId) {
+    if (!skuId) {
       continue;
     }
 
     totalRows += 1;
-    const listing = lookup.get(`${productId}::${skuId}`);
+    const listing = lookup.get(skuId);
 
     if (listing) {
       matchedRows += 1;
