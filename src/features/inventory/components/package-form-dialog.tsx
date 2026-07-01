@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { ProductRecord } from "@/lib/offline/db";
+import {
+  createProductSearch,
+  getProductMatchIndices,
+  highlightMatchedText,
+} from "@/lib/search/product-fuzzy-search";
 
 type PackageItemPayload = {
   component_product_id: string;
@@ -37,8 +42,10 @@ type SubmitPayload = {
 
 type ComponentDraft = {
   component_product_id: string;
+  component_product_query: string;
   component_unit: "SMALL" | "LARGE";
   component_qty: string;
+  search_open: boolean;
 };
 
 type Props = {
@@ -49,11 +56,16 @@ type Props = {
   onSubmit: (payload: SubmitPayload) => Promise<void>;
 };
 
-function createComponentDraft(item?: ExistingPackageItem): ComponentDraft {
+function createComponentDraft(
+  item?: ExistingPackageItem,
+  componentProductName?: string,
+): ComponentDraft {
   return {
     component_product_id: item?.component_product_id ?? "",
+    component_product_query: componentProductName ?? "",
     component_unit: item?.component_unit ?? "SMALL",
     component_qty: item ? String(item.component_qty) : "1",
+    search_open: false,
   };
 }
 
@@ -65,6 +77,15 @@ export function PackageFormDialog({
   onSubmit,
 }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
+  const componentProductsById = useMemo(
+    () =>
+      new Map(componentProducts.map((product) => [product.id_produk, product])),
+    [componentProducts],
+  );
+  const searchProducts = useMemo(
+    () => createProductSearch(componentProducts),
+    [componentProducts],
+  );
   const [namaPaket, setNamaPaket] = useState(editingPackage?.nama_produk ?? "");
   const [sku, setSku] = useState(editingPackage?.sku ?? "");
   const [isMarketplace, setIsMarketplace] = useState(editingPackage?.is_marketplace ?? false);
@@ -76,7 +97,12 @@ export function PackageFormDialog({
   );
   const [componentRows, setComponentRows] = useState<ComponentDraft[]>(
     editingPackage?.package_items?.length
-      ? editingPackage.package_items.map((item) => createComponentDraft(item))
+      ? editingPackage.package_items.map((item) =>
+          createComponentDraft(
+            item,
+            componentProductsById.get(item.component_product_id)?.nama_produk ?? "",
+          ),
+        )
       : [createComponentDraft()],
   );
   const [isActive, setIsActive] = useState(editingPackage?.is_active ?? true);
@@ -86,11 +112,43 @@ export function PackageFormDialog({
   function updateComponentRow(
     index: number,
     field: keyof ComponentDraft,
-    value: string,
+    value: string | boolean,
   ) {
     setComponentRows((current) =>
       current.map((row, rowIndex) =>
         rowIndex === index ? { ...row, [field]: value } : row,
+      ),
+    );
+  }
+
+  function openComponentSearch(index: number) {
+    setComponentRows((current) =>
+      current.map((row, rowIndex) => ({
+        ...row,
+        search_open: rowIndex === index,
+      })),
+    );
+  }
+
+  function closeComponentSearch(index: number) {
+    setComponentRows((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, search_open: false } : row,
+      ),
+    );
+  }
+
+  function selectComponentProduct(index: number, product: ProductRecord) {
+    setComponentRows((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index
+          ? {
+              ...row,
+              component_product_id: product.id_produk,
+              component_product_query: product.nama_produk,
+              search_open: false,
+            }
+          : { ...row, search_open: false },
       ),
     );
   }
@@ -267,6 +325,9 @@ export function PackageFormDialog({
             <div className="space-y-3">
               {componentRows.map((row, index) => {
                 const rowNumber = index + 1;
+                const filteredProducts = searchProducts(row.component_product_query);
+                const selectedProduct =
+                  componentProductsById.get(row.component_product_id);
 
                 return (
                   <div
@@ -280,21 +341,59 @@ export function PackageFormDialog({
                       >
                         Produk komponen {rowNumber}
                       </label>
-                      <select
-                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                        id={`package-component-product-${rowNumber}`}
-                        onChange={(event) =>
-                          updateComponentRow(index, "component_product_id", event.target.value)
-                        }
-                        value={row.component_product_id}
-                      >
-                        <option value="">Pilih produk</option>
-                        {componentProducts.map((product) => (
-                          <option key={product.id_produk} value={product.id_produk}>
-                            {product.nama_produk}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <Input
+                          aria-expanded={row.search_open}
+                          id={`package-component-product-${rowNumber}`}
+                          onChange={(event) => {
+                            updateComponentRow(
+                              index,
+                              "component_product_query",
+                              event.target.value,
+                            );
+                            openComponentSearch(index);
+                          }}
+                          onFocus={() => openComponentSearch(index)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              closeComponentSearch(index);
+                            }
+                          }}
+                          placeholder="Cari nama atau SKU..."
+                          value={row.component_product_query}
+                        />
+                        {row.search_open ? (
+                          <div className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-md border border-border bg-background shadow-sm">
+                            {filteredProducts.length === 0 ? (
+                              <p className="px-3 py-2 text-sm text-muted-foreground">
+                                Produk tidak ditemukan.
+                              </p>
+                            ) : (
+                              filteredProducts.map((result) => (
+                                <button
+                                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                                  key={result.product.id_produk}
+                                  onClick={() => selectComponentProduct(index, result.product)}
+                                  type="button"
+                                >
+                                  <span>
+                                    {highlightMatchedText(
+                                      result.product.nama_produk,
+                                      getProductMatchIndices(result.matches, "nama_produk"),
+                                    )}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {result.product.sku ?? "-"}
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Dipilih: {selectedProduct?.nama_produk ?? "Belum ada produk"}
+                      </p>
                     </div>
 
                     <div className="space-y-1">

@@ -297,8 +297,9 @@ describe("inventory product tab contract", () => {
       target: { value: "SKU-PKT-A" },
     });
     fireEvent.change(within(dialog).getByLabelText("Produk komponen 1"), {
-      target: { value: "p-1" },
+      target: { value: "kopi tubruk" },
     });
+    fireEvent.click(await within(dialog).findByRole("button", { name: /Kopi Tubruk/ }));
     fireEvent.change(within(dialog).getByLabelText("Unit komponen 1"), {
       target: { value: "SMALL" },
     });
@@ -316,6 +317,27 @@ describe("inventory product tab contract", () => {
           package_items: [{ component_product_id: "p-1", component_unit: "SMALL", component_qty: 2 }],
         }),
       );
+    });
+  });
+
+  it("filters and selects package component products from a search list", async () => {
+    render(<InventoryTabs />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Paket" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tambah Paket" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Tambah Paket" });
+    const componentInput = within(dialog).getByLabelText("Produk komponen 1");
+
+    fireEvent.change(componentInput, { target: { value: "teh" } });
+
+    expect(await within(dialog).findByRole("button", { name: /Teh Tarik/ })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: /Kopi Tubruk/ })).not.toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /Teh Tarik/ }));
+
+    await waitFor(() => {
+      expect(componentInput).toHaveValue("Teh Tarik");
     });
   });
 
