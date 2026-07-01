@@ -146,6 +146,69 @@ export type PosTransactionRecord = {
   createdAt: number;
 };
 
+function normalizeInventoryMutationUnit(value: unknown): InventoryMutationUnit | undefined {
+  return value === "SMALL" || value === "LARGE" ? value : undefined;
+}
+
+export function normalizeStockEffectSnapshot(value: unknown): StockEffectSnapshot | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const candidate = value as {
+    source_kind?: unknown;
+    effects?: unknown;
+  };
+  const sourceKind =
+    candidate.source_kind === "NORMAL" || candidate.source_kind === "PACKAGE"
+      ? candidate.source_kind
+      : undefined;
+  if (!sourceKind || !Array.isArray(candidate.effects)) {
+    return undefined;
+  }
+
+  const effects = candidate.effects.map((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      return undefined;
+    }
+
+    const effect = entry as {
+      id_produk?: unknown;
+      nama_produk_snapshot?: unknown;
+      unit_mutasi?: unknown;
+      qty_delta?: unknown;
+    };
+    const idProduk = typeof effect.id_produk === "string" ? effect.id_produk.trim() : "";
+    const namaProdukSnapshot =
+      typeof effect.nama_produk_snapshot === "string" ? effect.nama_produk_snapshot.trim() : "";
+    const unitMutasi = normalizeInventoryMutationUnit(effect.unit_mutasi);
+    const qtyDelta =
+      typeof effect.qty_delta === "number" && Number.isFinite(effect.qty_delta)
+        ? effect.qty_delta
+        : undefined;
+
+    if (!idProduk || !namaProdukSnapshot || !unitMutasi || qtyDelta === undefined) {
+      return undefined;
+    }
+
+    return {
+      id_produk: idProduk,
+      nama_produk_snapshot: namaProdukSnapshot,
+      unit_mutasi: unitMutasi,
+      qty_delta: qtyDelta,
+    };
+  });
+
+  if (effects.some((effect) => !effect)) {
+    return undefined;
+  }
+
+  return {
+    source_kind: sourceKind,
+    effects,
+  };
+}
+
 class LocalPosDatabase extends Dexie {
   credentialCache!: EntityTable<CredentialCacheRecord, "username">;
   localSessions!: EntityTable<LocalSessionRecord, "key">;

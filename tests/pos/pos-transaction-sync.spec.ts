@@ -19,15 +19,19 @@ const markFailed = vi.fn();
 const markSendFailed = vi.fn();
 const persistStockOutMutation = vi.fn();
 
-vi.mock("@/lib/offline/db", () => ({
-  offlineDb: {
-    localSessions: { get: getSession },
-    posTransactions: { put: putTx },
-    syncQueue: { add: addQueue },
-    appMeta: { get: appMetaGet, put: appMetaPut },
-    transaction,
-  },
-}));
+vi.mock("@/lib/offline/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/offline/db")>();
+  return {
+    ...actual,
+    offlineDb: {
+      localSessions: { get: getSession },
+      posTransactions: { put: putTx },
+      syncQueue: { add: addQueue },
+      appMeta: { get: appMetaGet, put: appMetaPut },
+      transaction,
+    },
+  };
+});
 
 vi.mock("@/features/pos/hooks/use-stock-out-mutation", () => ({
   persistStockOutMutation,
@@ -51,6 +55,24 @@ const pricingSnapshot = {
   breakdown: [
     { qty: 1.1, unit_price: 10000, total: 11000, source: "base" as const },
     { qty: 0.5, unit_price: 6000, total: 6000, source: "special" as const },
+  ],
+};
+
+const stockEffectSnapshot = {
+  source_kind: "PACKAGE" as const,
+  effects: [
+    {
+      id_produk: "prod-a",
+      nama_produk_snapshot: "Produk A",
+      unit_mutasi: "SMALL" as const,
+      qty_delta: -2,
+    },
+    {
+      id_produk: "prod-b",
+      nama_produk_snapshot: "Produk B",
+      unit_mutasi: "LARGE" as const,
+      qty_delta: -4,
+    },
   ],
 };
 
@@ -128,6 +150,38 @@ describe("pos transaction sync contract", () => {
     expect(postPosTransactions).toHaveBeenCalledWith([
       expect.objectContaining({
         lines: [expect.objectContaining({ pricing_snapshot: pricingSnapshot })],
+      }),
+    ]);
+  });
+
+  it("submits stock effect snapshots from queued package transactions without stripping the payload", async () => {
+    const payload = {
+      id_transaksi: "tx-1",
+      lines: [
+        {
+          id_produk: "pkg-1",
+          nama_produk: "Paket A",
+          unit_price: 79000,
+          qty: 2,
+          line_discount: 0,
+          line_total: 158000,
+          stock_effect_snapshot: stockEffectSnapshot,
+        },
+      ],
+    };
+    getRetryableQueueByEntity.mockResolvedValue([
+      { id: 10, deltaPayload: JSON.stringify(payload) },
+    ]);
+    postPosTransactions.mockResolvedValue({
+      results: [{ id_transaksi: "tx-1", status: "acked" }],
+    });
+
+    const { runPosSyncPass } = await import("@/lib/offline/pos-sync");
+    await runPosSyncPass();
+
+    expect(postPosTransactions).toHaveBeenCalledWith([
+      expect.objectContaining({
+        lines: [expect.objectContaining({ stock_effect_snapshot: stockEffectSnapshot })],
       }),
     ]);
   });
@@ -243,6 +297,121 @@ describe("pos transaction sync contract", () => {
 
     expect(rows[0]?.lines[0]).toMatchObject({
       pricing_snapshot: pricingSnapshot,
+    });
+  });
+
+  it("persists and re-reads stock effect snapshots in the server transaction batch mapping", async () => {
+    vi.resetModules();
+
+    const upsert = vi.fn().mockResolvedValue(undefined);
+    const deleteMany = vi.fn().mockResolvedValue(undefined);
+    const createMany = vi.fn().mockResolvedValue(undefined);
+    const queryRaw = vi.fn().mockResolvedValue([{ id_transaksi: "tx-remote-1", sync_at: new Date("2026-06-01T01:00:00.000Z") }]);
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        id_transaksi: "tx-remote-1",
+        short_id: "TRX-001",
+        kasir_user_id: "user-1",
+        kasir_username: "kasir",
+        payment_method: "CASH",
+        subtotal_amount: 79000,
+        item_discount: 0,
+        order_discount: 0,
+        total_amount: 79000,
+        amount_received: 80000,
+        change_amount: 1000,
+        counts_for_cash: true,
+        note: "catatan",
+        is_deleted: false,
+        editedAt: null,
+        editedByUserId: null,
+        editedByUsername: null,
+        deletedAt: null,
+        deletedByUserId: null,
+        deletedByUsername: null,
+        client_timestamp: new Date("2026-06-01T00:00:00.000Z"),
+        createdAt: new Date("2026-06-01T01:00:00.000Z"),
+        lines: [
+          {
+            id_produk: "pkg-1",
+            nama_produk: "Paket A",
+            unit_price: 79000,
+            qty: 2,
+            unit_mutasi: "SMALL",
+            unit_label: "paket",
+            line_discount: 0,
+            line_total: 79000,
+            pricing_snapshot: null,
+            stock_effect_snapshot: stockEffectSnapshot,
+          },
+        ],
+      },
+    ]);
+
+    vi.doMock("@/lib/db/prisma", () => ({
+      prisma: {
+        $queryRaw: queryRaw,
+        $transaction: vi.fn(async (callback: (trx: unknown) => Promise<unknown>) =>
+          callback({
+            posTransaction: { upsert },
+            posTransactionLine: { deleteMany, createMany },
+          }),
+        ),
+        posTransaction: { findMany },
+      },
+    }));
+    vi.doMock("@/lib/sync/pos-transaction-sync-cursor", () => ({
+      parsePosTransactionSyncCursor: vi.fn().mockReturnValue(undefined),
+    }));
+
+    const { createPosTransactionBatch, listPosTransactionsForSync } = await import(
+      "@/lib/db/pos-transactions"
+    );
+
+    await createPosTransactionBatch([
+      {
+        id_transaksi: "tx-remote-1",
+        short_id: "TRX-001",
+        kasir_user_id: "user-1",
+        kasir_username: "kasir",
+        payment_method: "cash",
+        subtotal_amount: 79000,
+        item_discount: 0,
+        order_discount: 0,
+        total_amount: 79000,
+        amount_received: 80000,
+        change_amount: 1000,
+        counts_for_cash: true,
+        note: "catatan",
+        client_timestamp: Date.parse("2026-06-01T00:00:00.000Z"),
+        lines: [
+          {
+            id_produk: "pkg-1",
+            nama_produk: "Paket A",
+            unit_price: 79000,
+            qty: 2,
+            unit_mutasi: "SMALL",
+            unit_label: "paket",
+            line_discount: 0,
+            line_total: 79000,
+            stock_effect_snapshot: stockEffectSnapshot,
+          },
+        ],
+      },
+    ]);
+
+    expect(createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          stock_effect_snapshot: stockEffectSnapshot,
+        }),
+      ],
+    });
+
+    const rows = await listPosTransactionsForSync();
+
+    expect(rows[0]?.lines[0]).toMatchObject({
+      stock_effect_snapshot: stockEffectSnapshot,
     });
   });
 

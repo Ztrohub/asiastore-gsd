@@ -1,4 +1,8 @@
-import { offlineDb, type PosTransactionRecord } from "@/lib/offline/db";
+import {
+  normalizeStockEffectSnapshot,
+  offlineDb,
+  type PosTransactionRecord,
+} from "@/lib/offline/db";
 import { normalizePricingSnapshot } from "@/lib/pricing/special-price";
 import {
   buildPosTransactionCursorQuery,
@@ -143,6 +147,7 @@ function normalizeLocalTransaction(record: PosTransactionRecord): PosTransaction
       unit_mutasi: line.unit_mutasi ?? undefined,
       unit_label: line.unit_label?.trim() || undefined,
       pricing_snapshot: normalizePricingSnapshot(line.pricing_snapshot),
+      stock_effect_snapshot: normalizeStockEffectSnapshot(line.stock_effect_snapshot),
     })),
   };
 }
@@ -167,6 +172,7 @@ function normalizeServerTransaction(record: PosTransactionServerRecord): PosTran
       unit_mutasi: line.unit_mutasi ?? undefined,
       unit_label: line.unit_label?.trim() || undefined,
       pricing_snapshot: normalizePricingSnapshot(line.pricing_snapshot),
+      stock_effect_snapshot: normalizeStockEffectSnapshot(line.stock_effect_snapshot),
     })),
   });
 }

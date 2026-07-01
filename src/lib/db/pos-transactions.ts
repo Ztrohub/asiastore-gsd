@@ -1,6 +1,7 @@
 import { PosPaymentMethod, Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "@/lib/db/prisma";
+import { normalizeStockEffectSnapshot, type StockEffectSnapshot } from "@/lib/offline/db";
 import { normalizePricingSnapshot, type PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 import { parsePosTransactionSyncCursor } from "@/lib/sync/pos-transaction-sync-cursor";
 
@@ -38,6 +39,7 @@ export type PosTransactionBatchInput = {
     line_discount: number;
     line_total: number;
     pricing_snapshot?: PosLinePricingSnapshot;
+    stock_effect_snapshot?: StockEffectSnapshot;
   }>;
 };
 
@@ -56,6 +58,15 @@ function serializePricingSnapshot(snapshot: unknown) {
 
 function deserializePricingSnapshot(value: Prisma.JsonValue | null | undefined) {
   return normalizePricingSnapshot(value);
+}
+
+function serializeStockEffectSnapshot(snapshot: unknown) {
+  const normalized = normalizeStockEffectSnapshot(snapshot);
+  return normalized ? (normalized as Prisma.InputJsonValue) : Prisma.DbNull;
+}
+
+function deserializeStockEffectSnapshot(value: Prisma.JsonValue | null | undefined) {
+  return normalizeStockEffectSnapshot(value);
 }
 
 function getEffectiveSyncDate(transaction: {
@@ -150,6 +161,7 @@ export async function createPosTransactionBatch(transactions: PosTransactionBatc
             line_discount: Math.trunc(line.line_discount),
             line_total: Math.trunc(line.line_total),
             pricing_snapshot: serializePricingSnapshot(line.pricing_snapshot),
+            stock_effect_snapshot: serializeStockEffectSnapshot(line.stock_effect_snapshot),
           })),
         });
       });
@@ -240,6 +252,7 @@ export async function listPosTransactionsForSync(params?: { cursor?: string; lim
       line_discount: line.line_discount,
       line_total: line.line_total,
       pricing_snapshot: deserializePricingSnapshot(line.pricing_snapshot),
+      stock_effect_snapshot: deserializeStockEffectSnapshot(line.stock_effect_snapshot),
     })),
   }));
 }

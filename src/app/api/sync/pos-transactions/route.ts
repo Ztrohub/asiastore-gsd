@@ -11,6 +11,7 @@ import {
   parsePosTransactionSyncCursor,
   serializePosTransactionSyncCursor,
 } from "@/lib/sync/pos-transaction-sync-cursor";
+import type { StockEffectSnapshot } from "@/lib/offline/db";
 import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 
 type Body = {
@@ -46,6 +47,7 @@ type Body = {
       line_discount: number;
       line_total: number;
       pricing_snapshot?: PosLinePricingSnapshot;
+      stock_effect_snapshot?: StockEffectSnapshot;
     }>;
   }>;
 };

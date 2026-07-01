@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -128,7 +128,7 @@ function toStoredLine(line: PosCartLine): StoredTransactionLine {
   return storedLine;
 }
 
-export function TransactionEditDialog({
+function TransactionEditDialogDraft({
   open,
   transaction,
   saving = false,
@@ -184,26 +184,6 @@ export function TransactionEditDialog({
       : undefined;
   const changeAmount =
     paymentMethod === "cash" ? Math.max(0, (amountReceived ?? totals.total) - totals.total) : 0;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    setLines(transaction?.lines.map(toDraftLine) ?? []);
-    setNote(transaction?.note ?? "");
-    setOrderDiscount(transaction?.order_discount ?? 0);
-    setPaymentMethod(transaction?.payment_method ?? "cash");
-    setAmountReceivedInput(String(transaction?.amount_received ?? transaction?.total_amount ?? 0));
-    setQuery("");
-    setQtyOpen(false);
-    setSelectedProduct(null);
-    setSelectedUnit("SMALL");
-    setEditingIndex(null);
-    setItemDialogOpen(false);
-    setRemoveLineIndex(null);
-    setConfirmAction(null);
-  }, [open, transaction]);
 
   const closeItemDialog = () => {
     setItemDialogOpen(false);
@@ -616,4 +596,12 @@ export function TransactionEditDialog({
       />
     </>
   );
+}
+
+export function TransactionEditDialog(props: Props) {
+  const draftKey = props.transaction
+    ? `${props.transaction.id_transaksi}:${props.transaction.editedAt ?? 0}:${props.transaction.deletedAt ?? 0}:${props.open ? "open" : "closed"}`
+    : `empty:${props.open ? "open" : "closed"}`;
+
+  return <TransactionEditDialogDraft key={draftKey} {...props} />;
 }
