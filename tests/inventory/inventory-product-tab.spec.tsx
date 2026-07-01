@@ -23,6 +23,7 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         harga_jual: 15000,
         stok_saat_ini: 8,
         is_active: true,
+        product_kind: "NORMAL",
         is_marketplace: false,
         updatedAt: Date.now(),
       },
@@ -33,6 +34,7 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         harga_jual: 12000,
         stok_saat_ini: 4,
         is_active: true,
+        product_kind: "NORMAL",
         is_marketplace: true,
         marketplace_product_id: "MP-TEH",
         marketplace_sku_id: "SKU-TEH",
@@ -45,9 +47,21 @@ vi.mock("@/features/inventory/hooks/use-product-catalog", () => ({
         harga_jual: 17000,
         stok_saat_ini: 3,
         is_active: true,
+        product_kind: "NORMAL",
         is_marketplace: true,
         marketplace_product_id: "MP-SUSU",
         marketplace_sku_id: "SKU-SUSU",
+        updatedAt: Date.now(),
+      },
+      {
+        id_produk: "pkg-1",
+        nama_produk: "Paket A",
+        sku: "PKT-A",
+        harga_jual: 30000,
+        stok_saat_ini: 4,
+        is_active: true,
+        product_kind: "PACKAGE",
+        package_items: [{ component_product_id: "p-1", component_unit: "SMALL", component_qty: 2 }],
         updatedAt: Date.now(),
       },
     ],
@@ -70,9 +84,22 @@ describe("inventory product tab contract", () => {
   it("renders inventory tabs without stock adjustment", () => {
     render(<InventoryTabs />);
     expect(screen.getByRole("tab", { name: "Produk" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Paket" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Stock In" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Marketplace" })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Stock Adjustment" })).not.toBeInTheDocument();
+  });
+
+  it("shows a Paket tab and keeps package rows out of the Produk tab", async () => {
+    render(<InventoryTabs />);
+
+    expect(screen.getByRole("tab", { name: "Paket" })).toBeInTheDocument();
+    expect(screen.queryByText("Paket A")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Paket" }));
+
+    expect(await screen.findByText("Paket A")).toBeInTheDocument();
+    expect(screen.queryByText("Kopi Tubruk")).not.toBeInTheDocument();
   });
 
   it("loads default marketplace export config and restores saved local config", async () => {
@@ -246,6 +273,49 @@ describe("inventory product tab contract", () => {
       is_marketplace: true,
       marketplace_sku_id: "SKU-MP-001",
       marketplace_large_sku_id: "SKU-MP-001-DUS",
+    });
+  });
+
+  it("submits package payload with recipe rows and sku-only marketplace data", async () => {
+    render(<InventoryTabs />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Paket" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tambah Paket" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Tambah Paket" });
+    fireEvent.change(within(dialog).getByLabelText("Nama paket"), {
+      target: { value: "Paket A" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("SKU internal"), {
+      target: { value: "PKT-A" },
+    });
+    fireEvent.click(within(dialog).getByLabelText("Jual di marketplace"));
+    fireEvent.change(within(dialog).getByLabelText("Nama produk marketplace"), {
+      target: { value: "Paket A Marketplace" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("ID SKU marketplace"), {
+      target: { value: "SKU-PKT-A" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Produk komponen 1"), {
+      target: { value: "p-1" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Unit komponen 1"), {
+      target: { value: "SMALL" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Qty komponen 1"), {
+      target: { value: "2" },
+    });
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Simpan Paket" }));
+
+    await waitFor(() => {
+      expect(saveProduct).toHaveBeenCalledWith(
+        expect.objectContaining({
+          product_kind: "PACKAGE",
+          marketplace_sku_id: "SKU-PKT-A",
+          package_items: [{ component_product_id: "p-1", component_unit: "SMALL", component_qty: 2 }],
+        }),
+      );
     });
   });
 

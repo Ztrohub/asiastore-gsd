@@ -16,12 +16,14 @@ import {
 } from "@/components/ui/sheet";
 import type { ProductRecord } from "@/lib/offline/db";
 import { useProductCatalog } from "@/features/inventory/hooks/use-product-catalog";
+import { PackageFormDialog } from "@/features/inventory/components/package-form-dialog";
+import { PackageTable } from "@/features/inventory/components/package-table";
 import { ProductFormDialog } from "@/features/inventory/components/product-form-dialog";
 import { ProductTable } from "@/features/inventory/components/product-table";
 import { StockInTab } from "@/features/inventory/components/stock-in-tab";
 import { MarketplaceStockTab } from "@/features/inventory/components/marketplace-stock-tab";
 
-type TabKey = "produk" | "stock-in" | "marketplace";
+type TabKey = "produk" | "paket" | "stock-in" | "marketplace";
 type ProductTypeFilter = "all" | "marketplace";
 
 type InventoryProductFilters = {
@@ -37,8 +39,10 @@ export function InventoryTabs() {
   const [activeTab, setActiveTab] = useState<TabKey>("produk");
   const [query, setQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [packageDialogOpen, setPackageDialogOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductRecord | null>(null);
+  const [editingPackage, setEditingPackage] = useState<ProductRecord | null>(null);
   const [appliedFilters, setAppliedFilters] = useState<InventoryProductFilters>(
     DEFAULT_INVENTORY_PRODUCT_FILTERS,
   );
@@ -46,54 +50,59 @@ export function InventoryTabs() {
     DEFAULT_INVENTORY_PRODUCT_FILTERS,
   );
 
-  const hasProducts = useMemo(() => products.length > 0, [products]);
+  const productRows = useMemo(
+    () => products.filter((product) => (product.product_kind ?? "NORMAL") === "NORMAL"),
+    [products],
+  );
+  const packageRows = useMemo(
+    () => products.filter((product) => (product.product_kind ?? "NORMAL") === "PACKAGE"),
+    [products],
+  );
+  const hasProducts = useMemo(() => productRows.length > 0, [productRows]);
   const activeFilterCount = useMemo(
     () => (appliedFilters.productType === "all" ? 0 : 1),
     [appliedFilters.productType],
   );
   const filteredProducts = useMemo(() => {
     if (appliedFilters.productType === "marketplace") {
-      return products.filter((product) => product.is_marketplace);
+      return productRows.filter((product) => product.is_marketplace);
     }
-    return products;
-  }, [appliedFilters.productType, products]);
+    return productRows;
+  }, [appliedFilters.productType, productRows]);
 
-  async function handleSaveProduct(payload: {
-    id_produk?: string;
-    nama_produk: string;
-    sku?: string;
-    harga_jual: number;
-    harga_jual_unit_besar?: number;
-    stok_saat_ini: number;
-    stok_unit_besar_saat_ini: number;
-    is_active: boolean;
-    is_marketplace: boolean;
-    marketplace_product_name?: string;
-    marketplace_sku_id?: string;
-    marketplace_large_sku_id?: string;
-    unit_small_name: string;
-    unit_large_name?: string;
-    unit_large_to_small?: number;
-    allow_buy_in_small: boolean;
-    allow_buy_in_large: boolean;
-    allow_sell_in_small: boolean;
-    allow_sell_in_large: boolean;
-  }) {
+  async function handleSaveProduct(payload: Parameters<typeof saveProduct>[0]) {
     await saveProduct(payload);
-    toast.success("Produk berhasil disimpan.");
+    const isPackage = (payload.product_kind ?? "NORMAL") === "PACKAGE";
+    toast.success(isPackage ? "Paket berhasil disimpan." : "Produk berhasil disimpan.");
     setEditingProduct(null);
+    setEditingPackage(null);
     setDialogOpen(false);
-    setActiveTab("produk");
+    setPackageDialogOpen(false);
+    setActiveTab(isPackage ? "paket" : "produk");
   }
 
   function openCreateDialog() {
     setEditingProduct(null);
+    setEditingPackage(null);
     setDialogOpen(true);
   }
 
   function openEditDialog(product: ProductRecord) {
     setEditingProduct(product);
+    setEditingPackage(null);
     setDialogOpen(true);
+  }
+
+  function openCreatePackageDialog() {
+    setEditingProduct(null);
+    setEditingPackage(null);
+    setPackageDialogOpen(true);
+  }
+
+  function openEditPackageDialog(pkg: ProductRecord) {
+    setEditingProduct(null);
+    setEditingPackage(pkg);
+    setPackageDialogOpen(true);
   }
 
   function openFilterDrawer() {
@@ -125,6 +134,14 @@ export function InventoryTabs() {
           Produk
         </Button>
         <Button
+          aria-selected={activeTab === "paket"}
+          onClick={() => setActiveTab("paket")}
+          role="tab"
+          variant={activeTab === "paket" ? "default" : "outline"}
+        >
+          Paket
+        </Button>
+        <Button
           aria-selected={activeTab === "stock-in"}
           onClick={() => setActiveTab("stock-in")}
           role="tab"
@@ -143,64 +160,98 @@ export function InventoryTabs() {
       </div>
 
       <div hidden={activeTab !== "produk"} role="tabpanel">
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-1 items-center gap-2">
-            <Button
-              aria-label="Filter"
-              className="shrink-0"
-              onClick={openFilterDrawer}
-              type="button"
-              variant="outline"
-            >
-              <ListFilter />
-              <span>Filter</span>
-              {activeFilterCount > 0 ? <Badge variant="secondary">{activeFilterCount}</Badge> : null}
-            </Button>
-            <Input
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Cari nama atau SKU..."
-              value={query}
-            />
-          </div>
-          <Button onClick={openCreateDialog}>Tambah Produk</Button>
-        </div>
-        {loading ? <p className="text-sm text-muted-foreground">Memuat produk...</p> : null}
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        {!loading ? (
-          <ProductTable
-            emptyDescription={
-              appliedFilters.productType === "marketplace"
-                ? "Belum ada produk marketplace yang cocok dengan filter saat ini."
-                : undefined
-            }
-            emptyTitle={
-              appliedFilters.productType === "marketplace" ? "Belum ada produk marketplace" : undefined
-            }
-            onEdit={openEditDialog}
-            products={filteredProducts}
-            query={query}
-          />
+        {activeTab === "produk" ? (
+          <>
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-1 items-center gap-2">
+                <Button
+                  aria-label="Filter"
+                  className="shrink-0"
+                  onClick={openFilterDrawer}
+                  type="button"
+                  variant="outline"
+                >
+                  <ListFilter />
+                  <span>Filter</span>
+                  {activeFilterCount > 0 ? <Badge variant="secondary">{activeFilterCount}</Badge> : null}
+                </Button>
+                <Input
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Cari nama atau SKU..."
+                  value={query}
+                />
+              </div>
+              <Button onClick={openCreateDialog}>Tambah Produk</Button>
+            </div>
+            {loading ? <p className="text-sm text-muted-foreground">Memuat produk...</p> : null}
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {!loading ? (
+              <ProductTable
+                emptyDescription={
+                  appliedFilters.productType === "marketplace"
+                    ? "Belum ada produk marketplace yang cocok dengan filter saat ini."
+                    : undefined
+                }
+                emptyTitle={
+                  appliedFilters.productType === "marketplace" ? "Belum ada produk marketplace" : undefined
+                }
+                onEdit={openEditDialog}
+                products={filteredProducts}
+                query={query}
+              />
+            ) : null}
+          </>
+        ) : null}
+      </div>
+
+      <div hidden={activeTab !== "paket"} role="tabpanel">
+        {activeTab === "paket" ? (
+          <>
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <Input
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Cari nama atau SKU..."
+                value={query}
+              />
+              <Button onClick={openCreatePackageDialog}>Tambah Paket</Button>
+            </div>
+            {loading ? <p className="text-sm text-muted-foreground">Memuat paket...</p> : null}
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {!loading ? (
+              <PackageTable onEdit={openEditPackageDialog} packages={packageRows} query={query} />
+            ) : null}
+          </>
         ) : null}
       </div>
 
       <div hidden={activeTab !== "stock-in"} role="tabpanel">
-        {hasProducts ? (
-          <StockInTab onCommitted={refreshLocal} products={products} />
-        ) : (
-          <p className="text-sm text-muted-foreground">Belum ada produk untuk diproses.</p>
-        )}
+        {activeTab === "stock-in" ? (
+          hasProducts ? (
+            <StockInTab onCommitted={refreshLocal} products={productRows} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Belum ada produk untuk diproses.</p>
+          )
+        ) : null}
       </div>
 
       <div hidden={activeTab !== "marketplace"} role="tabpanel">
-        <MarketplaceStockTab products={products} />
+        {activeTab === "marketplace" ? <MarketplaceStockTab products={products} /> : null}
       </div>
 
       <ProductFormDialog
-        key={`${dialogOpen ? "open" : "closed"}:${editingProduct?.id_produk ?? "new"}`}
+        key={`product:${dialogOpen ? "open" : "closed"}:${editingProduct?.id_produk ?? "new"}`}
         editingProduct={editingProduct}
         onClose={() => setDialogOpen(false)}
         onSubmit={handleSaveProduct}
         open={dialogOpen}
+      />
+      <PackageFormDialog
+        key={`package:${packageDialogOpen ? "open" : "closed"}:${editingPackage?.id_produk ?? "new"}`}
+        componentProducts={productRows}
+        editingPackage={editingPackage}
+        onClose={() => setPackageDialogOpen(false)}
+        onSubmit={handleSaveProduct}
+        open={packageDialogOpen}
       />
 
       <Sheet onOpenChange={handleFilterOpenChange} open={filterOpen}>
