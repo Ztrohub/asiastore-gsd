@@ -10,6 +10,14 @@ import {
   parseProductSyncCursor,
 } from "@/lib/sync/product-sync-cursor";
 
+type ProductKind = "NORMAL" | "PACKAGE";
+
+type PackageItemInput = {
+  component_product_id: string;
+  component_unit: "SMALL" | "LARGE";
+  component_qty: number;
+};
+
 export type ProductUpsertInput = {
   id_produk?: string;
   nama_produk: string;
@@ -19,6 +27,8 @@ export type ProductUpsertInput = {
   stok_saat_ini: number;
   stok_unit_besar_saat_ini?: number;
   is_active: boolean;
+  product_kind?: ProductKind;
+  package_items?: PackageItemInput[];
   is_marketplace?: boolean;
   marketplace_product_name?: string;
   marketplace_product_id?: string;
@@ -47,7 +57,10 @@ type ProductChangeTimestamps = {
   last_synced_at: Date | null;
 };
 
-type ProductCatalogDbClient = Pick<typeof prisma, "product" | "productSpecialPrice">;
+type ProductCatalogDbClient = Pick<
+  typeof prisma,
+  "product" | "productSpecialPrice" | "productPackageItem"
+>;
 
 export class ProductCatalogConflictError extends Error {
   readonly code = "SKU_CONFLICT";
@@ -62,12 +75,22 @@ export class ProductCatalogConflictError extends Error {
   }
 }
 
+export class ProductCatalogValidationError extends Error {
+  readonly code = "PRODUCT_VALIDATION";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "ProductCatalogValidationError";
+  }
+}
+
 function normalizeSku(sku: string | undefined) {
   const value = sku?.trim();
   return value ? value : undefined;
 }
 
 const DEFAULT_SMALL_UNIT = "pcs";
+const DEFAULT_PACKAGE_UNIT = "paket";
 
 function normalizeUnitName(value: string | undefined, fallback: string) {
   const normalized = value?.trim();
@@ -87,6 +110,38 @@ function normalizeLargeFactor(value: number | undefined) {
 
 function normalizeFlag(value: boolean | undefined, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function normalizeProductKind(value: ProductKind | undefined): ProductKind {
+  return value === "PACKAGE" ? "PACKAGE" : "NORMAL";
+}
+
+function normalizePackageItems(items: PackageItemInput[] | undefined) {
+  if (items === undefined) {
+    return undefined;
+  }
+
+  const normalized: PackageItemInput[] = [];
+  for (const item of items) {
+    const componentProductId = item.component_product_id?.trim();
+    if (!componentProductId) {
+      throw new ProductCatalogValidationError("ID produk komponen wajib diisi.");
+    }
+    if (item.component_unit !== "SMALL" && item.component_unit !== "LARGE") {
+      throw new ProductCatalogValidationError("Unit komponen paket tidak valid.");
+    }
+    if (!Number.isFinite(item.component_qty) || item.component_qty <= 0) {
+      throw new ProductCatalogValidationError("Qty komponen paket harus lebih dari 0.");
+    }
+
+    normalized.push({
+      component_product_id: componentProductId,
+      component_unit: item.component_unit,
+      component_qty: item.component_qty,
+    });
+  }
+
+  return normalized;
 }
 
 function normalizeUomInput(input: ProductUpsertInput) {
@@ -141,9 +196,24 @@ function isStaleUpdate(updatedAt: number | undefined, lastSyncedAt: Date | null)
   return Boolean(lastSyncedAt && updatedAt && updatedAt < lastSyncedAt.getTime());
 }
 
+const productInclude = {
+  special_prices: {
+    orderBy: [{ unit_mutasi: "asc" }, { qty_tenths: "desc" }],
+  },
+  package_items: {
+    select: {
+      component_product_id: true,
+      component_unit: true,
+      component_qty: true,
+    },
+    orderBy: [{ component_product_id: "asc" }, { component_unit: "asc" }],
+  },
+} as const;
+
 const existingMarketplaceSelect = {
   id_produk: true,
   last_synced_at: true,
+  product_kind: true,
   is_marketplace: true,
   marketplace_product_name: true,
   marketplace_product_id: true,
@@ -163,11 +233,7 @@ export function getProductChangeTime(product: ProductChangeTimestamps) {
 async function loadProductWithSpecialPrices(db: ProductCatalogDbClient, id_produk: string) {
   return db.product.findUnique({
     where: { id_produk },
-    include: {
-      special_prices: {
-        orderBy: [{ unit_mutasi: "asc" }, { qty_tenths: "desc" }],
-      },
-    },
+    include: productInclude,
   });
 }
 
@@ -194,6 +260,39 @@ async function syncProductSpecialPrices(
   return loadProductWithSpecialPrices(db, id_produk);
 }
 
+async function syncProductPackageItems(
+  db: ProductCatalogDbClient,
+  id_produk: string,
+  productKind: ProductKind,
+  packageItems: PackageItemInput[] | undefined,
+) {
+  if (productKind === "PACKAGE") {
+    if (!packageItems || packageItems.length === 0) {
+      throw new ProductCatalogValidationError("Produk paket harus memiliki komponen.");
+    }
+    if (packageItems.some((item) => item.component_product_id === id_produk)) {
+      throw new ProductCatalogValidationError("Produk paket tidak boleh berisi dirinya sendiri.");
+    }
+  }
+
+  await db.productPackageItem.deleteMany({
+    where: { package_product_id: id_produk },
+  });
+
+  if (productKind !== "PACKAGE" || !packageItems?.length) {
+    return;
+  }
+
+  await db.productPackageItem.createMany({
+    data: packageItems.map((item) => ({
+      package_product_id: id_produk,
+      component_product_id: item.component_product_id,
+      component_unit: item.component_unit,
+      component_qty: item.component_qty,
+    })),
+  });
+}
+
 export async function listProducts(params?: ProductListParams) {
   const parsedCursor = parseProductSyncCursor(params?.cursor ?? params?.updatedAfterMs);
 
@@ -207,11 +306,7 @@ export async function listProducts(params?: ProductListParams) {
           ],
         }
       : undefined,
-    include: {
-      special_prices: {
-        orderBy: [{ unit_mutasi: "asc" }, { qty_tenths: "desc" }],
-      },
-    },
+    include: productInclude,
     orderBy: [{ updatedAt: "asc" }, { id_produk: "asc" }],
   });
 
@@ -234,7 +329,20 @@ export async function upsertProduct(input: ProductUpsertInput) {
   const incomingSyncedAt = input.updatedAt ? new Date(input.updatedAt) : new Date();
   const normalizedSku = normalizeSku(input.sku);
   const idProduk = input.id_produk;
-  const normalizedUom = normalizeUomInput(input);
+  const normalizedProductKind = normalizeProductKind(input.product_kind);
+  const normalizedPackageItems = normalizePackageItems(input.package_items);
+  const normalizedUom =
+    normalizedProductKind === "PACKAGE"
+      ? {
+          unit_small_name: normalizeUnitName(input.unit_small_name, DEFAULT_PACKAGE_UNIT),
+          unit_large_name: null,
+          unit_large_to_small: null,
+          allow_buy_in_small: false,
+          allow_buy_in_large: false,
+          allow_sell_in_small: true,
+          allow_sell_in_large: false,
+        }
+      : normalizeUomInput(input);
   const normalizedRules = normalizeSpecialPriceRules(input.special_prices, {
     allowSmall: normalizedUom.allow_sell_in_small,
     allowLarge: normalizedUom.allow_sell_in_large,
@@ -252,6 +360,7 @@ export async function upsertProduct(input: ProductUpsertInput) {
     stok_saat_ini: input.stok_saat_ini,
     stok_unit_besar_saat_ini: input.stok_unit_besar_saat_ini ?? 0,
     is_active: input.is_active,
+    product_kind: normalizedProductKind,
     ...normalizedUom,
   };
 
@@ -307,6 +416,12 @@ export async function upsertProduct(input: ProductUpsertInput) {
         },
       });
 
+      await syncProductPackageItems(
+        trx,
+        product.id_produk,
+        normalizedProductKind,
+        normalizedPackageItems,
+      );
       return syncProductSpecialPrices(trx, product.id_produk, normalizedRules);
     }
 
@@ -331,6 +446,12 @@ export async function upsertProduct(input: ProductUpsertInput) {
           data: payload,
         });
 
+        await syncProductPackageItems(
+          trx,
+          product.id_produk,
+          normalizedProductKind,
+          normalizedPackageItems,
+        );
         return syncProductSpecialPrices(trx, product.id_produk, normalizedRules);
       }
     }
@@ -345,6 +466,12 @@ export async function upsertProduct(input: ProductUpsertInput) {
       data: payload,
     });
 
+    await syncProductPackageItems(
+      trx,
+      product.id_produk,
+      normalizedProductKind,
+      normalizedPackageItems,
+    );
     return syncProductSpecialPrices(trx, product.id_produk, normalizedRules);
   });
 }

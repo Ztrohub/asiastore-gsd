@@ -55,6 +55,11 @@ enum PosPaymentMethod {
   BANK_TRANSFER
 }
 
+enum ProductKind {
+  NORMAL
+  PACKAGE
+}
+
 model InventoryMutationEvent {
   id_queue         String                @id
   id_transaksi     String
@@ -72,31 +77,34 @@ model InventoryMutationEvent {
 }
 
 model Product {
-  id_produk       String   @id @default(cuid())
-  nama_produk     String
-  sku             String?  @unique
-  harga_jual      Int
-  harga_jual_unit_besar Int?
-  stok_saat_ini   Float    @default(0)
-  stok_unit_besar_saat_ini Float @default(0)
-  is_active       Boolean  @default(true)
-  is_marketplace  Boolean  @default(false)
+  id_produk                String               @id @default(cuid())
+  nama_produk              String
+  sku                      String?              @unique
+  harga_jual               Int
+  harga_jual_unit_besar    Int?
+  stok_saat_ini            Float                @default(0)
+  stok_unit_besar_saat_ini Float                @default(0)
+  is_active                Boolean              @default(true)
+  product_kind             ProductKind          @default(NORMAL)
+  is_marketplace           Boolean              @default(false)
   marketplace_product_name String?
   marketplace_product_id   String?
   marketplace_sku_id       String?
   marketplace_large_product_id String?
   marketplace_large_sku_id     String?
-  unit_small_name String   @default("pcs")
-  unit_large_name String?
-  unit_large_to_small Int?
+  unit_small_name          String               @default("pcs")
+  unit_large_name          String?
+  unit_large_to_small      Int?
   allow_buy_in_small  Boolean @default(true)
   allow_buy_in_large  Boolean @default(false)
   allow_sell_in_small Boolean @default(true)
   allow_sell_in_large Boolean @default(false)
-  last_synced_at  DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  special_prices  ProductSpecialPrice[]
+  last_synced_at           DateTime?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  special_prices           ProductSpecialPrice[]
+  package_items            ProductPackageItem[] @relation("PackageRecipe")
+  package_used_by          ProductPackageItem[] @relation("PackageComponent")
 
   @@index([nama_produk])
   @@index([is_active])
@@ -114,6 +122,22 @@ model ProductSpecialPrice {
 
   @@unique([id_produk, unit_mutasi, qty_tenths])
   @@index([id_produk, unit_mutasi])
+}
+
+model ProductPackageItem {
+  id                   String                @id @default(cuid())
+  package_product_id   String
+  component_product_id String
+  component_unit       InventoryMutationUnit
+  component_qty        Float
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  package_product      Product               @relation("PackageRecipe", fields: [package_product_id], references: [id_produk], onDelete: Cascade)
+  component_product    Product               @relation("PackageComponent", fields: [component_product_id], references: [id_produk], onDelete: Restrict)
+
+  @@unique([package_product_id, component_product_id, component_unit])
+  @@index([package_product_id])
+  @@index([component_product_id])
 }
 
 model PosTransaction {
@@ -158,6 +182,7 @@ model PosTransactionLine {
   line_discount      Int @default(0)
   line_total         Int
   pricing_snapshot   Json?
+  stock_effect_snapshot Json?
   createdAt          DateTime @default(now())
   transaction        PosTransaction @relation(fields: [id_transaksi], references: [id_transaksi], onDelete: Cascade)
 

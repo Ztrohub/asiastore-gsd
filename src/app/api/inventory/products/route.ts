@@ -7,6 +7,7 @@ import {
   getProductChangeTime,
   listProducts,
   ProductCatalogConflictError,
+  ProductCatalogValidationError,
   upsertProduct,
 } from "@/lib/db/product-catalog";
 import { isValidProductMarketplace, normalizeProductMarketplace } from "@/lib/inventory/marketplace";
@@ -20,6 +21,14 @@ import {
   serializeProductSyncCursor,
 } from "@/lib/sync/product-sync-cursor";
 
+type ProductKind = "NORMAL" | "PACKAGE";
+
+type PackageItemPayload = {
+  component_product_id?: string;
+  component_unit?: "SMALL" | "LARGE";
+  component_qty?: number;
+};
+
 type ProductPayload = {
   id_produk?: string;
   nama_produk?: string;
@@ -29,6 +38,8 @@ type ProductPayload = {
   stok_saat_ini?: number;
   stok_unit_besar_saat_ini?: number | null;
   is_active?: boolean;
+  product_kind?: ProductKind;
+  package_items?: PackageItemPayload[];
   is_marketplace?: boolean;
   marketplace_product_name?: string | null;
   marketplace_product_id?: string | null;
@@ -74,6 +85,34 @@ function optionalString(value: string | null | undefined) {
   return normalized ? normalized : undefined;
 }
 
+function normalizeProductKind(value: ProductPayload["product_kind"]): ProductKind {
+  return value === "PACKAGE" ? "PACKAGE" : "NORMAL";
+}
+
+function normalizePackageItemPayload(
+  items: ProductPayload["package_items"],
+) {
+  if (items === undefined) return undefined;
+  if (!Array.isArray(items)) return null;
+
+  const normalized = [];
+  for (const item of items) {
+    const componentProductId = item.component_product_id?.trim();
+    const componentQty = Number(item.component_qty);
+    if (!componentProductId) return null;
+    if (item.component_unit !== "SMALL" && item.component_unit !== "LARGE") return null;
+    if (!Number.isFinite(componentQty) || componentQty <= 0) return null;
+
+    normalized.push({
+      component_product_id: componentProductId,
+      component_unit: item.component_unit,
+      component_qty: componentQty,
+    });
+  }
+
+  return normalized;
+}
+
 function normalizeSpecialPricePayload(
   rules: ProductPayload["special_prices"],
 ): ProductSpecialPriceRecord[] | undefined | null {
@@ -102,9 +141,11 @@ function normalizeSpecialPricePayload(
 }
 
 function isValidProductPayload(product: ProductPayload) {
+  const productKind = normalizeProductKind(product.product_kind);
   if (!product.nama_produk?.trim()) return false;
   if (!Number.isInteger(product.harga_jual)) return false;
-  if ((product.harga_jual ?? 0) < 100 || (product.harga_jual ?? 0) > 999999999) return false;
+  const minimumPrice = productKind === "PACKAGE" ? 0 : 100;
+  if ((product.harga_jual ?? 0) < minimumPrice || (product.harga_jual ?? 0) > 999999999) return false;
   const hargaJualUnitBesar = optionalNumber(product.harga_jual_unit_besar);
   if (
     product.harga_jual_unit_besar != null &&
@@ -165,7 +206,26 @@ function isValidProductPayload(product: ProductPayload) {
   if (!allowSellInSmall && !allowSellInLarge) return false;
   if ((allowBuyInLarge || allowSellInLarge) && !hasLargeUnit) return false;
   if (!hasLargeUnit && hargaJualUnitBesar !== undefined) return false;
-  if (normalizeSpecialPricePayload(product.special_prices) === null) return false;
+  const specialPrices = normalizeSpecialPricePayload(product.special_prices);
+  if (specialPrices === null) return false;
+
+  const packageItems = normalizePackageItemPayload(product.package_items);
+  if (packageItems === null) return false;
+  if (productKind === "PACKAGE") {
+    if (!packageItems || packageItems.length === 0) return false;
+    if (product.id_produk && packageItems.some((item) => item.component_product_id === product.id_produk)) {
+      return false;
+    }
+    if (optionalString(product.marketplace_large_product_id)) return false;
+    if (optionalString(product.marketplace_large_sku_id)) return false;
+    if (largeUnitName) return false;
+    if (product.unit_large_to_small != null) return false;
+    if (product.harga_jual_unit_besar != null) return false;
+    if (allowBuyInLarge || allowSellInLarge) return false;
+    if ((specialPrices?.length ?? 0) > 0) return false;
+  } else if (packageItems !== undefined) {
+    return false;
+  }
 
   return true;
 }
@@ -261,6 +321,8 @@ export async function POST(request: NextRequest) {
         stok_saat_ini: item.stok_saat_ini!,
         stok_unit_besar_saat_ini: optionalNumber(item.stok_unit_besar_saat_ini) ?? 0,
         is_active: item.is_active!,
+        product_kind: normalizeProductKind(item.product_kind),
+        package_items: normalizePackageItemPayload(item.package_items) ?? undefined,
         is_marketplace: marketplaceState.is_marketplace,
         marketplace_product_name: marketplaceState.marketplace_product_name,
         marketplace_product_id: optionalString(item.marketplace_product_id),
@@ -284,6 +346,9 @@ export async function POST(request: NextRequest) {
         { ok: false, message: `SKU ${error.sku} sudah dipakai produk lain.` },
         { status: 409 },
       );
+    }
+    if (error instanceof ProductCatalogValidationError) {
+      return NextResponse.json({ ok: false, message: error.message }, { status: 400 });
     }
     if (
       error instanceof PrismaClientKnownRequestError &&

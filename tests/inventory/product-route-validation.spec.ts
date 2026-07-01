@@ -293,4 +293,86 @@ describe("inventory product route validation", () => {
     expect(response.status).toBe(400);
     expect(upsertProductMock).not.toHaveBeenCalled();
   });
+
+  it("accepts package payloads with sku-only marketplace fields and recipe items", async () => {
+    const { POST } = await import("@/app/api/inventory/products/route");
+
+    const request = new Request("http://localhost/api/inventory/products", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        products: [
+          {
+            id_produk: "pkg-1",
+            nama_produk: "Paket A",
+            sku: "PKT-A",
+            harga_jual: 0,
+            stok_saat_ini: 0,
+            is_active: true,
+            product_kind: "PACKAGE",
+            is_marketplace: true,
+            marketplace_product_name: "Paket A Marketplace",
+            marketplace_sku_id: "SKU-PKT-A",
+            package_items: [
+              { component_product_id: "prod-a", component_unit: "SMALL", component_qty: 1 },
+              { component_product_id: "prod-b", component_unit: "LARGE", component_qty: 2 },
+            ],
+            updatedAt: 1782896400000,
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request as never);
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload).toEqual({ ok: true, count: 1 });
+    expect(upsertProductMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id_produk: "pkg-1",
+        product_kind: "PACKAGE",
+        package_items: [
+          { component_product_id: "prod-a", component_unit: "SMALL", component_qty: 1 },
+          { component_product_id: "prod-b", component_unit: "LARGE", component_qty: 2 },
+        ],
+        marketplace_sku_id: "SKU-PKT-A",
+      }),
+    );
+  });
+
+  it("rejects package payloads that try to send marketplace_large_sku_id", async () => {
+    const { POST } = await import("@/app/api/inventory/products/route");
+
+    const request = new Request("http://localhost/api/inventory/products", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        products: [
+          {
+            nama_produk: "Paket Invalid",
+            harga_jual: 0,
+            stok_saat_ini: 0,
+            is_active: true,
+            product_kind: "PACKAGE",
+            is_marketplace: true,
+            marketplace_product_name: "Paket Invalid Marketplace",
+            marketplace_sku_id: "SKU-PKT-INVALID",
+            marketplace_large_sku_id: "SKU-LARGE",
+            package_items: [
+              { component_product_id: "prod-a", component_unit: "SMALL", component_qty: 1 },
+            ],
+            updatedAt: 1782896400000,
+          },
+        ],
+      }),
+    });
+
+    const response = await POST(request as never);
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload).toEqual({ ok: false, message: "Payload produk tidak valid." });
+    expect(upsertProductMock).not.toHaveBeenCalled();
+  });
 });

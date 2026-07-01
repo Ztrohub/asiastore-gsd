@@ -7,6 +7,8 @@ const update = vi.fn();
 const create = vi.fn();
 const deleteMany = vi.fn();
 const createMany = vi.fn();
+const deleteManyPackageItems = vi.fn();
+const createManyPackageItems = vi.fn();
 const transaction = vi.fn(async (callback: (trx: unknown) => Promise<unknown>) =>
   callback({
     product: {
@@ -19,6 +21,10 @@ const transaction = vi.fn(async (callback: (trx: unknown) => Promise<unknown>) =
     productSpecialPrice: {
       deleteMany,
       createMany,
+    },
+    productPackageItem: {
+      deleteMany: deleteManyPackageItems,
+      createMany: createManyPackageItems,
     },
   }),
 );
@@ -37,6 +43,10 @@ vi.mock("@/lib/db/prisma", () => ({
       deleteMany,
       createMany,
     },
+    productPackageItem: {
+      deleteMany: deleteManyPackageItems,
+      createMany: createManyPackageItems,
+    },
   },
 }));
 
@@ -45,6 +55,8 @@ describe("server product upsert conflict handling", () => {
     vi.clearAllMocks();
     deleteMany.mockResolvedValue({ count: 0 });
     createMany.mockResolvedValue({ count: 0 });
+    deleteManyPackageItems.mockResolvedValue({ count: 0 });
+    createManyPackageItems.mockResolvedValue({ count: 0 });
   });
 
   it("falls back to existing server product id when incoming id differs but sku already exists", async () => {
@@ -352,5 +364,76 @@ describe("server product upsert conflict handling", () => {
     } as never);
 
     expect(rows.map((row) => row.id_produk)).toEqual(["prod-b", "prod-c"]);
+  });
+
+  it("replaces package recipe rows transactionally when a package product is upserted", async () => {
+    findUnique.mockResolvedValueOnce({
+      id_produk: "pkg-1",
+      last_synced_at: null,
+      is_marketplace: false,
+      product_kind: "PACKAGE",
+      marketplace_product_name: null,
+      marketplace_product_id: null,
+      marketplace_sku_id: null,
+      marketplace_large_product_id: null,
+      marketplace_large_sku_id: null,
+    });
+    upsert.mockResolvedValue({ id_produk: "pkg-1" });
+
+    deleteManyPackageItems.mockResolvedValue({ count: 2 });
+    createManyPackageItems.mockResolvedValue({ count: 2 });
+    transaction.mockImplementation(async (callback: (trx: unknown) => Promise<unknown>) =>
+      callback({
+        product: {
+          findMany,
+          findUnique,
+          upsert,
+          update,
+          create,
+        },
+        productSpecialPrice: {
+          deleteMany,
+          createMany,
+        },
+        productPackageItem: {
+          deleteMany: deleteManyPackageItems,
+          createMany: createManyPackageItems,
+        },
+      }),
+    );
+
+    const { upsertProduct } = await import("@/lib/db/product-catalog");
+    await upsertProduct({
+      id_produk: "pkg-1",
+      nama_produk: "Paket A",
+      harga_jual: 0,
+      stok_saat_ini: 0,
+      is_active: true,
+      product_kind: "PACKAGE",
+      package_items: [
+        { component_product_id: "prod-a", component_unit: "SMALL", component_qty: 1 },
+        { component_product_id: "prod-b", component_unit: "LARGE", component_qty: 2 },
+      ],
+    } as never);
+
+    expect(deleteManyPackageItems).toHaveBeenCalledWith({
+      where: { package_product_id: "pkg-1" },
+    });
+    expect(createManyPackageItems).toHaveBeenCalledWith({
+      data: [
+        {
+          package_product_id: "pkg-1",
+          component_product_id: "prod-a",
+          component_unit: "SMALL",
+          component_qty: 1,
+        },
+        {
+          package_product_id: "pkg-1",
+          component_product_id: "prod-b",
+          component_unit: "LARGE",
+          component_qty: 2,
+        },
+      ],
+    });
   });
 });
