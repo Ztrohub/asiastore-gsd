@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { toDatabaseProductMarketplace } from "@/lib/inventory/marketplace";
 import {
@@ -196,7 +197,7 @@ function isStaleUpdate(updatedAt: number | undefined, lastSyncedAt: Date | null)
   return Boolean(lastSyncedAt && updatedAt && updatedAt < lastSyncedAt.getTime());
 }
 
-const productInclude = {
+const productInclude: Prisma.ProductInclude = {
   special_prices: {
     orderBy: [{ unit_mutasi: "asc" }, { qty_tenths: "desc" }],
   },
@@ -208,7 +209,7 @@ const productInclude = {
     },
     orderBy: [{ component_product_id: "asc" }, { component_unit: "asc" }],
   },
-} as const;
+};
 
 const existingMarketplaceSelect = {
   id_produk: true,

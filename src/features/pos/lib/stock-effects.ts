@@ -18,6 +18,13 @@ type TransactionLikeLine = Pick<
 
 type StockEffectKey = `${string}:${InventoryMutationUnit}`;
 
+function toStockEffectKey(
+  id_produk: string,
+  unit_mutasi: InventoryMutationUnit,
+): StockEffectKey {
+  return `${id_produk}:${unit_mutasi}`;
+}
+
 export function buildLineStockEffectSnapshot(line: CheckoutLikeLine): StockEffectSnapshot {
   if ((line.product_kind ?? "NORMAL") !== "PACKAGE") {
     return {
@@ -61,7 +68,7 @@ function toEffectMap(lines: TransactionLikeLine[]) {
       });
 
     for (const effect of snapshot.effects) {
-      const key = `${effect.id_produk}:${effect.unit_mutasi}`;
+      const key = toStockEffectKey(effect.id_produk, effect.unit_mutasi);
       const current =
         map.get(key) ??
         {

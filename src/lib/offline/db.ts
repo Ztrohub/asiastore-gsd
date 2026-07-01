@@ -167,7 +167,8 @@ export function normalizeStockEffectSnapshot(value: unknown): StockEffectSnapsho
     return undefined;
   }
 
-  const effects = candidate.effects.map((entry) => {
+  const effects: StockEffectSnapshot["effects"] = [];
+  for (const entry of candidate.effects) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
       return undefined;
     }
@@ -191,16 +192,12 @@ export function normalizeStockEffectSnapshot(value: unknown): StockEffectSnapsho
       return undefined;
     }
 
-    return {
+    effects.push({
       id_produk: idProduk,
       nama_produk_snapshot: namaProdukSnapshot,
       unit_mutasi: unitMutasi,
       qty_delta: qtyDelta,
-    };
-  });
-
-  if (effects.some((effect) => !effect)) {
-    return undefined;
+    });
   }
 
   return {

@@ -49,6 +49,7 @@ describe("marketplace stock template utilities", () => {
         {
           id_produk: "local-1",
           nama_produk: "Teh Tarik",
+          harga_jual: 0,
           stok_saat_ini: 11,
           is_active: true,
           is_marketplace: true,
@@ -93,6 +94,7 @@ describe("marketplace stock template utilities", () => {
         {
           id_produk: "local-1",
           nama_produk: "Teh Tarik",
+          harga_jual: 0,
           stok_saat_ini: 11,
           is_active: true,
           is_marketplace: true,
@@ -136,6 +138,7 @@ describe("marketplace stock template utilities", () => {
         {
           id_produk: "local-neg",
           nama_produk: "Produk Minus",
+          harga_jual: 0,
           stok_saat_ini: -5,
           is_active: true,
           is_marketplace: true,
@@ -171,6 +174,7 @@ describe("marketplace stock template utilities", () => {
         {
           id_produk: "local-large",
           nama_produk: "Produk Dus",
+          harga_jual: 0,
           stok_saat_ini: 120,
           stok_unit_besar_saat_ini: 2,
           is_active: true,
