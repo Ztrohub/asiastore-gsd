@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 02.1
 status: unknown
 stopped_at: Phase 3 planned
-last_updated: "2026-06-12T15:48:27+07:00"
+last_updated: "2026-07-01T12:16:29+07:00"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -18,7 +18,7 @@ progress:
 
 **Initialized:** 2026-05-17
 **Current Phase:** 02.1
-**Current Command:** `$gsd-quick tambahkan fitur harga khusus per qty di produk POS`
+**Current Command:** `$gsd-quick product marketplace saat ini menggunakan 2 key id produk marketplace dan id sku marketplace. soft deprecate id produk marketplace, hapus field id produk marketplace di inventory dan menu export marketplace, export hanya cocokkan berdasarkan id sku marketplace, gunakan migration prisma aman production`
 
 ## Project Reference
 
@@ -58,10 +58,10 @@ Resume file: .planning/phases/03-pos-checkout-and-receipt-printing/03-01-PLAN.md
 
 ## Active Quick Task
 
-- `260612-7i4` - tambahkan fitur harga khusus per qty di produk POS
-- Plan: `.planning/quick/260612-7i4-tambahkan-fitur-harga-khusus-per-qty-di-/260612-7i4-PLAN.md`
-- Spec: `docs/superpowers/specs/2026-06-12-special-price-per-qty-design.md`
-- Implementation plan: `docs/superpowers/plans/2026-06-12-special-price-per-qty-implementation.md`
+- `260701-grl` - marketplace inventory dan export pindah ke SKU-only dengan soft deprecate product ID marketplace
+- Plan: `.planning/quick/260701-grl-product-marketplace-saat-ini-menggunakan/260701-grl-PLAN.md`
+- Spec: `docs/superpowers/specs/2026-07-01-marketplace-sku-only-design.md`
+- Implementation plan: `docs/superpowers/plans/2026-07-01-marketplace-sku-only-implementation.md`
 
 ## Accumulated Context
 
@@ -101,5 +101,6 @@ Resume file: .planning/phases/03-pos-checkout-and-receipt-printing/03-01-PLAN.md
 | 260612-7i4 | tambahkan fitur harga khusus per qty di produk POS | 2026-06-12 | c27d119 | [260612-7i4-tambahkan-fitur-harga-khusus-per-qty-di-](./quick/260612-7i4-tambahkan-fitur-harga-khusus-per-qty-di-/) |
 | 260613-ib9 | tambahkan fitur update stok marketplace dari file excel xlsx di tab Marketplace inventori, client-only, configurable column mapping/start row/percentage, mismatch=0, sheet pertama saja | 2026-06-13 | daf3f4d | [260613-ib9-tambahkan-fitur-update-stok-marketplace-](./quick/260613-ib9-tambahkan-fitur-update-stok-marketplace-/) |
 | 260627-jeb | pada sistem saat ini, produk marketplace hanya menyimpan untuk uom unit kecil. Jika produk punya 2 jenis UoM, besar dan kecil maka hanya UoM kecil yang terdaftar. Saya ingin menambahkan fitur pada unit besar akan terdaftar sebagai SKU terpisah di marketplace. Contoh, ketika produk A punya unit kecil dan besar, dan user centang flag produk jual di marketplace, maka user dapat mendaftarkan id produk dan id sku marketplace berbeda untuk unit kecil dan unit besar untuk produk yang sama. Pastikan semua fitur baik sync inventory, stock in, dan export excel marketplace berjalan lancar. | 2026-06-27 | 56d0e99 | [260627-jeb-produk-marketplace-simpan-sku-terpisah-u](./quick/260627-jeb-produk-marketplace-simpan-sku-terpisah-u/) |
+| 260701-grl | product marketplace saat ini menggunakan 2 key id produk marketplace dan id sku marketplace. soft deprecate id produk marketplace, hapus field id produk marketplace di inventory dan menu export marketplace, export hanya cocokkan berdasarkan id sku marketplace, gunakan migration prisma aman production | 2026-07-01 | 035cb30 | [260701-grl-product-marketplace-saat-ini-menggunakan](./quick/260701-grl-product-marketplace-saat-ini-menggunakan/) |
 
-Last activity: 2026-06-27 - Completed quick task 260627-jeb: marketplace SKU terpisah untuk unit kecil dan besar
+Last activity: 2026-07-01 - Completed quick task 260701-grl: marketplace inventory/export pindah ke SKU-only dengan soft deprecate product ID
