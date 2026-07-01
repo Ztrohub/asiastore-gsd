@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { offlineDb, type ProductRecord, type SyncQueueRecord } from "@/lib/offline/db";
 import { normalizeProductMarketplace } from "@/lib/inventory/marketplace";
+import { derivePackageCatalogRow } from "@/lib/inventory/package";
 import { enqueueDelta, markAcked } from "@/lib/offline/sync-queue";
 import { normalizeProductUom } from "@/lib/inventory/uom";
 import { postProductUpserts } from "@/lib/offline/inventory-sync-transport";
@@ -27,6 +28,8 @@ type ProductInput = {
   stok_saat_ini?: number;
   stok_unit_besar_saat_ini?: number;
   is_active?: boolean;
+  product_kind?: "NORMAL" | "PACKAGE";
+  package_items?: ProductRecord["package_items"];
   is_marketplace?: boolean;
   marketplace_product_name?: string;
   marketplace_product_id?: string;
@@ -46,6 +49,7 @@ type ProductInput = {
 const PRODUCT_SYNC_CURSOR_KEY = "inventory_products_last_sync_cursor";
 const PRODUCT_CATALOG_POLL_MS = 30_000;
 const PRODUCT_SYNC_CURSOR_FUTURE_TOLERANCE_MS = 5 * 60 * 1_000;
+const DEFAULT_PACKAGE_UNIT = "paket";
 
 async function getProductSyncCursor() {
   const cursorMeta = await offlineDb.appMeta.get(PRODUCT_SYNC_CURSOR_KEY);
@@ -107,12 +111,12 @@ function parseUpdatedAtForCursor(value: unknown) {
   return undefined;
 }
 
-function validatePrice(harga: number) {
+function validatePrice(harga: number, minimum = 100) {
   if (!Number.isInteger(harga)) {
     throw new Error("Harga jual harus bilangan bulat.");
   }
-  if (harga < 100 || harga > 999999999) {
-    throw new Error("Harga jual harus antara 100 dan 999999999.");
+  if (harga < minimum || harga > 999999999) {
+    throw new Error(`Harga jual harus antara ${minimum} dan 999999999.`);
   }
 }
 
@@ -130,6 +134,38 @@ function optionalString(value: string | null | undefined) {
   return normalized ? normalized : undefined;
 }
 
+function normalizeProductKind(value: ProductInput["product_kind"] | ProductRecord["product_kind"]) {
+  return value === "PACKAGE" ? "PACKAGE" : "NORMAL";
+}
+
+function normalizePackageItems(items: ProductRecord["package_items"]) {
+  if (items === undefined) {
+    return undefined;
+  }
+
+  const normalized = [];
+  for (const item of items) {
+    const componentProductId = item.component_product_id?.trim();
+    if (!componentProductId) {
+      throw new Error("ID produk komponen paket wajib diisi.");
+    }
+    if (item.component_unit !== "SMALL" && item.component_unit !== "LARGE") {
+      throw new Error("Unit komponen paket tidak valid.");
+    }
+    if (!Number.isFinite(item.component_qty) || item.component_qty <= 0) {
+      throw new Error("Qty komponen paket harus lebih dari 0.");
+    }
+
+    normalized.push({
+      component_product_id: componentProductId,
+      component_unit: item.component_unit,
+      component_qty: item.component_qty,
+    });
+  }
+
+  return normalized;
+}
+
 function normalizeSpecialPriceInput(
   nextRules: ProductSpecialPriceRecord[] | undefined,
   existingRules: ProductRecord["special_prices"],
@@ -141,6 +177,17 @@ function normalizeSpecialPriceInput(
   const normalizedRules = sortSpecialPriceRules(nextRules);
   assertValidSpecialPriceRules(normalizedRules);
   return normalizedRules;
+}
+
+function resolveCatalogProducts(rows: ProductRecord[]) {
+  const normalizedRows = rows.map((row) => normalizeProductUom(row));
+  const rowMap = new Map(normalizedRows.map((row) => [row.id_produk, row] as const));
+
+  return normalizedRows.map((row) =>
+    (row.product_kind ?? "NORMAL") === "PACKAGE"
+      ? derivePackageCatalogRow(row, rowMap)
+      : row,
+  );
 }
 
 async function queueProductSync(product: ProductRecord) {
@@ -184,12 +231,20 @@ function getPendingLocalProductLocks(queueRows: SyncQueueRecord[]) {
 }
 
 export async function persistProductCatalog(input: ProductInput) {
-  validatePrice(input.harga_jual);
-  validateOptionalPrice(input.harga_jual_unit_besar);
   const now = Date.now();
   const existing =
     input.id_produk ? await offlineDb.products.get(input.id_produk) : undefined;
+  const productKind = normalizeProductKind(input.product_kind ?? existing?.product_kind);
+  validatePrice(input.harga_jual, productKind === "PACKAGE" ? 0 : 100);
+  validateOptionalPrice(input.harga_jual_unit_besar);
   const marketplaceState = normalizeProductMarketplace(input, existing);
+  const normalizedPackageItems =
+    productKind === "PACKAGE"
+      ? normalizePackageItems(input.package_items ?? existing?.package_items ?? [])
+      : undefined;
+  if (productKind === "PACKAGE" && (!normalizedPackageItems || normalizedPackageItems.length === 0)) {
+    throw new Error("Produk paket harus memiliki komponen.");
+  }
   const specialPrices = normalizeSpecialPriceInput(input.special_prices, existing?.special_prices);
   const product: ProductRecord = normalizeProductUom({
     ...(existing ?? {
@@ -201,30 +256,53 @@ export async function persistProductCatalog(input: ProductInput) {
       updatedAt: now,
     }),
     nama_produk: input.nama_produk.trim(),
+    product_kind: productKind,
+    package_items: normalizedPackageItems,
     sku:
       input.sku === undefined ? existing?.sku : input.sku.trim() || undefined,
     ...marketplaceState,
     harga_jual: input.harga_jual,
     harga_jual_unit_besar:
-      input.harga_jual_unit_besar ?? optionalNumber(existing?.harga_jual_unit_besar),
+      productKind === "PACKAGE"
+        ? undefined
+        : input.harga_jual_unit_besar ?? optionalNumber(existing?.harga_jual_unit_besar),
     stok_saat_ini: Math.max(0, Math.trunc(input.stok_saat_ini ?? existing?.stok_saat_ini ?? 0)),
-    stok_unit_besar_saat_ini: Math.max(
-      0,
-      Math.trunc(input.stok_unit_besar_saat_ini ?? existing?.stok_unit_besar_saat_ini ?? 0),
-    ),
+    stok_unit_besar_saat_ini:
+      productKind === "PACKAGE"
+        ? 0
+        : Math.max(
+            0,
+            Math.trunc(input.stok_unit_besar_saat_ini ?? existing?.stok_unit_besar_saat_ini ?? 0),
+          ),
     is_active: input.is_active ?? existing?.is_active ?? true,
-    unit_small_name: input.unit_small_name ?? existing?.unit_small_name,
-    unit_large_name: input.unit_large_name ?? optionalString(existing?.unit_large_name),
+    unit_small_name:
+      productKind === "PACKAGE"
+        ? input.unit_small_name ?? existing?.unit_small_name ?? DEFAULT_PACKAGE_UNIT
+        : input.unit_small_name ?? existing?.unit_small_name,
+    unit_large_name:
+      productKind === "PACKAGE"
+        ? undefined
+        : input.unit_large_name ?? optionalString(existing?.unit_large_name),
     unit_large_to_small:
-      input.unit_large_to_small ?? optionalNumber(existing?.unit_large_to_small),
+      productKind === "PACKAGE"
+        ? undefined
+        : input.unit_large_to_small ?? optionalNumber(existing?.unit_large_to_small),
     allow_buy_in_small:
-      input.allow_buy_in_small ?? existing?.allow_buy_in_small,
+      productKind === "PACKAGE"
+        ? false
+        : input.allow_buy_in_small ?? existing?.allow_buy_in_small,
     allow_buy_in_large:
-      input.allow_buy_in_large ?? existing?.allow_buy_in_large,
+      productKind === "PACKAGE"
+        ? false
+        : input.allow_buy_in_large ?? existing?.allow_buy_in_large,
     allow_sell_in_small:
-      input.allow_sell_in_small ?? existing?.allow_sell_in_small,
+      productKind === "PACKAGE"
+        ? true
+        : input.allow_sell_in_small ?? existing?.allow_sell_in_small,
     allow_sell_in_large:
-      input.allow_sell_in_large ?? existing?.allow_sell_in_large,
+      productKind === "PACKAGE"
+        ? false
+        : input.allow_sell_in_large ?? existing?.allow_sell_in_large,
     special_prices: specialPrices,
     updatedAt: now,
   });
@@ -251,7 +329,7 @@ export function useProductCatalog() {
 
   const refreshLocal = useCallback(async () => {
     const rows = await offlineDb.products.orderBy("nama_produk").toArray();
-    setProducts(rows.filter((item) => item.is_active).map(normalizeProductUom));
+    setProducts(resolveCatalogProducts(rows.filter((item) => item.is_active)));
   }, []);
 
   const syncFromServer = useCallback(async () => {

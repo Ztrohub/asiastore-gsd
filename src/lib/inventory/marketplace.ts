@@ -1,4 +1,7 @@
+import { getPackageMarketplaceListings } from "@/lib/inventory/package";
+
 type ProductMarketplaceInput = {
+  product_kind?: "NORMAL" | "PACKAGE";
   is_marketplace?: boolean | null;
   marketplace_product_name?: string | null;
   marketplace_product_id?: string | null;
@@ -7,6 +10,7 @@ type ProductMarketplaceInput = {
   marketplace_large_sku_id?: string | null;
   stok_saat_ini?: number | null;
   stok_unit_besar_saat_ini?: number | null;
+  unit_small_name?: string | null;
 };
 
 export type ProductMarketplaceListing = {
@@ -123,6 +127,10 @@ function normalizeMarketplaceStock(value: number | null | undefined) {
 }
 
 export function getProductMarketplaceListings(input: ProductMarketplaceInput): ProductMarketplaceListing[] {
+  if ((input.product_kind ?? "NORMAL") === "PACKAGE") {
+    return getPackageMarketplaceListings(input as never);
+  }
+
   const normalized = normalizeProductMarketplace(input);
   if (!normalized.is_marketplace) {
     return [];

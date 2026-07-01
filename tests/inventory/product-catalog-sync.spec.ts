@@ -227,6 +227,73 @@ describe("product catalog offline-first sync contract", () => {
     expect(queuedPayload.marketplace_large_sku_id).toBe("SKU-MP-001-DUS");
   });
 
+  it("stores package kind and recipe rows in local cache and queued sync payload", async () => {
+    const { persistProductCatalog } = await import("@/features/inventory/hooks/use-product-catalog");
+    await persistProductCatalog({
+      nama_produk: "Paket A",
+      sku: "PKT-A",
+      harga_jual: 0,
+      stok_saat_ini: 0,
+      is_active: true,
+      product_kind: "PACKAGE",
+      is_marketplace: true,
+      marketplace_product_name: "Paket A Marketplace",
+      marketplace_sku_id: "SKU-PKT-A",
+      package_items: [
+        { component_product_id: "prod-a", component_unit: "SMALL", component_qty: 1 },
+        { component_product_id: "prod-b", component_unit: "LARGE", component_qty: 2 },
+      ],
+    } as never);
+
+    const saved = putProduct.mock.calls[0][0];
+    const queued = JSON.parse(addQueue.mock.calls[0][0].deltaPayload);
+
+    expect(saved.product_kind).toBe("PACKAGE");
+    expect(saved.package_items).toEqual([
+      { component_product_id: "prod-a", component_unit: "SMALL", component_qty: 1 },
+      { component_product_id: "prod-b", component_unit: "LARGE", component_qty: 2 },
+    ]);
+    expect(queued.product_kind).toBe("PACKAGE");
+    expect(queued.package_items).toEqual(saved.package_items);
+  });
+
+  it("keeps package rows visible after sync by deriving stock from component products", async () => {
+    productsToArray.mockResolvedValueOnce([
+      {
+        id_produk: "prod-a",
+        nama_produk: "Produk A",
+        harga_jual: 10000,
+        stok_saat_ini: 8,
+        is_active: true,
+        product_kind: "NORMAL",
+        updatedAt: 1782896400000,
+      },
+      {
+        id_produk: "pkg-1",
+        nama_produk: "Paket A",
+        harga_jual: 0,
+        stok_saat_ini: 0,
+        is_active: true,
+        product_kind: "PACKAGE",
+        package_items: [{ component_product_id: "prod-a", component_unit: "SMALL", component_qty: 2 }],
+        updatedAt: 1782896400000,
+      },
+    ]);
+
+    const { useProductCatalog } = await import("@/features/inventory/hooks/use-product-catalog");
+    const { result } = renderHook(() => useProductCatalog());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.products.find((item) => item.id_produk === "pkg-1")).toMatchObject({
+      harga_jual: 20000,
+      stok_saat_ini: 4,
+      product_kind: "PACKAGE",
+    });
+  });
+
   it("preserves negative local stock on refresh so POS stockout stays visible", async () => {
     productsToArray.mockResolvedValueOnce([
       {

@@ -24,6 +24,12 @@ type ProductSyncRecord = {
   harga_jual_unit_besar?: number;
   stok_unit_besar_saat_ini?: number;
   is_active: boolean;
+  product_kind?: "NORMAL" | "PACKAGE";
+  package_items?: Array<{
+    component_product_id: string;
+    component_unit: "SMALL" | "LARGE";
+    component_qty: number;
+  }>;
   is_marketplace?: boolean;
   marketplace_product_name?: string;
   marketplace_product_id?: string;
