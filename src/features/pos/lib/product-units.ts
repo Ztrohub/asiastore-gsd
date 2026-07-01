@@ -7,6 +7,16 @@ export type ProductSellUnitOption = {
 };
 
 export function getSellUnitOptions(product: ProductRecord): ProductSellUnitOption[] {
+  if ((product.product_kind ?? "NORMAL") === "PACKAGE") {
+    return [
+      {
+        unit_mutasi: "SMALL",
+        unit_label: product.unit_small_name?.trim() || "paket",
+        unit_price: product.harga_jual,
+      },
+    ];
+  }
+
   const options: ProductSellUnitOption[] = [];
 
   if (product.allow_sell_in_small !== false) {
@@ -31,4 +41,3 @@ export function getSellUnitOptions(product: ProductRecord): ProductSellUnitOptio
 
   return options;
 }
-

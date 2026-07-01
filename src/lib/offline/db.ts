@@ -46,6 +46,13 @@ export type AppMetaRecord = {
 
 export type InventoryMutationType = "SALES_OUT" | "STOCK_IN" | "STOCK_ADJUSTMENT";
 export type InventoryMutationUnit = "SMALL" | "LARGE";
+export type ProductKind = "NORMAL" | "PACKAGE";
+
+export type PackageItemRecord = {
+  component_product_id: string;
+  component_unit: InventoryMutationUnit;
+  component_qty: number;
+};
 
 export type InventoryMutationEventRecord = {
   id_queue: string;
@@ -69,6 +76,8 @@ export type ProductRecord = {
   stok_saat_ini: number;
   stok_unit_besar_saat_ini?: number;
   is_active: boolean;
+  product_kind?: ProductKind;
+  package_items?: PackageItemRecord[];
   is_marketplace?: boolean;
   marketplace_product_name?: string;
   marketplace_product_id?: string;
