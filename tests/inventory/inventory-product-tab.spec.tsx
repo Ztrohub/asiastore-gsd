@@ -159,6 +159,19 @@ describe("inventory product tab contract", () => {
     expect(screen.getByRole("tab", { name: "Produk" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("keeps inventory product actions outside the scroll region for short viewports", async () => {
+    render(<InventoryTabs />);
+    fireEvent.click(screen.getByRole("button", { name: "Tambah Produk" }));
+
+    const dialog = await screen.findByRole("dialog");
+    const scrollRegion = within(dialog).getByTestId("product-form-scroll-region");
+
+    expect(dialog.className).toContain("translate-y-0");
+    expect(dialog.className).toContain("max-h-[calc(100dvh-2rem)]");
+    expect(within(scrollRegion).queryByRole("button", { name: "Simpan Produk" })).not.toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Simpan Produk" })).toBeInTheDocument();
+  });
+
   it("submits marketplace metadata when marketplace checkbox is enabled", async () => {
     render(<InventoryTabs />);
     fireEvent.click(screen.getByRole("button", { name: "Tambah Produk" }));

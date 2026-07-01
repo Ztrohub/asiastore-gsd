@@ -314,7 +314,7 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
   return (
     <Dialog onOpenChange={(next) => !next && onClose()} open={open}>
       <DialogContent
-        className="max-h-[90vh] overflow-y-auto sm:max-w-5xl"
+        className="top-4 flex max-h-[calc(100dvh-2rem)] -translate-y-0 flex-col overflow-hidden p-0 sm:max-w-5xl"
         onKeyDown={(event) => {
           if (
             (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
@@ -337,446 +337,450 @@ export function ProductFormDialog({ open, editingProduct, onClose, onSubmit }: P
         }}
         showCloseButton={false}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0 border-b px-4 py-4 sm:px-6">
           <DialogTitle>{editingProduct ? "Ubah Produk" : "Tambah Produk"}</DialogTitle>
           <DialogDescription>
             Isi data produk untuk disimpan ke katalog inventory.
           </DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={handleSubmit} ref={formRef}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <section className="space-y-3 rounded-md border border-border p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Produk Satuan
-              </p>
-              <div className="space-y-1">
-                <label className="text-xs font-medium" htmlFor="nama-produk">
-                  Nama produk
-                </label>
-                <Input
-                  id="nama-produk"
-                  onChange={(event) => setNamaProduk(event.target.value)}
-                  required
-                  value={namaProduk}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium" htmlFor="sku-produk">
-                  SKU (opsional)
-                </label>
-                <Input id="sku-produk" onChange={(event) => setSku(event.target.value)} value={sku} />
-              </div>
-              <div className="space-y-3 rounded-md border border-border p-3">
-                <label className="flex items-center gap-2 text-sm font-medium" htmlFor="is-marketplace">
-                  <input
-                    aria-label="Jual di marketplace"
-                    checked={isMarketplace}
-                    id="is-marketplace"
-                    onChange={(event) => {
-                      const nextValue = event.target.checked;
-                      setIsMarketplace(nextValue);
-                      if (!nextValue) {
-                        setMarketplaceProductName("");
-                        setMarketplaceProductId("");
-                        setMarketplaceSkuId("");
-                        setMarketplaceLargeProductId("");
-                        setMarketplaceLargeSkuId("");
-                      }
-                    }}
-                    type="checkbox"
-                  />
-                  <span>Jual di marketplace</span>
-                </label>
-                <p className="text-[11px] text-muted-foreground">
-                  Aktifkan jika produk ini dijual di marketplace dengan identitas yang berbeda dari SKU internal.
-                </p>
-                {isMarketplace ? (
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium" htmlFor="marketplace-product-name">
-                        Nama produk marketplace
-                      </label>
-                      <Input
-                        id="marketplace-product-name"
-                        onChange={(event) => setMarketplaceProductName(event.target.value)}
-                        value={marketplaceProductName}
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit} ref={formRef}>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6" data-testid="product-form-scroll-region">
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <section className="space-y-3 rounded-md border border-border p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Produk Satuan
+                  </p>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium" htmlFor="nama-produk">
+                      Nama produk
+                    </label>
+                    <Input
+                      id="nama-produk"
+                      onChange={(event) => setNamaProduk(event.target.value)}
+                      required
+                      value={namaProduk}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium" htmlFor="sku-produk">
+                      SKU (opsional)
+                    </label>
+                    <Input id="sku-produk" onChange={(event) => setSku(event.target.value)} value={sku} />
+                  </div>
+                  <div className="space-y-3 rounded-md border border-border p-3">
+                    <label className="flex items-center gap-2 text-sm font-medium" htmlFor="is-marketplace">
+                      <input
+                        aria-label="Jual di marketplace"
+                        checked={isMarketplace}
+                        id="is-marketplace"
+                        onChange={(event) => {
+                          const nextValue = event.target.checked;
+                          setIsMarketplace(nextValue);
+                          if (!nextValue) {
+                            setMarketplaceProductName("");
+                            setMarketplaceProductId("");
+                            setMarketplaceSkuId("");
+                            setMarketplaceLargeProductId("");
+                            setMarketplaceLargeSkuId("");
+                          }
+                        }}
+                        type="checkbox"
                       />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium" htmlFor="marketplace-product-id">
-                        ID produk marketplace
-                      </label>
-                      <Input
-                        id="marketplace-product-id"
-                        onChange={(event) => setMarketplaceProductId(event.target.value)}
-                        value={marketplaceProductId}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium" htmlFor="marketplace-sku-id">
-                        ID SKU marketplace
-                      </label>
-                      <Input
-                        id="marketplace-sku-id"
-                        onChange={(event) => setMarketplaceSkuId(event.target.value)}
-                        value={marketplaceSkuId}
-                      />
-                    </div>
-                    {unitLargeName.trim() ? (
-                      <div className="space-y-3 rounded-md border border-border p-3">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          Marketplace unit besar
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          Isi jika unit besar dijual sebagai SKU marketplace terpisah.
-                        </p>
+                      <span>Jual di marketplace</span>
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Aktifkan jika produk ini dijual di marketplace dengan identitas yang berbeda dari SKU internal.
+                    </p>
+                    {isMarketplace ? (
+                      <div className="space-y-3">
                         <div className="space-y-1">
-                          <label
-                            className="text-xs font-medium"
-                            htmlFor="marketplace-large-product-id"
-                          >
-                            ID produk marketplace unit besar
+                          <label className="text-xs font-medium" htmlFor="marketplace-product-name">
+                            Nama produk marketplace
                           </label>
                           <Input
-                            id="marketplace-large-product-id"
-                            onChange={(event) => setMarketplaceLargeProductId(event.target.value)}
-                            value={marketplaceLargeProductId}
+                            id="marketplace-product-name"
+                            onChange={(event) => setMarketplaceProductName(event.target.value)}
+                            value={marketplaceProductName}
                           />
                         </div>
                         <div className="space-y-1">
-                          <label
-                            className="text-xs font-medium"
-                            htmlFor="marketplace-large-sku-id"
-                          >
-                            ID SKU marketplace unit besar
+                          <label className="text-xs font-medium" htmlFor="marketplace-product-id">
+                            ID produk marketplace
                           </label>
                           <Input
-                            id="marketplace-large-sku-id"
-                            onChange={(event) => setMarketplaceLargeSkuId(event.target.value)}
-                            value={marketplaceLargeSkuId}
+                            id="marketplace-product-id"
+                            onChange={(event) => setMarketplaceProductId(event.target.value)}
+                            value={marketplaceProductId}
                           />
                         </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium" htmlFor="marketplace-sku-id">
+                            ID SKU marketplace
+                          </label>
+                          <Input
+                            id="marketplace-sku-id"
+                            onChange={(event) => setMarketplaceSkuId(event.target.value)}
+                            value={marketplaceSkuId}
+                          />
+                        </div>
+                        {unitLargeName.trim() ? (
+                          <div className="space-y-3 rounded-md border border-border p-3">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              Marketplace unit besar
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                              Isi jika unit besar dijual sebagai SKU marketplace terpisah.
+                            </p>
+                            <div className="space-y-1">
+                              <label
+                                className="text-xs font-medium"
+                                htmlFor="marketplace-large-product-id"
+                              >
+                                ID produk marketplace unit besar
+                              </label>
+                              <Input
+                                id="marketplace-large-product-id"
+                                onChange={(event) => setMarketplaceLargeProductId(event.target.value)}
+                                value={marketplaceLargeProductId}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label
+                                className="text-xs font-medium"
+                                htmlFor="marketplace-large-sku-id"
+                              >
+                                ID SKU marketplace unit besar
+                              </label>
+                              <Input
+                                id="marketplace-large-sku-id"
+                                onChange={(event) => setMarketplaceLargeSkuId(event.target.value)}
+                                value={marketplaceLargeSkuId}
+                              />
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
-                ) : null}
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium" htmlFor="unit-small">
-                  Unit kecil
-                </label>
-                <Input
-                  id="unit-small"
-                  maxLength={24}
-                  onChange={(event) => setUnitSmallName(event.target.value)}
-                  placeholder="pcs"
-                  required
-                  value={unitSmallName}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium" htmlFor="harga-produk">
-                  Harga jual unit kecil
-                </label>
-                <Input
-                  id="harga-produk"
-                  inputMode="numeric"
-                  onBlur={smallPriceInput.onBlur}
-                  onChange={(event) => smallPriceInput.onChange(event.target.value)}
-                  placeholder="15000"
-                  required
-                  value={smallPriceInput.displayValue}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium" htmlFor="stok-awal-kecil">
-                  Stok awal unit kecil
-                </label>
-                <Input
-                  id="stok-awal-kecil"
-                  min={0}
-                  onChange={(event) => setStokAwalUnitKecil(event.target.value)}
-                  type="number"
-                  value={stokAwalUnitKecil}
-                />
-              </div>
-              <div className="space-y-2 rounded-md border border-border p-3">
-                <p className="text-xs font-medium">Penjualan unit kecil</p>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    checked={allowSellInSmall}
-                    onChange={(event) => setAllowSellInSmall(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>Izinkan jual unit kecil</span>
-                </label>
-              </div>
-              <div className="space-y-2 rounded-md border border-border p-3">
-                <p className="text-xs font-medium">Pembelian unit kecil (Stock In)</p>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    checked={allowBuyInSmall}
-                    onChange={(event) => setAllowBuyInSmall(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>Izinkan beli unit kecil</span>
-                </label>
-              </div>
-            </section>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium" htmlFor="unit-small">
+                      Unit kecil
+                    </label>
+                    <Input
+                      id="unit-small"
+                      maxLength={24}
+                      onChange={(event) => setUnitSmallName(event.target.value)}
+                      placeholder="pcs"
+                      required
+                      value={unitSmallName}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium" htmlFor="harga-produk">
+                      Harga jual unit kecil
+                    </label>
+                    <Input
+                      id="harga-produk"
+                      inputMode="numeric"
+                      onBlur={smallPriceInput.onBlur}
+                      onChange={(event) => smallPriceInput.onChange(event.target.value)}
+                      placeholder="15000"
+                      required
+                      value={smallPriceInput.displayValue}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium" htmlFor="stok-awal-kecil">
+                      Stok awal unit kecil
+                    </label>
+                    <Input
+                      id="stok-awal-kecil"
+                      min={0}
+                      onChange={(event) => setStokAwalUnitKecil(event.target.value)}
+                      type="number"
+                      value={stokAwalUnitKecil}
+                    />
+                  </div>
+                  <div className="space-y-2 rounded-md border border-border p-3">
+                    <p className="text-xs font-medium">Penjualan unit kecil</p>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input
+                        checked={allowSellInSmall}
+                        onChange={(event) => setAllowSellInSmall(event.target.checked)}
+                        type="checkbox"
+                      />
+                      <span>Izinkan jual unit kecil</span>
+                    </label>
+                  </div>
+                  <div className="space-y-2 rounded-md border border-border p-3">
+                    <p className="text-xs font-medium">Pembelian unit kecil (Stock In)</p>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input
+                        checked={allowBuyInSmall}
+                        onChange={(event) => setAllowBuyInSmall(event.target.checked)}
+                        type="checkbox"
+                      />
+                      <span>Izinkan beli unit kecil</span>
+                    </label>
+                  </div>
+                </section>
 
-            <section className="space-y-3 rounded-md border border-border p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Unit Besar
-              </p>
-              <div className="space-y-1">
-                <label className="text-xs font-medium" htmlFor="unit-large">
-                  Nama unit besar
-                </label>
-                <Input
-                  id="unit-large"
-                  maxLength={24}
-                  onChange={(event) => {
-                    const nextUnitLargeName = event.target.value;
-                    setUnitLargeName(nextUnitLargeName);
-                    if (!nextUnitLargeName.trim()) {
-                      setAllowBuyInLarge(false);
-                      setAllowSellInLarge(false);
+                <section className="space-y-3 rounded-md border border-border p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Unit Besar
+                  </p>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium" htmlFor="unit-large">
+                      Nama unit besar
+                    </label>
+                    <Input
+                      id="unit-large"
+                      maxLength={24}
+                      onChange={(event) => {
+                        const nextUnitLargeName = event.target.value;
+                        setUnitLargeName(nextUnitLargeName);
+                        if (!nextUnitLargeName.trim()) {
+                          setAllowBuyInLarge(false);
+                          setAllowSellInLarge(false);
+                        }
+                      }}
+                      placeholder="dus"
+                      value={unitLargeName}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium" htmlFor="unit-factor">
+                      Konversi ke unit kecil
+                    </label>
+                    <Input
+                      disabled={!unitLargeName.trim()}
+                      id="unit-factor"
+                      min={2}
+                      onChange={(event) => setUnitLargeFactor(event.target.value)}
+                      placeholder="12"
+                      type="number"
+                      value={unitLargeFactor}
+                    />
+                    <p className="text-[11px] text-muted-foreground">Contoh: 1 dus = 12 pcs.</p>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium" htmlFor="harga-produk-besar">
+                      Harga jual unit besar
+                    </label>
+                    <Input
+                      disabled={!unitLargeName.trim()}
+                      id="harga-produk-besar"
+                      inputMode="numeric"
+                      onBlur={largePriceInput.onBlur}
+                      onChange={(event) => largePriceInput.onChange(event.target.value)}
+                      placeholder="165000"
+                      value={largePriceInput.displayValue}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium" htmlFor="stok-awal-besar">
+                      Stok awal unit besar
+                    </label>
+                    <Input
+                      disabled={!unitLargeName.trim()}
+                      id="stok-awal-besar"
+                      min={0}
+                      onChange={(event) => setStokAwalUnitBesar(event.target.value)}
+                      type="number"
+                      value={stokAwalUnitBesar}
+                    />
+                  </div>
+                  <div className="space-y-2 rounded-md border border-border p-3">
+                    <p className="text-xs font-medium">Penjualan unit besar</p>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input
+                        checked={allowSellInLarge}
+                        disabled={!unitLargeName.trim()}
+                        onChange={(event) => setAllowSellInLarge(event.target.checked)}
+                        type="checkbox"
+                      />
+                      <span>Izinkan jual unit besar</span>
+                    </label>
+                  </div>
+                  <div className="space-y-2 rounded-md border border-border p-3">
+                    <p className="text-xs font-medium">Pembelian unit besar (Stock In)</p>
+                    <label className="flex items-center gap-2 text-xs">
+                      <input
+                        checked={allowBuyInLarge}
+                        disabled={!unitLargeName.trim()}
+                        onChange={(event) => setAllowBuyInLarge(event.target.checked)}
+                        type="checkbox"
+                      />
+                      <span>Izinkan beli unit besar</span>
+                    </label>
+                  </div>
+                </section>
+              </div>
+
+              <section className="space-y-3 rounded-md border border-border p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Harga Khusus Per Qty
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Atur harga final untuk pecahan qty 0.1 sampai 0.9 per unit jual.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() =>
+                      setSpecialPriceDrafts((current) => [...current, createSpecialPriceDraft()])
                     }
-                  }}
-                  placeholder="dus"
-                  value={unitLargeName}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium" htmlFor="unit-factor">
-                  Konversi ke unit kecil
+                    type="button"
+                    variant="outline"
+                  >
+                    Tambah harga khusus
+                  </Button>
+                </div>
+
+                {specialPriceDrafts.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Belum ada harga khusus. Produk akan memakai harga dasar untuk semua pecahan qty.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {specialPriceDrafts.map((draft, index) => {
+                      const rowNumber = index + 1;
+                      const showLargeOption =
+                        Boolean(unitLargeName.trim()) || draft.unit_mutasi === "LARGE";
+
+                      return (
+                        <div
+                          className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-[140px_120px_1fr_auto]"
+                          key={`special-price-${rowNumber}`}
+                        >
+                          <div className="space-y-1">
+                            <label
+                              className="text-xs font-medium"
+                              htmlFor={`special-price-unit-${rowNumber}`}
+                            >
+                              Unit harga khusus {rowNumber}
+                            </label>
+                            <select
+                              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
+                              id={`special-price-unit-${rowNumber}`}
+                              onChange={(event) =>
+                                setSpecialPriceDrafts((current) => {
+                                  const next = [...current];
+                                  next[index] = {
+                                    ...next[index],
+                                    unit_mutasi: event.target.value as "SMALL" | "LARGE",
+                                  };
+                                  return next;
+                                })
+                              }
+                              value={draft.unit_mutasi}
+                            >
+                              <option value="SMALL">{unitSmallName.trim() || "Unit kecil"}</option>
+                              {showLargeOption ? (
+                                <option value="LARGE">{unitLargeName.trim() || "Unit besar"}</option>
+                              ) : null}
+                            </select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium" htmlFor={`special-price-qty-${rowNumber}`}>
+                              Qty harga khusus {rowNumber}
+                            </label>
+                            <Input
+                              id={`special-price-qty-${rowNumber}`}
+                              inputMode="decimal"
+                              onChange={(event) =>
+                                setSpecialPriceDrafts((current) => {
+                                  const next = [...current];
+                                  next[index] = { ...next[index], qty: event.target.value };
+                                  return next;
+                                })
+                              }
+                              placeholder="0.5"
+                              value={draft.qty}
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label
+                              className="text-xs font-medium"
+                              htmlFor={`special-price-price-${rowNumber}`}
+                            >
+                              Harga khusus {rowNumber}
+                            </label>
+                            <Input
+                              id={`special-price-price-${rowNumber}`}
+                              inputMode="numeric"
+                              onChange={(event) =>
+                                setSpecialPriceDrafts((current) => {
+                                  const next = [...current];
+                                  next[index] = { ...next[index], harga: event.target.value };
+                                  return next;
+                                })
+                              }
+                              placeholder="6000"
+                              value={draft.harga}
+                            />
+                          </div>
+
+                          <div className="flex items-end">
+                            <Button
+                              onClick={() =>
+                                setSpecialPriceDrafts((current) =>
+                                  current.filter((_, itemIndex) => itemIndex !== index),
+                                )
+                              }
+                              type="button"
+                              variant="outline"
+                            >
+                              Hapus
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <p className="text-[11px] text-muted-foreground">
+                Stok unit kecil dan unit besar dipisahkan agar penjualan kemasan utuh tidak tercampur dengan eceran.
+              </p>
+
+              {editingProduct ? (
+                <label className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
+                  <span>Status produk</span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {isActive ? "Aktif" : "Nonaktif"}
+                    </span>
+                    <input
+                      aria-label="Produk aktif"
+                      checked={isActive}
+                      onChange={(event) => {
+                        const nextActive = event.target.checked;
+                        if (!nextActive) {
+                          const confirmed = window.confirm(
+                            "Nonaktifkan produk ini? Produk nonaktif tidak muncul di daftar produk aktif.",
+                          );
+                          if (!confirmed) return;
+                        }
+                        setIsActive(nextActive);
+                      }}
+                      type="checkbox"
+                    />
+                  </span>
                 </label>
-                <Input
-                  disabled={!unitLargeName.trim()}
-                  id="unit-factor"
-                  min={2}
-                  onChange={(event) => setUnitLargeFactor(event.target.value)}
-                  placeholder="12"
-                  type="number"
-                  value={unitLargeFactor}
-                />
-                <p className="text-[11px] text-muted-foreground">Contoh: 1 dus = 12 pcs.</p>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium" htmlFor="harga-produk-besar">
-                  Harga jual unit besar
-                </label>
-                <Input
-                  disabled={!unitLargeName.trim()}
-                  id="harga-produk-besar"
-                  inputMode="numeric"
-                  onBlur={largePriceInput.onBlur}
-                  onChange={(event) => largePriceInput.onChange(event.target.value)}
-                  placeholder="165000"
-                  value={largePriceInput.displayValue}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium" htmlFor="stok-awal-besar">
-                  Stok awal unit besar
-                </label>
-                <Input
-                  disabled={!unitLargeName.trim()}
-                  id="stok-awal-besar"
-                  min={0}
-                  onChange={(event) => setStokAwalUnitBesar(event.target.value)}
-                  type="number"
-                  value={stokAwalUnitBesar}
-                />
-              </div>
-              <div className="space-y-2 rounded-md border border-border p-3">
-                <p className="text-xs font-medium">Penjualan unit besar</p>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    checked={allowSellInLarge}
-                    disabled={!unitLargeName.trim()}
-                    onChange={(event) => setAllowSellInLarge(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>Izinkan jual unit besar</span>
-                </label>
-              </div>
-              <div className="space-y-2 rounded-md border border-border p-3">
-                <p className="text-xs font-medium">Pembelian unit besar (Stock In)</p>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    checked={allowBuyInLarge}
-                    disabled={!unitLargeName.trim()}
-                    onChange={(event) => setAllowBuyInLarge(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>Izinkan beli unit besar</span>
-                </label>
-              </div>
-            </section>
+              ) : null}
+
+              {error ? <p className="text-xs text-destructive">{error}</p> : null}
+            </div>
           </div>
 
-          <section className="space-y-3 rounded-md border border-border p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Harga Khusus Per Qty
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Atur harga final untuk pecahan qty 0.1 sampai 0.9 per unit jual.
-                </p>
-              </div>
-              <Button
-                onClick={() =>
-                  setSpecialPriceDrafts((current) => [...current, createSpecialPriceDraft()])
-                }
-                type="button"
-                variant="outline"
-              >
-                Tambah harga khusus
-              </Button>
-            </div>
-
-            {specialPriceDrafts.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Belum ada harga khusus. Produk akan memakai harga dasar untuk semua pecahan qty.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {specialPriceDrafts.map((draft, index) => {
-                  const rowNumber = index + 1;
-                  const showLargeOption =
-                    Boolean(unitLargeName.trim()) || draft.unit_mutasi === "LARGE";
-
-                  return (
-                    <div
-                      className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-[140px_120px_1fr_auto]"
-                      key={`special-price-${rowNumber}`}
-                    >
-                      <div className="space-y-1">
-                        <label
-                          className="text-xs font-medium"
-                          htmlFor={`special-price-unit-${rowNumber}`}
-                        >
-                          Unit harga khusus {rowNumber}
-                        </label>
-                        <select
-                          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm"
-                          id={`special-price-unit-${rowNumber}`}
-                          onChange={(event) =>
-                            setSpecialPriceDrafts((current) => {
-                              const next = [...current];
-                              next[index] = {
-                                ...next[index],
-                                unit_mutasi: event.target.value as "SMALL" | "LARGE",
-                              };
-                              return next;
-                            })
-                          }
-                          value={draft.unit_mutasi}
-                        >
-                          <option value="SMALL">{unitSmallName.trim() || "Unit kecil"}</option>
-                          {showLargeOption ? (
-                            <option value="LARGE">{unitLargeName.trim() || "Unit besar"}</option>
-                          ) : null}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium" htmlFor={`special-price-qty-${rowNumber}`}>
-                          Qty harga khusus {rowNumber}
-                        </label>
-                        <Input
-                          id={`special-price-qty-${rowNumber}`}
-                          inputMode="decimal"
-                          onChange={(event) =>
-                            setSpecialPriceDrafts((current) => {
-                              const next = [...current];
-                              next[index] = { ...next[index], qty: event.target.value };
-                              return next;
-                            })
-                          }
-                          placeholder="0.5"
-                          value={draft.qty}
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label
-                          className="text-xs font-medium"
-                          htmlFor={`special-price-price-${rowNumber}`}
-                        >
-                          Harga khusus {rowNumber}
-                        </label>
-                        <Input
-                          id={`special-price-price-${rowNumber}`}
-                          inputMode="numeric"
-                          onChange={(event) =>
-                            setSpecialPriceDrafts((current) => {
-                              const next = [...current];
-                              next[index] = { ...next[index], harga: event.target.value };
-                              return next;
-                            })
-                          }
-                          placeholder="6000"
-                          value={draft.harga}
-                        />
-                      </div>
-
-                      <div className="flex items-end">
-                        <Button
-                          onClick={() =>
-                            setSpecialPriceDrafts((current) =>
-                              current.filter((_, itemIndex) => itemIndex !== index),
-                            )
-                          }
-                          type="button"
-                          variant="outline"
-                        >
-                          Hapus
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          <p className="text-[11px] text-muted-foreground">
-            Stok unit kecil dan unit besar dipisahkan agar penjualan kemasan utuh tidak tercampur dengan eceran.
-          </p>
-
-          {editingProduct ? (
-            <label className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
-              <span>Status produk</span>
-              <span className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {isActive ? "Aktif" : "Nonaktif"}
-                </span>
-                <input
-                  aria-label="Produk aktif"
-                  checked={isActive}
-                  onChange={(event) => {
-                    const nextActive = event.target.checked;
-                    if (!nextActive) {
-                      const confirmed = window.confirm(
-                        "Nonaktifkan produk ini? Produk nonaktif tidak muncul di daftar produk aktif.",
-                      );
-                      if (!confirmed) return;
-                    }
-                    setIsActive(nextActive);
-                  }}
-                  type="checkbox"
-                />
-              </span>
-            </label>
-          ) : null}
-
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
-
-          <DialogFooter className="px-0 pb-0 pt-2">
+          <DialogFooter className="mx-0 mb-0 shrink-0 px-4 pb-4 pt-3 sm:px-6">
             <Button
               className={getDialogActionButtonClass({
                 selected: selectedAction === "cancel",
