@@ -9,6 +9,7 @@ import {
   type InventoryMutationUnit,
   type ProductRecord,
 } from "@/lib/offline/db";
+import { buildLineStockEffectSnapshot } from "@/features/pos/lib/stock-effects";
 import { persistStockOutMutation } from "@/features/pos/hooks/use-stock-out-mutation";
 import type { PosLinePricingSnapshot } from "@/lib/pricing/special-price";
 
@@ -60,10 +61,7 @@ export function normalizePackageQtyInput(raw: string) {
   const normalized = raw.trim().replace(",", ".");
   const parsed = Number(normalized);
 
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error("Qty paket harus lebih dari 0.");
-  }
-  if (!Number.isInteger(parsed)) {
+  if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new Error("Qty paket harus bilangan bulat.");
   }
 
@@ -96,6 +94,7 @@ export async function persistPosTransaction(input: CheckoutInput) {
       ...line,
       line_discount: discount,
       line_total: Math.max(0, baseTotal - discount),
+      stock_effect_snapshot: buildLineStockEffectSnapshot(line),
     };
   });
 
@@ -139,17 +138,19 @@ export async function persistPosTransaction(input: CheckoutInput) {
     });
   });
 
-  await Promise.all(
-    normalizedLines.map((line, index) =>
-      persistStockOutMutation({
+  let logicalClock = 1;
+  for (const line of normalizedLines) {
+    for (const effect of line.stock_effect_snapshot?.effects ?? []) {
+      await persistStockOutMutation({
         id_transaksi: payload.id_transaksi,
-        id_produk: line.id_produk,
-        delta_qty: line.qty,
-        unit_mutasi: line.unit_mutasi ?? "SMALL",
-        logical_clock: index + 1,
-      }),
-    ),
-  );
+        id_produk: effect.id_produk,
+        delta_qty: Math.abs(effect.qty_delta),
+        unit_mutasi: effect.unit_mutasi,
+        logical_clock: logicalClock,
+      });
+      logicalClock += 1;
+    }
+  }
 
   return payload;
 }

@@ -113,4 +113,55 @@ describe("pos checkout payment rules", () => {
     expect(() => normalizePackageQtyInput("1.5")).toThrow("Qty paket harus bilangan bulat.");
     expect(normalizePackageQtyInput("3")).toBe(3);
   });
+
+  it("expands a package checkout line into component stock-out mutations and stores a stock effect snapshot", async () => {
+    const { persistPosTransaction } = await import("@/features/pos/hooks/use-pos-checkout");
+
+    await persistPosTransaction({
+      lines: [
+        {
+          id_produk: "pkg-1",
+          nama_produk: "Paket A",
+          unit_price: 79000,
+          qty: 2,
+          unit_mutasi: "SMALL",
+          unit_label: "paket",
+          product_kind: "PACKAGE",
+          package_items: [
+            { component_product_id: "prod-a", component_unit: "SMALL", component_qty: 1 },
+            { component_product_id: "prod-b", component_unit: "LARGE", component_qty: 2 },
+          ],
+        },
+      ],
+      payment_method: "cash",
+    } as never);
+
+    const saved = putTx.mock.calls[0][0];
+    expect(saved.lines[0].stock_effect_snapshot).toEqual({
+      source_kind: "PACKAGE",
+      effects: [
+        { id_produk: "prod-a", nama_produk_snapshot: "prod-a", unit_mutasi: "SMALL", qty_delta: -2 },
+        { id_produk: "prod-b", nama_produk_snapshot: "prod-b", unit_mutasi: "LARGE", qty_delta: -4 },
+      ],
+    });
+
+    expect(persistStockOutMutation).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        id_produk: "prod-a",
+        delta_qty: 2,
+        unit_mutasi: "SMALL",
+        logical_clock: 1,
+      }),
+    );
+    expect(persistStockOutMutation).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        id_produk: "prod-b",
+        delta_qty: 4,
+        unit_mutasi: "LARGE",
+        logical_clock: 2,
+      }),
+    );
+  });
 });

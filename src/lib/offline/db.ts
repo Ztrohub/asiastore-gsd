@@ -97,6 +97,16 @@ export type ProductRecord = {
 
 export type PosPaymentMethod = "cash" | "bank_transfer";
 
+export type StockEffectSnapshot = {
+  source_kind: "NORMAL" | "PACKAGE";
+  effects: Array<{
+    id_produk: string;
+    nama_produk_snapshot: string;
+    unit_mutasi: InventoryMutationUnit;
+    qty_delta: number;
+  }>;
+};
+
 export type PosTransactionLineRecord = {
   id_produk: string;
   nama_produk: string;
@@ -107,6 +117,7 @@ export type PosTransactionLineRecord = {
   line_discount: number;
   line_total: number;
   pricing_snapshot?: PosLinePricingSnapshot;
+  stock_effect_snapshot?: StockEffectSnapshot;
 };
 
 export type PosTransactionRecord = {
